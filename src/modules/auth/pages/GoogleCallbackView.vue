@@ -31,13 +31,13 @@ onMounted(async () => {
     // For now, if no tokens, redirect to login with error
     router.push({
       path: "/login",
-      query: { error: "Không thể xác thực với Google. Vui lòng thử lại." },
+      query: { error: "Unable to authenticate with Google. Please try again." },
     });
   } catch (error) {
     console.error("Google callback error:", error);
     router.push({
       path: "/login",
-      query: { error: "Đã xảy ra lỗi khi xác thực với Google." },
+      query: { error: "An error occurred while authenticating with Google." },
     });
   }
 });
@@ -48,10 +48,10 @@ onMounted(async () => {
     <div class="container-center">
       <div class="callback-container">
         <GlowText level="3">
-          Đang xử lý đăng nhập...
+          Processing sign in...
         </GlowText>
         <p class="callback-message">
-          Vui lòng đợi trong giây lát
+          Please wait a moment
         </p>
       </div>
     </div>

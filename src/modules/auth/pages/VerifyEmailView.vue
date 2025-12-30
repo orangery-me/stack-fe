@@ -19,7 +19,7 @@ onMounted(async () => {
     status.value = "error";
     loading.value = false;
     error(
-      "Token xác thực không hợp lệ. Vui lòng kiểm tra lại link trong email."
+      "Invalid verification token. Please check the link in your email."
     );
     setTimeout(() => {
       router.push("/login");
@@ -38,7 +38,7 @@ onMounted(async () => {
     // Show success toast with message from API
     const message =
       response?.message ||
-      "Xác thực email thành công. Bạn có thể đăng nhập ngay bây giờ.";
+      "Email verification successful. You can sign in now.";
     success(message, 5000);
 
     // Redirect to login after 2 seconds
@@ -54,7 +54,7 @@ onMounted(async () => {
 
     // Show error toast with error message
     const errorMessage =
-      err?.message || "Xác thực email thất bại. Vui lòng thử lại.";
+      err?.message || "Email verification failed. Please try again.";
     error(errorMessage, 5000);
 
     // Redirect to login after 3 seconds
@@ -71,24 +71,24 @@ onMounted(async () => {
       <div class="verify-container">
         <GlowText :level="3">
           <template v-if="loading || status === 'processing'">
-            Đang xác thực email...
+            Verifying email...
           </template>
           <template v-else-if="status === 'success'">
-            Xác thực thành công!
+            Verification successful!
           </template>
           <template v-else>
-            Xác thực thất bại
+            Verification failed
           </template>
         </GlowText>
         <p class="verify-message">
           <template v-if="loading || status === 'processing'">
-            Vui lòng đợi trong giây lát
+            Please wait a moment
           </template>
           <template v-else-if="status === 'success'">
-            Đang chuyển hướng đến trang đăng nhập...
+            Redirecting to sign in page...
           </template>
           <template v-else>
-            Đang chuyển hướng đến trang đăng nhập...
+            Redirecting to sign in page...
           </template>
         </p>
       </div>

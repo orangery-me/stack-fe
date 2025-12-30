@@ -41,22 +41,22 @@ const validateField = (field, value) => {
   switch (field) {
     case "email":
       if (value && !value.includes("@")) {
-        return "Email không hợp lệ";
+        return "Invalid email";
       }
       break;
     case "phone":
       if (value && (value.length !== 10 || !/^[0-9]+$/.test(value))) {
-        return "Số điện thoại phải có đúng 10 số";
+        return "Phone number must be exactly 10 digits";
       }
       break;
     case "password":
       if (value && value.length < 6) {
-        return "Mật khẩu phải có ít nhất 6 ký tự";
+        return "Password must be at least 6 characters";
       }
       break;
     case "name":
       if (value && (value.length < 2 || value.length > 50)) {
-        return "Tên phải từ 2 đến 50 ký tự";
+        return "Name must be between 2 and 50 characters";
       }
       break;
   }
@@ -75,7 +75,7 @@ const handleFieldBlur = (field) => {
   if (field === "confirmPassword") {
     fieldErrors.value.confirmPassword =
       confirmPassword.value !== formData.value.password
-        ? "Mật khẩu xác nhận không khớp"
+        ? "Passwords do not match"
         : "";
   } else {
     fieldErrors.value[field] = validateField(field, formData.value[field]);
@@ -101,7 +101,7 @@ const handleRegister = async () => {
   });
 
   if (confirmPassword.value !== formData.value.password) {
-    fieldErrors.value.confirmPassword = "Mật khẩu xác nhận không khớp";
+    fieldErrors.value.confirmPassword = "Passwords do not match";
     hasErrors = true;
   }
 
@@ -113,7 +113,7 @@ const handleRegister = async () => {
     const result = await authStore.register(formData.value);
     const successMessage =
       result.message ||
-      "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.";
+      "Registration successful. Please check your email to verify your account.";
     showSuccessToast(successMessage);
 
     // Redirect to login after 2 seconds
@@ -121,7 +121,8 @@ const handleRegister = async () => {
       router.push("/login");
     }, 2000);
   } catch (err) {
-    const errorMessage = err.message || "Đăng ký thất bại. Vui lòng thử lại.";
+    const errorMessage =
+      err.message || "Registration failed. Please try again.";
     showErrorToast(errorMessage);
   } finally {
     loading.value = false;
@@ -140,10 +141,10 @@ const goToLogin = () => {
         <StarfieldCard class="register-card">
           <div class="register-header">
             <GlowText :level="2">
-              Đăng Ký
+              Sign Up
             </GlowText>
             <p class="register-subtitle">
-              Tạo tài khoản mới
+              Create a new account
             </p>
           </div>
 
@@ -179,7 +180,7 @@ const goToLogin = () => {
               <label
                 for="phone"
                 class="form-label"
-              >Số điện thoại *</label>
+              >Phone *</label>
               <input
                 id="phone"
                 v-model="formData.phone"
@@ -204,14 +205,14 @@ const goToLogin = () => {
               <label
                 for="name"
                 class="form-label"
-              >Họ và tên *</label>
+              >Full Name *</label>
               <input
                 id="name"
                 v-model="formData.name"
                 type="text"
                 class="form-input"
                 :class="{ 'form-input--error': fieldErrors.name }"
-                placeholder="Nguyễn Văn A"
+                placeholder="John Doe"
                 required
                 maxlength="50"
                 autocomplete="name"
@@ -229,7 +230,7 @@ const goToLogin = () => {
               <label
                 for="password"
                 class="form-label"
-              >Mật khẩu *</label>
+              >Password *</label>
               <input
                 id="password"
                 v-model="formData.password"
@@ -255,7 +256,7 @@ const goToLogin = () => {
                 for="confirmPassword"
                 class="form-label"
               >
-                Xác nhận mật khẩu *
+                Confirm Password *
               </label>
               <input
                 id="confirmPassword"
@@ -283,19 +284,19 @@ const goToLogin = () => {
               :disabled="!isValid || loading"
               class="register-button"
             >
-              {{ loading ? "Đang đăng ký..." : "Đăng Ký" }}
+              {{ loading ? "Signing up..." : "Sign Up" }}
             </StarfieldButton>
           </form>
 
           <div class="login-link">
             <p>
-              Đã có tài khoản?
+              Already have an account?
               <button
                 type="button"
                 class="link-button"
                 @click="goToLogin"
               >
-                Đăng nhập ngay
+                Sign in now
               </button>
             </p>
           </div>

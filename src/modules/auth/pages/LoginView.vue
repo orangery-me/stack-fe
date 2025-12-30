@@ -39,7 +39,7 @@ const handleLogin = async () => {
     const redirect = route.query.redirect || "/";
     router.push(redirect);
   } catch (err) {
-    const errorMessage = err.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+    const errorMessage = err.message || "Sign in failed. Please try again.";
     showErrorToast(errorMessage);
   } finally {
     loading.value = false;
@@ -62,10 +62,10 @@ const goToRegister = () => {
         <StarfieldCard class="login-card">
           <div class="login-header">
             <GlowText :level="2">
-              Đăng Nhập
+              Sign In
             </GlowText>
             <p class="login-subtitle">
-              Chào mừng trở lại
+              Welcome back
             </p>
           </div>
 
@@ -93,7 +93,7 @@ const goToRegister = () => {
               <label
                 for="password"
                 class="form-label"
-              >Mật khẩu</label>
+              >Password</label>
               <input
                 id="password"
                 v-model="password"
@@ -112,12 +112,12 @@ const goToRegister = () => {
               :disabled="!isValid || loading"
               class="login-button"
             >
-              {{ loading ? "Đang đăng nhập..." : "Đăng Nhập" }}
+              {{ loading ? "Signing in..." : "Sign In" }}
             </StarfieldButton>
           </form>
 
           <div class="divider">
-            <span>hoặc</span>
+            <span>or</span>
           </div>
 
           <StarfieldButton
@@ -151,18 +151,18 @@ const goToRegister = () => {
                 fill="#EA4335"
               />
             </svg>
-            Đăng nhập bằng Google
+            Sign in with Google
           </StarfieldButton>
 
           <div class="register-link">
             <p>
-              Chưa có tài khoản?
+              Don't have an account?
               <button
                 type="button"
                 class="link-button"
                 @click="goToRegister"
               >
-                Đăng ký ngay
+                Sign up now
               </button>
             </p>
           </div>

@@ -5,26 +5,26 @@ import GlowText from "@/components/GlowText.vue";
 
 const features = [
   {
-    icon: "🚀",
-    title: "Lightning Fast",
+    icon: "📋",
+    title: "Task Management",
     description:
-      "Built with cutting-edge technology for optimal performance and speed.",
+      "Organize and track your work with powerful task management tools. Stay on top of deadlines and priorities.",
   },
   {
-    icon: "✨",
-    title: "Modern Design",
+    icon: "💬",
+    title: "Team Chat",
     description:
-      "Futuristic UI components with glassmorphism and neon effects.",
+      "Real-time communication with your team, just like Slack. Chat in channels, direct messages, and group conversations.",
   },
   {
-    icon: "🔒",
-    title: "Secure & Reliable",
-    description: "Enterprise-grade security with 99.9% uptime guarantee.",
+    icon: "📄",
+    title: "Document Collaboration",
+    description: "Create, share, and collaborate on documents seamlessly. Work together in real-time with your team.",
   },
   {
-    icon: "🌌",
-    title: "Scalable",
-    description: "Grows with your needs, from startup to enterprise scale.",
+    icon: "🤖",
+    title: "AI Assistant",
+    description: "Boost productivity with integrated AI that helps you work smarter. Get intelligent suggestions and automation.",
   },
 ];
 </script>
@@ -37,19 +37,19 @@ const features = [
         <div class="hero-text">
           <div class="hero-badge">
             <span class="badge-dot" />
-            <span>Launching Soon</span>
+            <span>AI-Powered Workspace</span>
           </div>
           <GlowText
             level="1"
             class="hero-title"
           >
-            Launch Into The
-            <span class="gradient-text">Future</span>
+            Stack - Your
+            <span class="gradient-text">AI-Powered</span>
+            Workspace
           </GlowText>
           <p class="hero-description">
-            Experience the next generation of web applications with our
-            cutting-edge platform. Built for speed, designed for the future,
-            powered by innovation.
+            Manage tasks, communicate with your team, collaborate on documents, and boost productivity with AI. 
+            Everything you need to work smarter, all in one place.
           </p>
           <div class="hero-cta">
             <StarfieldButton
@@ -86,10 +86,10 @@ const features = [
     <div class="container-center">
       <div class="section-header">
         <GlowText :level="2">
-          Powerful Features
+          Everything You Need to Work Better
         </GlowText>
         <p class="section-description">
-          Everything you need to build and scale your next big project
+          Task management, team communication, document collaboration, and AI assistance - all in one powerful platform
         </p>
       </div>
       <div class="features-grid">
@@ -120,24 +120,23 @@ const features = [
           level="2"
           class="cta-title"
         >
-          Ready to Launch?
+          Ready to Transform Your Workflow?
         </GlowText>
         <p class="cta-description">
-          Join thousands of developers and teams building the future with
-          Starfield.
+          Join teams who are already using Stack to manage tasks, communicate better, and work smarter with AI.
         </p>
         <div class="cta-buttons">
           <StarfieldButton
             variant="primary"
             size="lg"
           >
-            Start Free Trial
+            Get Started Free
           </StarfieldButton>
           <StarfieldButton
             variant="secondary"
             size="lg"
           >
-            Contact Sales
+            Learn More
           </StarfieldButton>
         </div>
       </div>

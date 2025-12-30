@@ -109,7 +109,7 @@ const goToLogin = () => {
                 size="sm"
                 @click="handleLogout"
               >
-                Đăng xuất
+                Sign out
               </StarfieldButton>
             </div>
           </template>
@@ -119,7 +119,7 @@ const goToLogin = () => {
               size="md"
               @click="goToLogin"
             >
-              Đăng nhập
+              Sign in
             </StarfieldButton>
           </template>
         </div>
