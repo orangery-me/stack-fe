@@ -69,6 +69,16 @@ class AuthService {
   googleAuth() {
     window.location.href = `${API_BASE_URL}${API_ENDPOINTS.AUTH.GOOGLE}`;
   }
+
+  /**
+   * Verify email with token
+   * @param {string} token - Verification token from email
+   * @returns {Promise<{message: string}>}
+   */
+  async verifyEmail(token) {
+    const response = await apiService.get(`${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`);
+    return response.data.data;
+  }
 }
 
 export default new AuthService();

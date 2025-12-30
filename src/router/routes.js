@@ -3,6 +3,7 @@ import NotFoundView from '@/pages/NotFoundView.vue';
 import LoginView from '@/modules/auth/pages/LoginView.vue';
 import RegisterView from '../modules/auth/pages/RegisterView.vue';
 import GoogleCallbackView from '@/modules/auth/pages/GoogleCallbackView.vue';
+import VerifyEmailView from '@/modules/auth/pages/VerifyEmailView.vue';
 
 export default [
 	{
@@ -28,6 +29,12 @@ export default [
 		name: 'googleCallback',
 		component: GoogleCallbackView,
 		meta: { title: 'Google OAuth Callback' },
+	},
+	{
+		path: '/auth/verify-email',
+		name: 'verifyEmail',
+		component: VerifyEmailView,
+		meta: { title: 'Xác thực Email' },
 	},
 	{
 		// 404 fallback

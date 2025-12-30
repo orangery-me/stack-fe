@@ -9,7 +9,7 @@ const router = createRouter({
 });
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/register', '/auth/google/callback'];
+const publicRoutes = ['/login', '/register', '/auth/google/callback', '/auth/verify-email'];
 
 // navigation guard 
 router.beforeEach((to, from, next) => {
