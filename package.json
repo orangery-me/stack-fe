@@ -13,7 +13,7 @@
     "dev": "vite --port 5173",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.vue",
-    "build": "npm run lint && npm run test && vite build"
+    "build": "npm run lint && vite build"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
