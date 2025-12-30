@@ -45,8 +45,17 @@ apiService.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    const isPublicEndpoint = originalRequest.url.includes('/auth/login') ||
+    originalRequest.url.includes('/auth/register');
+
     // If error is 401 and we haven't tried to refresh yet
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // For public endpoints, just throw error without redirect
+      if (isPublicEndpoint) {
+        const errorData = error.response?.data || error;
+        return Promise.reject(errorData);
+      }
+
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {

@@ -2,12 +2,14 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
+import { useToast } from "@/composables/useToast.js";
 import StarfieldButton from "@/components/StarfieldButton.vue";
 import StarfieldCard from "@/components/StarfieldCard.vue";
 import GlowText from "@/components/GlowText.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const { success: showSuccessToast, error: showErrorToast } = useToast();
 
 const formData = ref({
   email: "",
@@ -17,8 +19,6 @@ const formData = ref({
 });
 
 const confirmPassword = ref("");
-const error = ref("");
-const success = ref("");
 const loading = ref(false);
 
 const isValid = computed(() => {
@@ -86,8 +86,6 @@ const handleRegister = async () => {
   if (!isValid.value || loading.value) return;
 
   // Clear previous errors
-  error.value = "";
-  success.value = "";
   Object.keys(fieldErrors.value).forEach((key) => {
     fieldErrors.value[key] = "";
   });
@@ -113,16 +111,18 @@ const handleRegister = async () => {
 
   try {
     const result = await authStore.register(formData.value);
-    success.value = result.message;
-    error.value = "";
+    const successMessage =
+      result.message ||
+      "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.";
+    showSuccessToast(successMessage);
 
-    // Redirect to login after 3 seconds
+    // Redirect to login after 2 seconds
     setTimeout(() => {
       router.push("/login");
     }, 2000);
   } catch (err) {
-    error.value = err.message || "Đăng ký thất bại. Vui lòng thử lại.";
-    success.value = "";
+    const errorMessage = err.message || "Đăng ký thất bại. Vui lòng thử lại.";
+    showErrorToast(errorMessage);
   } finally {
     loading.value = false;
   }
@@ -139,37 +139,13 @@ const goToLogin = () => {
       <div class="register-container">
         <StarfieldCard class="register-card">
           <div class="register-header">
-            <GlowText :level="2">
-              Đăng Ký
-            </GlowText>
-            <p class="register-subtitle">
-              Tạo tài khoản mới
-            </p>
+            <GlowText :level="2"> Đăng Ký </GlowText>
+            <p class="register-subtitle">Tạo tài khoản mới</p>
           </div>
 
-          <form
-            class="register-form"
-            @submit.prevent="handleRegister"
-          >
-            <div
-              v-if="error"
-              class="error-message"
-            >
-              {{ error }}
-            </div>
-
-            <div
-              v-if="success"
-              class="success-message"
-            >
-              {{ success }}
-            </div>
-
+          <form class="register-form" @submit.prevent="handleRegister">
             <div class="form-group">
-              <label
-                for="email"
-                class="form-label"
-              >Email *</label>
+              <label for="email" class="form-label">Email *</label>
               <input
                 id="email"
                 v-model="formData.email"
@@ -180,20 +156,14 @@ const goToLogin = () => {
                 required
                 autocomplete="email"
                 @blur="handleFieldBlur('email')"
-              >
-              <span
-                v-if="fieldErrors.email"
-                class="field-error"
-              >
+              />
+              <span v-if="fieldErrors.email" class="field-error">
                 {{ fieldErrors.email }}
               </span>
             </div>
 
             <div class="form-group">
-              <label
-                for="phone"
-                class="form-label"
-              >Số điện thoại *</label>
+              <label for="phone" class="form-label">Số điện thoại *</label>
               <input
                 id="phone"
                 v-model="formData.phone"
@@ -205,20 +175,14 @@ const goToLogin = () => {
                 maxlength="10"
                 autocomplete="tel"
                 @blur="handleFieldBlur('phone')"
-              >
-              <span
-                v-if="fieldErrors.phone"
-                class="field-error"
-              >
+              />
+              <span v-if="fieldErrors.phone" class="field-error">
                 {{ fieldErrors.phone }}
               </span>
             </div>
 
             <div class="form-group">
-              <label
-                for="name"
-                class="form-label"
-              >Họ và tên *</label>
+              <label for="name" class="form-label">Họ và tên *</label>
               <input
                 id="name"
                 v-model="formData.name"
@@ -230,20 +194,14 @@ const goToLogin = () => {
                 maxlength="50"
                 autocomplete="name"
                 @blur="handleFieldBlur('name')"
-              >
-              <span
-                v-if="fieldErrors.name"
-                class="field-error"
-              >
+              />
+              <span v-if="fieldErrors.name" class="field-error">
                 {{ fieldErrors.name }}
               </span>
             </div>
 
             <div class="form-group">
-              <label
-                for="password"
-                class="form-label"
-              >Mật khẩu *</label>
+              <label for="password" class="form-label">Mật khẩu *</label>
               <input
                 id="password"
                 v-model="formData.password"
@@ -255,20 +213,14 @@ const goToLogin = () => {
                 minlength="6"
                 autocomplete="new-password"
                 @blur="handleFieldBlur('password')"
-              >
-              <span
-                v-if="fieldErrors.password"
-                class="field-error"
-              >
+              />
+              <span v-if="fieldErrors.password" class="field-error">
                 {{ fieldErrors.password }}
               </span>
             </div>
 
             <div class="form-group">
-              <label
-                for="confirmPassword"
-                class="form-label"
-              >
+              <label for="confirmPassword" class="form-label">
                 Xác nhận mật khẩu *
               </label>
               <input
@@ -281,11 +233,8 @@ const goToLogin = () => {
                 required
                 autocomplete="new-password"
                 @blur="handleFieldBlur('confirmPassword')"
-              >
-              <span
-                v-if="fieldErrors.confirmPassword"
-                class="field-error"
-              >
+              />
+              <span v-if="fieldErrors.confirmPassword" class="field-error">
                 {{ fieldErrors.confirmPassword }}
               </span>
             </div>
@@ -304,11 +253,7 @@ const goToLogin = () => {
           <div class="login-link">
             <p>
               Đã có tài khoản?
-              <button
-                type="button"
-                class="link-button"
-                @click="goToLogin"
-              >
+              <button type="button" class="link-button" @click="goToLogin">
                 Đăng nhập ngay
               </button>
             </p>
@@ -411,30 +356,6 @@ const goToLogin = () => {
   color: #fca5a5;
   font-size: 0.75rem;
   margin-top: 0.25rem;
-  font-family: "Merriweather", serif;
-}
-
-.error-message {
-  padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 2px;
-  color: #fca5a5;
-  font-size: 0.875rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  font-family: "Merriweather", serif;
-}
-
-.success-message {
-  padding: 1rem;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 2px;
-  color: #86efac;
-  font-size: 0.875rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
   font-family: "Merriweather", serif;
 }
 

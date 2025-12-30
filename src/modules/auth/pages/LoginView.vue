@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
+import { useToast } from "@/composables/useToast.js";
 import StarfieldButton from "@/components/StarfieldButton.vue";
 import StarfieldCard from "@/components/StarfieldCard.vue";
 import GlowText from "@/components/GlowText.vue";
@@ -9,20 +10,26 @@ import GlowText from "@/components/GlowText.vue";
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const { error: showErrorToast } = useToast();
 
 const email = ref("");
 const password = ref("");
-const error = ref(route.query.error || "");
 const loading = ref(false);
 
 const isValid = computed(() => {
   return email.value && password.value && email.value.includes("@");
 });
 
+// Show error from query params if exists (e.g., from redirect)
+onMounted(() => {
+  if (route.query.error) {
+    showErrorToast(route.query.error);
+  }
+});
+
 const handleLogin = async () => {
   if (!isValid.value || loading.value) return;
 
-  error.value = "";
   loading.value = true;
 
   try {
@@ -32,7 +39,8 @@ const handleLogin = async () => {
     const redirect = route.query.redirect || "/";
     router.push(redirect);
   } catch (err) {
-    error.value = err.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+    const errorMessage = err.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+    showErrorToast(errorMessage);
   } finally {
     loading.value = false;
   }
@@ -65,13 +73,6 @@ const goToRegister = () => {
             class="login-form"
             @submit.prevent="handleLogin"
           >
-            <div
-              v-if="error"
-              class="error-message"
-            >
-              {{ error }}
-            </div>
-
             <div class="form-group">
               <label
                 for="email"
@@ -251,18 +252,6 @@ const goToRegister = () => {
   &::placeholder {
     color: rgba(241, 245, 249, 0.5);
   }
-}
-
-.error-message {
-  padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 2px;
-  color: #fca5a5;
-  font-size: 0.875rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  font-family: "Merriweather", serif;
 }
 
 .login-button {
