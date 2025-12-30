@@ -47,8 +47,12 @@ onMounted(async () => {
   <section class="callback-section">
     <div class="container-center">
       <div class="callback-container">
-        <GlowText level="3">Đang xử lý đăng nhập...</GlowText>
-        <p class="callback-message">Vui lòng đợi trong giây lát</p>
+        <GlowText level="3">
+          Đang xử lý đăng nhập...
+        </GlowText>
+        <p class="callback-message">
+          Vui lòng đợi trong giây lát
+        </p>
       </div>
     </div>
   </section>

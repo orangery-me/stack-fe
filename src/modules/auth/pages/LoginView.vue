@@ -53,17 +53,30 @@ const goToRegister = () => {
       <div class="login-container">
         <StarfieldCard class="login-card">
           <div class="login-header">
-            <GlowText :level="2">Đăng Nhập</GlowText>
-            <p class="login-subtitle">Chào mừng trở lại</p>
+            <GlowText :level="2">
+              Đăng Nhập
+            </GlowText>
+            <p class="login-subtitle">
+              Chào mừng trở lại
+            </p>
           </div>
 
-          <form @submit.prevent="handleLogin" class="login-form">
-            <div v-if="error" class="error-message">
+          <form
+            class="login-form"
+            @submit.prevent="handleLogin"
+          >
+            <div
+              v-if="error"
+              class="error-message"
+            >
               {{ error }}
             </div>
 
             <div class="form-group">
-              <label for="email" class="form-label">Email</label>
+              <label
+                for="email"
+                class="form-label"
+              >Email</label>
               <input
                 id="email"
                 v-model="email"
@@ -72,11 +85,14 @@ const goToRegister = () => {
                 placeholder="your@email.com"
                 required
                 autocomplete="email"
-              />
+              >
             </div>
 
             <div class="form-group">
-              <label for="password" class="form-label">Mật khẩu</label>
+              <label
+                for="password"
+                class="form-label"
+              >Mật khẩu</label>
               <input
                 id="password"
                 v-model="password"
@@ -85,7 +101,7 @@ const goToRegister = () => {
                 placeholder="••••••••"
                 required
                 autocomplete="current-password"
-              />
+              >
             </div>
 
             <StarfieldButton
@@ -107,8 +123,8 @@ const goToRegister = () => {
             variant="secondary"
             size="lg"
             :disabled="loading"
-            @click="handleGoogleLogin"
             class="google-button"
+            @click="handleGoogleLogin"
           >
             <svg
               class="google-icon"
@@ -140,7 +156,11 @@ const goToRegister = () => {
           <div class="register-link">
             <p>
               Chưa có tài khoản?
-              <button type="button" class="link-button" @click="goToRegister">
+              <button
+                type="button"
+                class="link-button"
+                @click="goToRegister"
+              >
                 Đăng ký ngay
               </button>
             </p>
