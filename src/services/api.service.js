@@ -57,7 +57,8 @@ apiService.interceptors.response.use(
             return apiService(originalRequest);
           })
           .catch((err) => {
-            return Promise.reject(err);
+            const errorData = err.response?.data || err;
+            return Promise.reject(errorData);
           });
       }
 
@@ -72,7 +73,9 @@ apiService.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         window.location.href = '/login';
-        return Promise.reject(error);
+
+        const errorData = error.response?.data || error;
+        return Promise.reject(errorData);
       }
 
       try {
@@ -97,13 +100,18 @@ apiService.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        // Throw error.response.data if available
+        const errorData = refreshError.response?.data || refreshError;
+        return Promise.reject(errorData);
       } finally {
         isRefreshing = false;
       }
     }
 
-    return Promise.reject(error);
+    // For all other errors, throw error.response.data if available
+    // This allows direct access to error.message, error.statusCode, etc.
+    const errorData = error.response?.data || error;
+    return Promise.reject(errorData);
   }
 );
 

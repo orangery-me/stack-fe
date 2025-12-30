@@ -85,8 +85,7 @@ export const useAuthStore = defineStore('auth', {
         this.setAuth(tokenData.accessToken, tokenData.refreshToken, user);
         return { success: true };
       } catch (error) {
-        const message =
-          error.response?.data?.message || error.message || 'Đăng nhập thất bại';
+        const message = error.message || 'Đăng nhập thất bại';
         throw { success: false, message };
       }
     },
@@ -106,8 +105,7 @@ export const useAuthStore = defineStore('auth', {
             'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.',
         };
       } catch (error) {
-        const message =
-          error.response?.data?.message || error.message || 'Đăng ký thất bại';
+        const message = error.message || 'Đăng ký thất bại';
         throw { success: false, message };
       }
     },
