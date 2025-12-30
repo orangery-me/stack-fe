@@ -85,7 +85,7 @@ const features = [
   >
     <div class="container-center">
       <div class="section-header">
-        <GlowText level="2">
+        <GlowText :level="2">
           Powerful Features
         </GlowText>
         <p class="section-description">
