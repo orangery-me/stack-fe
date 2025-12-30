@@ -9,7 +9,7 @@ defineProps({
 
 <template>
   <div :class="['starfield-card', { 'starfield-card--glow': glow }]">
-    <slot></slot>
+    <slot />
   </div>
 </template>
 

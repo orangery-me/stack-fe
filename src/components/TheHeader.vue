@@ -23,55 +23,126 @@ const closeMobileMenu = () => {
 </script>
 
 <template>
-	<nav class="starfield-navbar">
-		<div class="container-center">
-			<div class="navbar-content">
-				<!-- Logo -->
-				<router-link :to="{ name: 'home' }" class="navbar-logo">
-					<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<circle cx="16" cy="16" r="14" stroke="#B8A7FF" stroke-width="2" fill="none" opacity="0.5"/>
-						<circle cx="16" cy="16" r="8" stroke="#B8A7FF" stroke-width="1" fill="none" opacity="0.3"/>
-						<circle cx="16" cy="16" r="2" fill="#B8A7FF"/>
-					</svg>
-					<span class="logo-text">{{ title }}</span>
-				</router-link>
+  <nav class="starfield-navbar">
+    <div class="container-center">
+      <div class="navbar-content">
+        <!-- Logo -->
+        <router-link
+          :to="{ name: 'home' }"
+          class="navbar-logo"
+        >
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 32 32"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="16"
+              cy="16"
+              r="14"
+              stroke="#B8A7FF"
+              stroke-width="2"
+              fill="none"
+              opacity="0.5"
+            />
+            <circle
+              cx="16"
+              cy="16"
+              r="8"
+              stroke="#B8A7FF"
+              stroke-width="1"
+              fill="none"
+              opacity="0.3"
+            />
+            <circle
+              cx="16"
+              cy="16"
+              r="2"
+              fill="#B8A7FF"
+            />
+          </svg>
+          <span class="logo-text">{{ title }}</span>
+        </router-link>
 
-				<!-- Desktop Navigation -->
-				<div class="navbar-nav-desktop">
-					<router-link
-						:to="{ name: 'home' }"
-						class="nav-link"
-						:class="{ 'nav-link--active': router.currentRoute.value.name === 'home' }"
-					>Home</router-link>
-					<a href="#features" class="nav-link">Features</a>
-					<a href="#about" class="nav-link">About</a>
-				</div>
+        <!-- Desktop Navigation -->
+        <div class="navbar-nav-desktop">
+          <router-link
+            :to="{ name: 'home' }"
+            class="nav-link"
+            :class="{ 'nav-link--active': router.currentRoute.value.name === 'home' }"
+          >
+            Home
+          </router-link>
+          <a
+            href="#features"
+            class="nav-link"
+          >Features</a>
+          <a
+            href="#about"
+            class="nav-link"
+          >About</a>
+        </div>
 
-				<!-- CTA Button -->
-				<div class="navbar-cta">
-					<StarfieldButton variant="primary" size="md">Get Started</StarfieldButton>
-				</div>
+        <!-- CTA Button -->
+        <div class="navbar-cta">
+          <StarfieldButton
+            variant="primary"
+            size="md"
+          >
+            Get Started
+          </StarfieldButton>
+        </div>
 
-				<!-- Mobile Menu Button -->
-				<button class="mobile-menu-btn" @click="toggleMobileMenu" ref="mobileMenuBtn">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-					</svg>
-				</button>
-			</div>
+        <!-- Mobile Menu Button -->
+        <button
+          ref="mobileMenuBtn"
+          class="mobile-menu-btn"
+          @click="toggleMobileMenu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+      </div>
 
-			<!-- Mobile Navigation -->
-			<div class="navbar-nav-mobile" ref="mobileMenu">
-				<router-link
-					:to="{ name: 'home' }"
-					class="nav-link-mobile"
-					@click="closeMobileMenu"
-				>Home</router-link>
-				<a href="#features" class="nav-link-mobile" @click="closeMobileMenu">Features</a>
-				<a href="#about" class="nav-link-mobile" @click="closeMobileMenu">About</a>
-			</div>
-		</div>
-	</nav>
+      <!-- Mobile Navigation -->
+      <div
+        ref="mobileMenu"
+        class="navbar-nav-mobile"
+      >
+        <router-link
+          :to="{ name: 'home' }"
+          class="nav-link-mobile"
+          @click="closeMobileMenu"
+        >
+          Home
+        </router-link>
+        <a
+          href="#features"
+          class="nav-link-mobile"
+          @click="closeMobileMenu"
+        >Features</a>
+        <a
+          href="#about"
+          class="nav-link-mobile"
+          @click="closeMobileMenu"
+        >About</a>
+      </div>
+    </div>
+  </nav>
 </template>
 
 

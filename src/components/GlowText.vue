@@ -16,7 +16,7 @@ defineProps({
     :is="`h${level}`"
     :class="['glow-text', `glow-text--h${level}`, { 'glow-text--glow': glow }]"
   >
-    <slot></slot>
+    <slot />
   </component>
 </template>
 

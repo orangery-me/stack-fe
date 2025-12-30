@@ -36,10 +36,13 @@ const features = [
       <div class="hero-content">
         <div class="hero-text">
           <div class="hero-badge">
-            <span class="badge-dot"></span>
+            <span class="badge-dot" />
             <span>Launching Soon</span>
           </div>
-          <GlowText level="1" class="hero-title">
+          <GlowText
+            level="1"
+            class="hero-title"
+          >
             Launch Into The
             <span class="gradient-text">Future</span>
           </GlowText>
@@ -49,20 +52,26 @@ const features = [
             powered by innovation.
           </p>
           <div class="hero-cta">
-            <StarfieldButton variant="primary" size="lg"
-              >Get Started</StarfieldButton
+            <StarfieldButton
+              variant="primary"
+              size="lg"
             >
-            <StarfieldButton variant="outline" size="lg"
-              >Learn More</StarfieldButton
+              Get Started
+            </StarfieldButton>
+            <StarfieldButton
+              variant="outline"
+              size="lg"
             >
+              Learn More
+            </StarfieldButton>
           </div>
         </div>
         <div class="hero-visual">
           <div class="hero-image-placeholder">
-            <div class="glow-orb glow-orb-1"></div>
-            <div class="glow-orb glow-orb-2"></div>
-            <div class="glow-orb glow-orb-3"></div>
-            <div class="grid-pattern"></div>
+            <div class="glow-orb glow-orb-1" />
+            <div class="glow-orb glow-orb-2" />
+            <div class="glow-orb glow-orb-3" />
+            <div class="grid-pattern" />
           </div>
         </div>
       </div>
@@ -70,10 +79,15 @@ const features = [
   </section>
 
   <!-- Features Section -->
-  <section id="features" class="features-section">
+  <section
+    id="features"
+    class="features-section"
+  >
     <div class="container-center">
       <div class="section-header">
-        <GlowText level="2">Powerful Features</GlowText>
+        <GlowText level="2">
+          Powerful Features
+        </GlowText>
         <p class="section-description">
           Everything you need to build and scale your next big project
         </p>
@@ -84,9 +98,15 @@ const features = [
           :key="index"
           class="feature-card"
         >
-          <div class="feature-icon">{{ feature.icon }}</div>
-          <h3 class="feature-title">{{ feature.title }}</h3>
-          <p class="feature-description">{{ feature.description }}</p>
+          <div class="feature-icon">
+            {{ feature.icon }}
+          </div>
+          <h3 class="feature-title">
+            {{ feature.title }}
+          </h3>
+          <p class="feature-description">
+            {{ feature.description }}
+          </p>
         </StarfieldCard>
       </div>
     </div>
@@ -96,18 +116,29 @@ const features = [
   <section class="cta-section">
     <div class="container-center">
       <div class="cta-content">
-        <GlowText level="2" class="cta-title">Ready to Launch?</GlowText>
+        <GlowText
+          level="2"
+          class="cta-title"
+        >
+          Ready to Launch?
+        </GlowText>
         <p class="cta-description">
           Join thousands of developers and teams building the future with
           Starfield.
         </p>
         <div class="cta-buttons">
-          <StarfieldButton variant="primary" size="lg"
-            >Start Free Trial</StarfieldButton
+          <StarfieldButton
+            variant="primary"
+            size="lg"
           >
-          <StarfieldButton variant="secondary" size="lg"
-            >Contact Sales</StarfieldButton
+            Start Free Trial
+          </StarfieldButton>
+          <StarfieldButton
+            variant="secondary"
+            size="lg"
           >
+            Contact Sales
+          </StarfieldButton>
         </div>
       </div>
     </div>

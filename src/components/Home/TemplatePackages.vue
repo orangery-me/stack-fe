@@ -37,27 +37,38 @@ const items = ref([
 </script>
 
 <template>
-	<div class="py-6">
-		<h2>Packages included:</h2>
+  <div class="py-6">
+    <h2>Packages included:</h2>
 
-		<div class="flex flex-wrap gap-4 items-center justify-center">
-			<div v-for="item in items" class="flex flex-row flex-grow gap-2 p-4 bg-base-100 items-center h-full rounded-box ring-1 ring-base-content/10 text-left max-w-60">
-				<div v-if="item.image">
-					<img :src="item.image" class="size-10" alt="Vite logo"/>
-				</div>
-				<div>
-					<h4>
-						<a v-if="item.url" :href="item.url" class="underline hover:no-underline">{{ item.title }}</a>
-						<span v-else>{{ item.title }}</span>
-					</h4>
-					<div class="text-xs uppercase font-semibold opacity-60">
-						{{ item.desc }}
-					</div>
-				</div>
-			</div>
-		</div>
-
-	</div>
+    <div class="flex flex-wrap gap-4 items-center justify-center">
+      <div
+        v-for="item in items"
+        :key="item.title"
+        class="flex flex-row flex-grow gap-2 p-4 bg-base-100 items-center h-full rounded-box ring-1 ring-base-content/10 text-left max-w-60"
+      >
+        <div v-if="item.image">
+          <img
+            :src="item.image"
+            class="size-10"
+            alt="Vite logo"
+          >
+        </div>
+        <div>
+          <h4>
+            <a
+              v-if="item.url"
+              :href="item.url"
+              class="underline hover:no-underline"
+            >{{ item.title }}</a>
+            <span v-else>{{ item.title }}</span>
+          </h4>
+          <div class="text-xs uppercase font-semibold opacity-60">
+            {{ item.desc }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
