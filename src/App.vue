@@ -2,6 +2,7 @@
 import { RouterView } from "vue-router";
 import TheFooter from "@/components/TheFooter.vue";
 import TheHeader from "@/components/TheHeader.vue";
+import ToastContainer from "@/components/ToastContainer.vue";
 </script>
 
 <template>
@@ -12,6 +13,7 @@ import TheHeader from "@/components/TheHeader.vue";
   </main>
 
   <TheFooter />
+  <ToastContainer />
 </template>
 
 <style scoped lang="scss">

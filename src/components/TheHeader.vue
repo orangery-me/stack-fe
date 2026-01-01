@@ -1,13 +1,18 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from "vue-router";
+import { useAuthStore } from '@/modules/auth/stores/auth.store.js';
 import StarfieldButton from "@/components/StarfieldButton.vue";
 
 const router = useRouter();
-const title = 'Starfield';
+const authStore = useAuthStore();
+const title = 'Stack';
 
 const mobileMenu = ref(null);
 const mobileMenuBtn = ref(null);
+
+const isAuthenticated = computed(() => authStore.isLoggedIn);
+const userName = computed(() => authStore.userName || authStore.userEmail);
 
 const toggleMobileMenu = () => {
 	if (mobileMenu.value) {
@@ -19,6 +24,15 @@ const closeMobileMenu = () => {
 	if (mobileMenu.value) {
 		mobileMenu.value.classList.remove('active');
 	}
+};
+
+const handleLogout = async () => {
+	await authStore.logout();
+	router.push('/login');
+};
+
+const goToLogin = () => {
+	router.push('/login');
 };
 </script>
 
@@ -85,14 +99,29 @@ const closeMobileMenu = () => {
           >About</a>
         </div>
 
-        <!-- CTA Button -->
+        <!-- CTA Button / User Menu -->
         <div class="navbar-cta">
-          <StarfieldButton
-            variant="primary"
-            size="md"
-          >
-            Get Started
-          </StarfieldButton>
+          <template v-if="isAuthenticated">
+            <div class="user-menu">
+              <span class="user-name">{{ userName }}</span>
+              <StarfieldButton
+                variant="outline"
+                size="sm"
+                @click="handleLogout"
+              >
+                Sign out
+              </StarfieldButton>
+            </div>
+          </template>
+          <template v-else>
+            <StarfieldButton
+              variant="primary"
+              size="md"
+              @click="goToLogin"
+            >
+              Sign in
+            </StarfieldButton>
+          </template>
         </div>
 
         <!-- Mobile Menu Button -->
@@ -140,6 +169,26 @@ const closeMobileMenu = () => {
           class="nav-link-mobile"
           @click="closeMobileMenu"
         >About</a>
+        <template v-if="isAuthenticated">
+          <div class="nav-link-mobile user-info-mobile">
+            <span>{{ userName }}</span>
+          </div>
+          <button
+            class="nav-link-mobile logout-btn-mobile"
+            @click="handleLogout"
+          >
+            Đăng xuất
+          </button>
+        </template>
+        <template v-else>
+          <router-link
+            to="/login"
+            class="nav-link-mobile"
+            @click="closeMobileMenu"
+          >
+            Đăng nhập
+          </router-link>
+        </template>
       </div>
     </div>
   </nav>
@@ -291,6 +340,56 @@ const closeMobileMenu = () => {
 	padding: 0.75rem 1rem;
 	border-radius: 2px;
 	transition: all 0.3s ease;
+	
+	&:hover {
+		background: rgba(184, 167, 255, 0.1);
+		color: #B8A7FF;
+		padding-left: 1.5rem;
+	}
+}
+
+.user-menu {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.user-name {
+	color: #F1F5F9;
+	font-size: 0.875rem;
+	font-weight: 300;
+	font-family: 'Merriweather', serif;
+	
+	@media (max-width: 767px) {
+		display: none;
+	}
+}
+
+.user-info-mobile {
+	color: rgba(241, 245, 249, 0.7);
+	font-size: 0.875rem;
+	cursor: default;
+	
+	&:hover {
+		background: transparent;
+		padding-left: 1rem;
+		color: rgba(241, 245, 249, 0.7);
+	}
+}
+
+.logout-btn-mobile {
+	background: none;
+	border: none;
+	color: #F1F5F9;
+	text-decoration: none;
+	font-weight: 300;
+	padding: 0.75rem 1rem;
+	border-radius: 2px;
+	transition: all 0.3s ease;
+	cursor: pointer;
+	width: 100%;
+	text-align: left;
+	font-family: 'Merriweather', serif;
 	
 	&:hover {
 		background: rgba(184, 167, 255, 0.1);

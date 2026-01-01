@@ -39,7 +39,7 @@
                 fill="#B8A7FF"
               />
             </svg>
-            <span class="footer-logo-text">Starfield</span>
+            <span class="footer-logo-text">Stack</span>
           </div>
           <p class="footer-description">
             Building the future with cutting-edge technology and innovative
