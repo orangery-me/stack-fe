@@ -9,7 +9,8 @@ const router = createRouter({
 });
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/register', '/auth/google/callback', '/auth/verify-email'];
+const authRoutes = ['/login', '/register', '/auth/google/callback', '/auth/verify-email'];
+const publicRoutes = ['/'];
 
 // navigation guard 
 router.beforeEach((to, from, next) => {
@@ -19,12 +20,18 @@ router.beforeEach((to, from, next) => {
     authStore.initAuth();
   }
 
-  // Check if route requires authentication
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+  const isAuthRoute = authRoutes.includes(to.path);
   const isPublicRoute = publicRoutes.includes(to.path);
 
+  // Allow home route without authentication
+  if (isPublicRoute) {
+    next();
+    return;
+  }
 
-  if (requiresAuth && !authStore.isAuthenticated && !isPublicRoute) {
+  // For other routes: if requires auth and not authenticated and not public, redirect to login
+  if (requiresAuth && !authStore.isAuthenticated && !isAuthRoute) {
     // Store the intended route for redirect after login
     next({
       path: '/login',

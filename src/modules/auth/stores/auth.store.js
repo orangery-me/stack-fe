@@ -146,6 +146,23 @@ export const useAuthStore = defineStore('auth', {
     googleAuth() {
       authService.googleAuth();
     },
+
+    /**
+     * Sign in with Google using authorization code
+     * @param {string} code - Authorization code from Google
+     * @returns {Promise<{success: boolean}>}
+     */
+    async googleSignIn(payload) {
+      try {
+        const tokenData = await authService.verifyGoogleCode(payload);
+        const user = tokenData.name ? { name: tokenData.name } : null;
+        this.setAuth(tokenData.accessToken, tokenData.refreshToken, user);
+        return { success: true };
+      } catch (error) {
+        const message = error.message || 'Google sign in failed';
+        throw { success: false, message };
+      }
+    },
   },
 });
 

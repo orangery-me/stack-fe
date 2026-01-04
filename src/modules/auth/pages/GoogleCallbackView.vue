@@ -10,37 +10,30 @@ const authStore = useAuthStore();
 
 onMounted(async () => {
   try {
-    // Check if tokens are in query params (if backend redirects with them)
-    const accessToken = route.query.accessToken;
-    const refreshToken = route.query.refreshToken;
-    const name = route.query.name;
+    const code = route.query.code;
+    const state = route.query.state;
 
-    if (accessToken && refreshToken) {
-      // Store tokens and redirect
-      const user = name ? { name } : null;
-      authStore.setAuth(accessToken, refreshToken, user);
-
-      // Redirect to intended route or home
-      const redirect = route.query.redirect || "/";
-      router.push(redirect);
-      return;
+    if (!code || !state) {
+      throw new Error('Missing Google OAuth data');
     }
 
-    // If no tokens in query, check if backend sent them via postMessage (popup flow)
-    // or make a request to get user info
-    // For now, if no tokens, redirect to login with error
-    router.push({
-      path: "/login",
-      query: { error: "Unable to authenticate with Google. Please try again." },
+    await authStore.googleSignIn({
+      code,
+      state,
     });
+
+    const redirect = route.query.redirect || '/';
+    router.replace(redirect);
   } catch (error) {
-    console.error("Google callback error:", error);
-    router.push({
-      path: "/login",
-      query: { error: "An error occurred while authenticating with Google." },
+    router.replace({
+      path: '/login',
+      query: {
+        error: error.message || 'Google login failed',
+      },
     });
   }
 });
+
 </script>
 
 <template>
