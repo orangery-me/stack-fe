@@ -10,7 +10,7 @@ export default [
 		path: '/',
 		name: 'home',
 		component: HomeView,
-		meta: { title: 'Home', requiresAuth: true },
+		meta: { title: 'Home', requiresAuth: false },
 	},
 	{
 		path: '/login',

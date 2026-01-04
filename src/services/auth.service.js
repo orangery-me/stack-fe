@@ -1,7 +1,7 @@
-import apiService from './api.service.js';
-import axios from 'axios';
-import { API_ENDPOINTS } from '@/config/api.js';
-import { API_BASE_URL } from '@/config/api.js';
+import apiService from "./api.service.js";
+import axios from "axios";
+import { API_ENDPOINTS } from "@/config/api.js";
+import { API_BASE_URL } from "@/config/api.js";
 
 /**
  * Authentication API Service
@@ -31,7 +31,10 @@ class AuthService {
    * @returns {Promise<{message: string, email: string}>}
    */
   async register(registerData) {
-    const response = await apiService.post(API_ENDPOINTS.AUTH.REGISTER, registerData);
+    const response = await apiService.post(
+      API_ENDPOINTS.AUTH.REGISTER,
+      registerData
+    );
     return response.data.data;
   }
 
@@ -48,17 +51,20 @@ class AuthService {
    * @returns {Promise<{accessToken: string}>}
    */
   async refreshToken() {
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = localStorage.getItem("refreshToken");
     if (!refreshToken) {
-      throw new Error('No refresh token available');
+      throw new Error("No refresh token available");
     }
 
     // Use axios directly to avoid interceptor loop
-    const response = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`, {
-      headers: {
-        Authorization: `Bearer ${refreshToken}`,
-      },
-    });
+    const response = await axios.get(
+      `${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`,
+      {
+        headers: {
+          Authorization: `Bearer ${refreshToken}`,
+        },
+      }
+    );
     return response.data.data;
   }
 
@@ -67,7 +73,33 @@ class AuthService {
    * Redirects to backend Google OAuth endpoint
    */
   googleAuth() {
-    window.location.href = `${API_BASE_URL}${API_ENDPOINTS.AUTH.GOOGLE}`;
+    // Generate a random state parameter for security
+    const state = crypto.randomUUID();
+    const client_id = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const redirect_uri = import.meta.env.VITE_GOOGLE_CALLBACK_URL;
+
+    document.cookie = `oauth_state=${state}; path=/; SameSite=Lax`;
+
+    const params = new URLSearchParams({
+      client_id: client_id,
+      redirect_uri: redirect_uri,
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      access_type: "offline",
+      prompt: "consent",
+    });
+
+    console.log("Redirecting to Google OAuth with params:", params.toString());
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  async verifyGoogleCode({ code, state }) {
+    const response = await apiService.post(
+      API_ENDPOINTS.AUTH.GOOGLE_LOGIN,
+      { code, state }
+    );
+    return response.data.data;
   }
 
   /**
@@ -76,10 +108,11 @@ class AuthService {
    * @returns {Promise<{message: string}>}
    */
   async verifyEmail(token) {
-    const response = await apiService.get(`${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`);
+    const response = await apiService.get(
+      `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`
+    );
     return response.data.data;
   }
 }
 
 export default new AuthService();
-

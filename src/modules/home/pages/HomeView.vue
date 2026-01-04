@@ -1,7 +1,14 @@
 <script setup>
+import { useRouter } from "vue-router";
 import StarfieldButton from "@/components/StarfieldButton.vue";
 import StarfieldCard from "@/components/StarfieldCard.vue";
 import GlowText from "@/components/GlowText.vue";
+
+const router = useRouter();
+
+const goToLogin = () => {
+  router.push('/login');
+};
 
 const features = [
   {
@@ -55,23 +62,37 @@ const features = [
             <StarfieldButton
               variant="primary"
               size="lg"
+              @click="goToLogin"
             >
               Get Started
-            </StarfieldButton>
-            <StarfieldButton
-              variant="outline"
-              size="lg"
-            >
-              Learn More
             </StarfieldButton>
           </div>
         </div>
         <div class="hero-visual">
-          <div class="hero-image-placeholder">
+          <div class="cube-container">
+            <div class="cube">
+              <div class="cube-face cube-face-front">
+                <div class="grid-pattern" />
+              </div>
+              <div class="cube-face cube-face-back">
+                <div class="grid-pattern" />
+              </div>
+              <div class="cube-face cube-face-right">
+                <div class="grid-pattern" />
+              </div>
+              <div class="cube-face cube-face-left">
+                <div class="grid-pattern" />
+              </div>
+              <div class="cube-face cube-face-top">
+                <div class="grid-pattern" />
+              </div>
+              <div class="cube-face cube-face-bottom">
+                <div class="grid-pattern" />
+              </div>
+            </div>
             <div class="glow-orb glow-orb-1" />
             <div class="glow-orb glow-orb-2" />
             <div class="glow-orb glow-orb-3" />
-            <div class="grid-pattern" />
           </div>
         </div>
       </div>
@@ -129,14 +150,9 @@ const features = [
           <StarfieldButton
             variant="primary"
             size="lg"
+            @click="goToLogin"
           >
             Get Started Free
-          </StarfieldButton>
-          <StarfieldButton
-            variant="secondary"
-            size="lg"
-          >
-            Learn More
           </StarfieldButton>
         </div>
       </div>
@@ -241,22 +257,95 @@ const features = [
 .hero-visual {
   position: relative;
   height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
 
   @media (min-width: 1024px) {
     height: 500px;
   }
 }
 
-.hero-image-placeholder {
+.cube-container {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  perspective: 1000px;
+
+  @media (min-width: 1024px) {
+    width: 400px;
+    height: 400px;
+  }
+}
+
+.cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: rotateCube 20s infinite linear;
+}
+
+.cube-face {
+  position: absolute;
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(184, 167, 255, 0.3);
-  border-radius: 2px;
-  position: relative;
-  overflow: hidden;
   box-shadow: 0 0 40px rgba(184, 167, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cube-face-front {
+  transform: rotateY(0deg) translateZ(150px);
+  
+  @media (min-width: 1024px) {
+    transform: rotateY(0deg) translateZ(200px);
+  }
+}
+
+.cube-face-back {
+  transform: rotateY(180deg) translateZ(150px);
+  
+  @media (min-width: 1024px) {
+    transform: rotateY(180deg) translateZ(200px);
+  }
+}
+
+.cube-face-right {
+  transform: rotateY(90deg) translateZ(150px);
+  
+  @media (min-width: 1024px) {
+    transform: rotateY(90deg) translateZ(200px);
+  }
+}
+
+.cube-face-left {
+  transform: rotateY(-90deg) translateZ(150px);
+  
+  @media (min-width: 1024px) {
+    transform: rotateY(-90deg) translateZ(200px);
+  }
+}
+
+.cube-face-top {
+  transform: rotateX(90deg) translateZ(150px);
+  
+  @media (min-width: 1024px) {
+    transform: rotateX(90deg) translateZ(200px);
+  }
+}
+
+.cube-face-bottom {
+  transform: rotateX(-90deg) translateZ(150px);
+  
+  @media (min-width: 1024px) {
+    transform: rotateX(-90deg) translateZ(200px);
+  }
 }
 
 .glow-orb {
@@ -265,6 +354,7 @@ const features = [
   filter: blur(40px);
   opacity: 0.6;
   animation: float 6s ease-in-out infinite;
+  pointer-events: none;
 
   &.glow-orb-1 {
     width: 200px;
@@ -307,6 +397,15 @@ const features = [
     linear-gradient(90deg, rgba(184, 167, 255, 0.1) 1px, transparent 1px);
   background-size: 50px 50px;
   opacity: 0.3;
+}
+
+@keyframes rotateCube {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+  100% {
+    transform: rotateX(360deg) rotateY(360deg);
+  }
 }
 
 // Features Section

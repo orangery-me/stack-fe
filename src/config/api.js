@@ -7,8 +7,7 @@ export const API_ENDPOINTS = {
     REGISTER: '/auth/register',
     LOGOUT: '/auth/logout',
     REFRESH: '/auth/refresh',
-    GOOGLE: '/auth/google',
-    GOOGLE_CALLBACK: '/auth/google/callback',
+    GOOGLE_LOGIN: '/auth/google/login',
     VERIFY_EMAIL: '/auth/verify-email',
   },
 };
