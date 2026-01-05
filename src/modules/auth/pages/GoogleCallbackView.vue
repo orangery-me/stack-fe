@@ -25,12 +25,13 @@ onMounted(async () => {
     const redirect = route.query.redirect || '/';
     router.replace(redirect);
   } catch (error) {
-    router.replace({
-      path: '/login',
-      query: {
-        error: error.message || 'Google login failed',
-      },
-    });
+    console.error('Google sign-in failed:', error);
+    // router.replace({
+    //   path: '/login',
+    //   query: {
+    //     error: error.message || 'Google login failed',
+    //   },
+    // });
   }
 });
 
