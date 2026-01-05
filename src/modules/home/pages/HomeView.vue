@@ -101,7 +101,10 @@ const features = [
   >
     <div class="container-center">
       <div class="workspaces-header">
-        <GlowText level="1" class="welcome-title">
+        <GlowText
+          level="1"
+          class="welcome-title"
+        >
           Welcome back 👋
         </GlowText>
         <p class="welcome-subtitle">
@@ -112,8 +115,13 @@ const features = [
       <div class="workspaces-content">
         <StarfieldCard class="workspaces-card">
           <div class="workspaces-card-header">
-            <div class="card-icon">📋</div>
-            <GlowText level="3" class="card-title">
+            <div class="card-icon">
+              📋
+            </div>
+            <GlowText
+              level="3"
+              class="card-title"
+            >
               My workspaces
             </GlowText>
           </div>
@@ -129,7 +137,9 @@ const features = [
             v-else-if="workspaces.length === 0"
             class="empty-state"
           >
-            <p class="empty-text">Ready to launch</p>
+            <p class="empty-text">
+              Ready to launch
+            </p>
             <p class="empty-description">
               Bạn chưa có workspace nào. Tạo workspace mới để bắt đầu!
             </p>
@@ -149,7 +159,9 @@ const features = [
                 {{ workspace.name.charAt(0).toUpperCase() }}
               </div>
               <div class="workspace-info">
-                <h3 class="workspace-name">{{ workspace.name }}</h3>
+                <h3 class="workspace-name">
+                  {{ workspace.name }}
+                </h3>
                 <p class="workspace-meta">
                   {{ workspace.slug }}
                 </p>
@@ -157,8 +169,8 @@ const features = [
               <div class="workspace-actions">
                 <button
                   class="action-btn"
-                  @click.stop="goToInviteMember(workspace.id)"
                   title="Mời thành viên"
+                  @click.stop="goToInviteMember(workspace.id)"
                 >
                   👤
                 </button>
@@ -182,7 +194,10 @@ const features = [
 
         <StarfieldCard class="template-card">
           <div class="template-content">
-            <GlowText level="3" class="template-title">
+            <GlowText
+              level="3"
+              class="template-title"
+            >
               Get started with a template.
             </GlowText>
             <p class="template-description">

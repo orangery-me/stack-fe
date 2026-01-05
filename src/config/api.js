@@ -17,5 +17,8 @@ export const API_ENDPOINTS = {
     ACCEPT_INVITE: '/workspaces/invite/accept',
     GET_MEMBERS: (id) => `/workspaces/${id}/members`,
   },
+  USERS: {
+    SEARCH: '/users/search',
+  },
 };
 

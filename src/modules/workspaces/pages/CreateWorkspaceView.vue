@@ -1,45 +1,119 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import workspaceService from '@/services/workspace.service.js';
-import StarfieldButton from '@/components/StarfieldButton.vue';
-import StarfieldCard from '@/components/StarfieldCard.vue';
-import GlowText from '@/components/GlowText.vue';
-import { useToast } from '@/composables/useToast.js';
+import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import workspaceService from "@/services/workspace.service.js";
+import userService from "@/services/user.service.js";
+import StarfieldButton from "@/components/StarfieldButton.vue";
+import StarfieldCard from "@/components/StarfieldCard.vue";
+import GlowText from "@/components/GlowText.vue";
+import { useToast } from "@/composables/useToast.js";
 
 const router = useRouter();
 const toast = useToast();
 
 const form = ref({
-  name: '',
-  slug: '',
+  name: "",
+  displayName: "",
+  invites: [],
 });
 
 const loading = ref(false);
 const errors = ref({});
 
-const generateSlug = () => {
-  if (!form.value.name) return;
-  form.value.slug = form.value.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+// User search for autocomplete
+const searchQuery = ref("");
+const searchResults = ref([]);
+const searchLoading = ref(false);
+const showSuggestions = ref(false);
+const searchTimeout = ref(null);
+
+// Invite list
+const invites = ref([]);
+
+// Search users with debounce
+const searchUsers = async (query) => {
+  if (!query || query.length < 2) {
+    searchResults.value = [];
+    showSuggestions.value = false;
+    return;
+  }
+
+  searchLoading.value = true;
+  try {
+    const users = await userService.searchUsers(query, 10);
+    searchResults.value = users.filter(
+      (user) => !invites.value.some((inv) => inv.email === user.email)
+    );
+    showSuggestions.value = searchResults.value.length > 0;
+  } catch (error) {
+    console.error("Search users error:", error);
+    searchResults.value = [];
+    showSuggestions.value = false;
+  } finally {
+    searchLoading.value = false;
+  }
+};
+
+watch(searchQuery, (newQuery) => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
+
+  searchTimeout.value = setTimeout(() => {
+    searchUsers(newQuery);
+  }, 300);
+});
+
+const selectUser = (user) => {
+  if (invites.value.some((inv) => inv.email === user.email)) {
+    return;
+  }
+
+  invites.value.push({
+    email: user.email,
+    name: user.name,
+    avatar: user.avatar,
+    role: "member", // Default role
+  });
+
+  searchQuery.value = "";
+  searchResults.value = [];
+  showSuggestions.value = false;
+};
+
+const removeInvite = (index) => {
+  invites.value.splice(index, 1);
 };
 
 const validateForm = () => {
   errors.value = {};
   if (!form.value.name || form.value.name.length < 2) {
-    errors.value.name = 'Tên workspace phải có ít nhất 2 ký tự';
+    errors.value.name = "Tên workspace phải có ít nhất 2 ký tự";
     return false;
   }
-  if (!form.value.slug || form.value.slug.length < 2) {
-    errors.value.slug = 'Slug phải có ít nhất 2 ký tự';
+  if (form.value.name.length > 255) {
+    errors.value.name = "Tên workspace không được vượt quá 255 ký tự";
     return false;
   }
-  if (!/^[a-z0-9-]+$/.test(form.value.slug)) {
-    errors.value.slug = 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang';
+  if (!form.value.displayName || form.value.displayName.length < 2) {
+    errors.value.displayName = "Tên hiển thị phải có ít nhất 2 ký tự";
     return false;
   }
+  if (form.value.displayName.length > 50) {
+    errors.value.displayName = "Tên hiển thị không được vượt quá 50 ký tự";
+    return false;
+  }
+
+  // Validate invites
+  const invalidInvites = invites.value.filter(
+    (inv) => !inv.role || !["owner", "admin", "member"].includes(inv.role)
+  );
+  if (invalidInvites.length > 0) {
+    errors.value.invites =
+      "Vui lòng chọn role hợp lệ cho tất cả các thành viên được mời";
+    return false;
+  }
+
   return true;
 };
 
@@ -48,14 +122,23 @@ const handleSubmit = async () => {
 
   loading.value = true;
   try {
-    const workspace = await workspaceService.createWorkspace(form.value);
-    toast.success('Tạo workspace thành công!');
+    const workspaceData = {
+      name: form.value.name,
+      displayName: form.value.displayName,
+      invites: invites.value.map((inv) => ({
+        email: inv.email,
+        role: inv.role,
+      })),
+    };
+
+    const workspace = await workspaceService.createWorkspace(workspaceData);
+    toast.success("Tạo workspace thành công!");
     router.push(`/workspaces/${workspace.id}`);
   } catch (error) {
-    const message = error.message || 'Không thể tạo workspace';
+    const message = error.message || "Không thể tạo workspace";
     toast.error(message);
     if (error.errors) {
-      errors.value = error.errors;
+      errors.value = { ...errors.value, ...error.errors };
     }
   } finally {
     loading.value = false;
@@ -65,6 +148,9 @@ const handleSubmit = async () => {
 const goBack = () => {
   router.back();
 };
+
+// Load default role (member role) - we'll need to get this from workspace roles
+// For now, we'll set it when creating workspace
 </script>
 
 <template>
@@ -78,7 +164,10 @@ const goBack = () => {
         >
           ← Quay lại
         </StarfieldButton>
-        <GlowText level="1" class="page-title">
+        <GlowText
+          level="1"
+          class="page-title"
+        >
           Tạo workspace mới
         </GlowText>
         <p class="page-description">
@@ -88,8 +177,8 @@ const goBack = () => {
 
       <StarfieldCard class="form-card">
         <form
-          @submit.prevent="handleSubmit"
           class="workspace-form"
+          @submit.prevent="handleSubmit"
         >
           <div class="form-group">
             <label for="name">
@@ -101,8 +190,7 @@ const goBack = () => {
               type="text"
               placeholder="Ví dụ: My Workspace"
               :class="{ error: errors.name }"
-              @input="generateSlug"
-            />
+            >
             <span
               v-if="errors.name"
               class="error-message"
@@ -112,32 +200,138 @@ const goBack = () => {
           </div>
 
           <div class="form-group">
-            <label for="slug">
-              Slug (URL) <span class="required">*</span>
+            <label for="displayName">
+              Tên hiển thị của bạn trong workspace
+              <span class="required">*</span>
             </label>
             <input
-              id="slug"
-              v-model="form.slug"
+              id="displayName"
+              v-model="form.displayName"
               type="text"
-              placeholder="my-workspace"
-              :class="{ error: errors.slug }"
-            />
+              placeholder="Ví dụ: John Doe"
+              :class="{ error: errors.displayName }"
+            >
             <span
-              v-if="errors.slug"
+              v-if="errors.displayName"
               class="error-message"
             >
-              {{ errors.slug }}
+              {{ errors.displayName }}
             </span>
-            <p class="help-text">
-              Slug sẽ được dùng trong URL của workspace
+          </div>
+
+          <div class="form-section">
+            <h3 class="section-title">
+              Mời thành viên
+            </h3>
+            <p class="section-description">
+              Tìm kiếm và mời thành viên vào workspace (tùy chọn)
             </p>
+
+            <div class="invite-search-wrapper">
+              <div class="search-input-wrapper">
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Nhập email hoặc tên để tìm kiếm..."
+                  class="search-input"
+                  @focus="showSuggestions = searchResults.length > 0"
+                  @blur="
+                    setTimeout(() => {
+                      showSuggestions = false;
+                    }, 200)
+                  "
+                >
+                <div
+                  v-if="searchLoading"
+                  class="search-loading"
+                >
+                  Đang tìm...
+                </div>
+              </div>
+
+              <div
+                v-if="showSuggestions && searchResults.length > 0"
+                class="suggestions-dropdown"
+              >
+                <div
+                  v-for="user in searchResults"
+                  :key="user.id"
+                  class="suggestion-item"
+                  @mousedown.prevent="selectUser(user)"
+                >
+                  <div class="user-avatar">
+                    {{ user.name.charAt(0).toUpperCase() }}
+                  </div>
+                  <div class="user-info">
+                    <p class="user-name">
+                      {{ user.name }}
+                    </p>
+                    <p class="user-email">
+                      {{ user.email }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="invites.length > 0"
+              class="invites-list"
+            >
+              <div
+                v-for="(invite, index) in invites"
+                :key="index"
+                class="invite-item"
+              >
+                <div class="invite-user-info">
+                  <div class="user-avatar">
+                    {{ invite.name.charAt(0).toUpperCase() }}
+                  </div>
+                  <div class="user-details">
+                    <p class="user-name">
+                      {{ invite.name }}
+                    </p>
+                    <p class="user-email">
+                      {{ invite.email }}
+                    </p>
+                  </div>
+                </div>
+                <div class="invite-role-select">
+                  <select
+                    v-model="invite.role"
+                    class="role-select"
+                  >
+                    <option value="member">
+                      Member
+                    </option>
+                    <option value="admin">
+                      Admin
+                    </option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  class="remove-btn"
+                  @click="removeInvite(index)"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <span
+              v-if="errors.invites"
+              class="error-message"
+            >
+              {{ errors.invites }}
+            </span>
           </div>
 
           <div class="form-actions">
             <StarfieldButton
               variant="outline"
-              @click="goBack"
               :disabled="loading"
+              @click="goBack"
             >
               Hủy
             </StarfieldButton>
@@ -146,7 +340,7 @@ const goBack = () => {
               type="submit"
               :disabled="loading"
             >
-              {{ loading ? 'Đang tạo...' : 'Tạo workspace' }}
+              {{ loading ? "Đang tạo..." : "Tạo workspace" }}
             </StarfieldButton>
           </div>
         </form>
@@ -155,98 +349,4 @@ const goBack = () => {
   </div>
 </template>
 
-<style scoped lang="scss">
-.create-workspace-page {
-  padding: 4rem 0;
-  min-height: calc(100vh - 200px);
-}
-
-.page-header {
-  margin-bottom: 3rem;
-
-  .page-title {
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .page-description {
-    font-size: 1.125rem;
-    color: rgba(241, 245, 249, 0.7);
-    font-weight: 300;
-  }
-}
-
-.form-card {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.workspace-form {
-  .form-group {
-    margin-bottom: 2rem;
-
-    label {
-      display: block;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.875rem;
-      color: #f1f5f9;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-
-      .required {
-        color: #b8a7ff;
-      }
-    }
-
-    input {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(184, 167, 255, 0.3);
-      border-radius: 2px;
-      color: #f1f5f9;
-      font-family: 'Merriweather', serif;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-
-      &:focus {
-        outline: none;
-        border-color: rgba(184, 167, 255, 0.6);
-        box-shadow: 0 0 10px rgba(184, 167, 255, 0.2);
-      }
-
-      &.error {
-        border-color: rgba(255, 82, 82, 0.5);
-      }
-
-      &::placeholder {
-        color: rgba(241, 245, 249, 0.4);
-      }
-    }
-
-    .error-message {
-      display: block;
-      margin-top: 0.5rem;
-      font-size: 0.875rem;
-      color: rgba(255, 82, 82, 0.8);
-    }
-
-    .help-text {
-      margin-top: 0.5rem;
-      font-size: 0.875rem;
-      color: rgba(241, 245, 249, 0.5);
-    }
-  }
-
-  .form-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-    margin-top: 2.5rem;
-    padding-top: 2rem;
-    border-top: 1px solid rgba(184, 167, 255, 0.2);
-  }
-}
-</style>
-
+<style scoped lang="scss" src="./CreateWorkspaceView.scss"></style>

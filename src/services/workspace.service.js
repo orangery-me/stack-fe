@@ -9,7 +9,8 @@ class WorkspaceService {
    * Create a new workspace
    * @param {Object} workspaceData
    * @param {string} workspaceData.name - Name of the workspace
-   * @param {string} workspaceData.slug - Slug for the workspace (URL-friendly)
+   * @param {string} workspaceData.displayName - Display name of creator in workspace
+   * @param {Array<{email: string, roleId: string}>} [workspaceData.invites] - Array of invites
    * @param {string} [workspaceData.plan] - Plan type (free/pro/enterprise)
    * @returns {Promise<{id: string, name: string, slug: string, ownerId: string, plan: string, settings?: object, createdAt: Date}>}
    */

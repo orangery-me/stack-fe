@@ -1,5 +1,4 @@
 <script setup>
-import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import GlowText from '@/components/GlowText.vue';
 import StarfieldCard from '@/components/StarfieldCard.vue';
@@ -14,7 +13,9 @@ const workspaceId = route.params.id;
   <div class="workspace-detail-page">
     <div class="container-center">
       <StarfieldCard>
-        <GlowText level="1">Workspace Detail</GlowText>
+        <GlowText level="1">
+          Workspace Detail
+        </GlowText>
         <p style="margin-top: 1rem; color: rgba(241, 245, 249, 0.7);">
           Workspace ID: {{ workspaceId }}
         </p>
@@ -32,4 +33,3 @@ const workspaceId = route.params.id;
   min-height: calc(100vh - 200px);
 }
 </style>
-
