@@ -77,11 +77,8 @@ class AuthService {
     const state = crypto.randomUUID();
     const client_id = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirect_uri = import.meta.env.VITE_GOOGLE_CALLBACK_URL;
-
-    // Set cookie - use Secure only in production (HTTPS)
-    const isProduction = import.meta.env.PROD;
-    const secureFlag = isProduction ? '; Secure' : '';
-    document.cookie = `google_oauth_state=${state}; path=/; SameSite=Lax${secureFlag}`;
+    // Save state to sessionStorage to verify after redirect
+    sessionStorage.setItem("google_oauth_state", state);
 
     const params = new URLSearchParams({
       client_id: client_id,
@@ -93,15 +90,20 @@ class AuthService {
       prompt: "consent",
     });
 
-    console.log("Redirecting to Google OAuth with params:", params.toString());
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
   async verifyGoogleCode({ code, state }) {
-    const response = await apiService.post(
-      API_ENDPOINTS.AUTH.GOOGLE_LOGIN,
-      { code, state }
-    );
+    const savedState = sessionStorage.getItem("google_oauth_state");
+    if (state !== savedState) {
+      throw new Error("Invalid OAuth state");
+    }
+    sessionStorage.removeItem("google_oauth_state");
+    
+    const response = await apiService.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, {
+      code,
+      state,
+    });
     return response.data.data;
   }
 
