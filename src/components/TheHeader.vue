@@ -177,7 +177,7 @@ const goToLogin = () => {
             class="nav-link-mobile logout-btn-mobile"
             @click="handleLogout"
           >
-            Đăng xuất
+            Logout
           </button>
         </template>
         <template v-else>
@@ -186,7 +186,7 @@ const goToLogin = () => {
             class="nav-link-mobile"
             @click="closeMobileMenu"
           >
-            Đăng nhập
+            Login
           </router-link>
         </template>
       </div>

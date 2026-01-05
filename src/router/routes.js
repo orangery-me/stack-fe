@@ -16,13 +16,13 @@ export default [
 		path: '/login',
 		name: 'login',
 		component: LoginView,
-		meta: { title: 'Đăng Nhập' },
+		meta: { title: 'Login' },
 	},
 	{
 		path: '/register',
 		name: 'register',
 		component: RegisterView,
-		meta: { title: 'Đăng Ký' },
+		meta: { title: 'Register' },
 	},
 	{
 		path: '/auth/google/callback',
@@ -34,7 +34,7 @@ export default [
 		path: '/auth/verify-email',
 		name: 'verifyEmail',
 		component: VerifyEmailView,
-		meta: { title: 'Xác thực Email' },
+		meta: { title: 'Email Verification' },
 	},
 	{
 		// 404 fallback
