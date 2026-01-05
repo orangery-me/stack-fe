@@ -1,14 +1,71 @@
 <script setup>
+import { ref, onMounted, computed, watch, onActivated } from "vue";
 import { useRouter } from "vue-router";
+import { useAuthStore } from '@/modules/auth/stores/auth.store.js';
+import workspaceService from '@/services/workspace.service.js';
 import StarfieldButton from "@/components/StarfieldButton.vue";
 import StarfieldCard from "@/components/StarfieldCard.vue";
 import GlowText from "@/components/GlowText.vue";
+// import useToast from '@/composables/useToast.js';
 
 const router = useRouter();
+const authStore = useAuthStore();
+// const toast = useToast();
+
+const workspaces = ref([]);
+const loading = ref(false);
+const isAuthenticated = computed(() => authStore.isLoggedIn);
 
 const goToLogin = () => {
   router.push('/login');
 };
+
+const goToCreateWorkspace = () => {
+  router.push('/workspaces/create');
+};
+
+const goToWorkspace = (workspaceId) => {
+  router.push(`/workspaces/${workspaceId}`);
+};
+
+const goToInviteMember = (workspaceId) => {
+  router.push(`/workspaces/${workspaceId}/invite`);
+};
+
+const fetchWorkspaces = async () => {
+  if (!isAuthenticated.value) return;
+  
+  loading.value = true;
+  try {
+    workspaces.value = await workspaceService.getMyWorkspaces();
+  } catch (error) {
+    console.error('Failed to fetch workspaces:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  if (isAuthenticated.value) {
+    fetchWorkspaces();
+  }
+});
+
+// Watch for auth state changes
+watch(isAuthenticated, (newVal) => {
+  if (newVal) {
+    fetchWorkspaces();
+  } else {
+    workspaces.value = [];
+  }
+});
+
+// Refresh when component is activated (e.g., coming back from create workspace)
+onActivated(() => {
+  if (isAuthenticated.value) {
+    fetchWorkspaces();
+  }
+});
 
 const features = [
   {
@@ -37,8 +94,118 @@ const features = [
 </script>
 
 <template>
-  <!-- Hero Section -->
-  <section class="hero-section">
+  <!-- Workspaces Section (if logged in) -->
+  <section
+    v-if="isAuthenticated"
+    class="workspaces-section"
+  >
+    <div class="container-center">
+      <div class="workspaces-header">
+        <GlowText level="1" class="welcome-title">
+          Welcome back 👋
+        </GlowText>
+        <p class="welcome-subtitle">
+          Choose a workspace to get started.
+        </p>
+      </div>
+
+      <div class="workspaces-content">
+        <StarfieldCard class="workspaces-card">
+          <div class="workspaces-card-header">
+            <div class="card-icon">📋</div>
+            <GlowText level="3" class="card-title">
+              My workspaces
+            </GlowText>
+          </div>
+
+          <div
+            v-if="loading"
+            class="loading-state"
+          >
+            <p>Đang tải...</p>
+          </div>
+
+          <div
+            v-else-if="workspaces.length === 0"
+            class="empty-state"
+          >
+            <p class="empty-text">Ready to launch</p>
+            <p class="empty-description">
+              Bạn chưa có workspace nào. Tạo workspace mới để bắt đầu!
+            </p>
+          </div>
+
+          <div
+            v-else
+            class="workspaces-list"
+          >
+            <div
+              v-for="workspace in workspaces"
+              :key="workspace.id"
+              class="workspace-item"
+              @click="goToWorkspace(workspace.id)"
+            >
+              <div class="workspace-icon">
+                {{ workspace.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="workspace-info">
+                <h3 class="workspace-name">{{ workspace.name }}</h3>
+                <p class="workspace-meta">
+                  {{ workspace.slug }}
+                </p>
+              </div>
+              <div class="workspace-actions">
+                <button
+                  class="action-btn"
+                  @click.stop="goToInviteMember(workspace.id)"
+                  title="Mời thành viên"
+                >
+                  👤
+                </button>
+                <span class="arrow-icon">→</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="workspaces-footer">
+            <button
+              class="link-button"
+              @click="goToCreateWorkspace"
+            >
+              Create a new workspace
+            </button>
+            <button class="link-button">
+              Not seeing your workspace? Try a different email
+            </button>
+          </div>
+        </StarfieldCard>
+
+        <StarfieldCard class="template-card">
+          <div class="template-content">
+            <GlowText level="3" class="template-title">
+              Get started with a template.
+            </GlowText>
+            <p class="template-description">
+              Kickstart projects with one click.
+            </p>
+            <StarfieldButton
+              variant="outline"
+              size="md"
+              class="template-button"
+            >
+              Browse templates
+            </StarfieldButton>
+          </div>
+        </StarfieldCard>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hero Section (if not logged in) -->
+  <section
+    v-else
+    class="hero-section"
+  >
     <div class="container-center">
       <div class="hero-content">
         <div class="hero-text">
@@ -540,6 +707,213 @@ const features = [
   }
   66% {
     transform: translateY(10px) translateX(-10px);
+  }
+}
+
+// Workspaces Section
+.workspaces-section {
+  padding: 4rem 0;
+  min-height: calc(100vh - 200px);
+  background: linear-gradient(
+    135deg,
+    rgba(184, 167, 255, 0.1) 0%,
+    rgba(184, 167, 255, 0.05) 100%
+  );
+}
+
+.workspaces-header {
+  text-align: center;
+  margin-bottom: 3rem;
+
+  .welcome-title {
+    margin-bottom: 1rem;
+  }
+
+  .welcome-subtitle {
+    font-size: 1.125rem;
+    color: rgba(241, 245, 249, 0.7);
+    font-weight: 300;
+  }
+}
+
+.workspaces-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.workspaces-card {
+  .workspaces-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(184, 167, 255, 0.2);
+
+    .card-icon {
+      font-size: 1.5rem;
+    }
+
+    .card-title {
+      margin: 0;
+    }
+  }
+
+  .loading-state,
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: rgba(241, 245, 249, 0.7);
+
+    .empty-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      color: rgba(184, 167, 255, 0.8);
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-description {
+      font-size: 0.875rem;
+      color: rgba(241, 245, 249, 0.5);
+    }
+  }
+
+  .workspaces-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .workspace-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(184, 167, 255, 0.1);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: rgba(184, 167, 255, 0.3);
+      box-shadow: 0 0 20px rgba(184, 167, 255, 0.1);
+      transform: translateY(-2px);
+    }
+  }
+
+  .workspace-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 2px;
+    background: linear-gradient(135deg, rgba(184, 167, 255, 0.3), rgba(184, 167, 255, 0.1));
+    border: 1px solid rgba(184, 167, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #b8a7ff;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .workspace-info {
+    flex: 1;
+    min-width: 0;
+
+    .workspace-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 1.125rem;
+      color: #f1f5f9;
+      margin-bottom: 0.25rem;
+      letter-spacing: 0.05em;
+    }
+
+    .workspace-meta {
+      font-size: 0.875rem;
+      color: rgba(241, 245, 249, 0.6);
+    }
+  }
+
+  .workspace-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    .action-btn {
+      background: transparent;
+      border: 1px solid rgba(184, 167, 255, 0.3);
+      border-radius: 2px;
+      padding: 0.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.125rem;
+
+      &:hover {
+        border-color: rgba(184, 167, 255, 0.5);
+        background: rgba(184, 167, 255, 0.1);
+      }
+    }
+
+    .arrow-icon {
+      color: rgba(184, 167, 255, 0.6);
+      font-size: 1.25rem;
+    }
+  }
+
+  .workspaces-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(184, 167, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .link-button {
+    background: transparent;
+    border: none;
+    color: rgba(184, 167, 255, 0.8);
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-align: left;
+    padding: 0.5rem 0;
+    transition: color 0.3s ease;
+
+    &:hover {
+      color: #b8a7ff;
+      text-shadow: 0 0 10px rgba(184, 167, 255, 0.5);
+    }
+  }
+}
+
+.template-card {
+  .template-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    .template-title {
+      margin: 0;
+    }
+
+    .template-description {
+      font-size: 0.875rem;
+      color: rgba(241, 245, 249, 0.7);
+      font-weight: 300;
+    }
+
+    .template-button {
+      align-self: flex-start;
+      margin-top: 0.5rem;
+    }
   }
 }
 </style>

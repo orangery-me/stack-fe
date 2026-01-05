@@ -10,5 +10,12 @@ export const API_ENDPOINTS = {
     GOOGLE_LOGIN: '/auth/google/login',
     VERIFY_EMAIL: '/auth/verify-email',
   },
+  WORKSPACES: {
+    CREATE: '/workspaces',
+    GET_MY_WORKSPACES: '/workspaces/me',
+    INVITE: (id) => `/workspaces/${id}/invite`,
+    ACCEPT_INVITE: '/workspaces/invite/accept',
+    GET_MEMBERS: (id) => `/workspaces/${id}/members`,
+  },
 };
 
