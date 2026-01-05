@@ -40,7 +40,7 @@ const fetchWorkspaceData = async () => {
         roles.value.find((r) => r.name === "member")?.id || roles.value[0].id;
     }
   } catch (error) {
-    toast.error("Không thể tải thông tin workspace");
+    toast.error("Unable to load workspace information");
     console.error(error);
     router.back();
   }
@@ -52,11 +52,11 @@ const validateForm = () => {
     !form.value.email ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)
   ) {
-    errors.value.email = "Email không hợp lệ";
+    errors.value.email = "Invalid email address";
     return false;
   }
   if (!form.value.roleId) {
-    errors.value.roleId = "Vui lòng chọn role";
+    errors.value.roleId = "Please select a role";
     return false;
   }
   return true;
@@ -70,10 +70,10 @@ const handleSubmit = async () => {
       email: form.value.email,
       roleId: form.value.roleId,
     });
-    toast.success("Đã gửi lời mời thành công!");
+    toast.success("Invitation sent successfully!");
     form.value = { email: "", roleId: roles.value[0]?.id || "" };
   } catch (error) {
-    const message = error.message || "Không thể gửi lời mời";
+    const message = error.message || "Unable to send invitation";
     toast.error(message);
     if (error.errors) {
       errors.value = error.errors;
@@ -99,16 +99,16 @@ onMounted(() => {
           size="sm"
           @click="goBack"
         >
-          ← Quay lại
+          ← Back
         </StarfieldButton>
         <GlowText
           level="1"
           class="page-title"
         >
-          Mời thành viên
+          Invite member
         </GlowText>
         <p class="page-description">
-          Gửi lời mời để thêm thành viên vào workspace
+          Send invitations to add members to this workspace
         </p>
       </div>
 
@@ -116,7 +116,7 @@ onMounted(() => {
         v-if="loadingData"
         class="loading-state"
       >
-        <p>Đang tải...</p>
+        <p>Loading...</p>
       </div>
 
       <div
@@ -147,7 +147,7 @@ onMounted(() => {
 
             <div class="form-group">
               <label for="roleId">
-                Vai trò <span class="required">*</span>
+                Role <span class="required">*</span>
               </label>
               <select
                 id="roleId"
@@ -182,14 +182,14 @@ onMounted(() => {
                 :disabled="loading"
                 @click="goBack"
               >
-                Hủy
+                Cancel
               </StarfieldButton>
               <StarfieldButton
                 variant="primary"
                 type="submit"
                 :disabled="loading"
               >
-                {{ loading ? "Đang gửi..." : "Gửi lời mời" }}
+                {{ loading ? "Sending..." : "Send invitation" }}
               </StarfieldButton>
             </div>
           </form>
@@ -197,13 +197,13 @@ onMounted(() => {
 
         <StarfieldCard class="members-card">
           <h3 class="card-title">
-            Thành viên hiện tại
+            Current members
           </h3>
           <div
             v-if="members.length === 0"
             class="empty-state"
           >
-            <p>Chưa có thành viên nào</p>
+            <p>No members yet</p>
           </div>
           <div
             v-else

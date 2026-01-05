@@ -130,7 +130,7 @@ const features = [
             v-if="loading"
             class="loading-state"
           >
-            <p>Đang tải...</p>
+            <p>Loading...</p>
           </div>
 
           <div
@@ -141,7 +141,7 @@ const features = [
               Ready to launch
             </p>
             <p class="empty-description">
-              Bạn chưa có workspace nào. Tạo workspace mới để bắt đầu!
+              You don't have any workspaces yet. Create a new workspace to get started!
             </p>
           </div>
 
@@ -169,7 +169,7 @@ const features = [
               <div class="workspace-actions">
                 <button
                   class="action-btn"
-                  title="Mời thành viên"
+                  title="Invite members"
                   @click.stop="goToInviteMember(workspace.id)"
                 >
                   👤

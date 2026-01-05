@@ -18,7 +18,7 @@ onMounted(async () => {
 
   if (!token) {
     throw new Error(
-      "Token không hợp lệ. Vui lòng kiểm tra lại link trong email."
+      "Invalid token. Please check the link in your email."
     );
   }
 
@@ -30,7 +30,7 @@ onMounted(async () => {
     status.value = "success";
 
     // Show success toast with message from API
-    const message = response?.message || "Tham gia workspace thành công!";
+    const message = response?.message || "Successfully joined workspace!";
     success(message, 5000);
 
     // Redirect to workspace detail page after 2 seconds
@@ -50,7 +50,7 @@ onMounted(async () => {
 
     // Show error toast with error message
     const errorMessage =
-      err?.message || "Không thể chấp nhận lời mời. Vui lòng thử lại.";
+      err?.message || "Unable to accept invitation. Please try again.";
     error(errorMessage, 5000);
 
     // Redirect to home after 3 seconds
@@ -67,24 +67,24 @@ onMounted(async () => {
       <div class="accept-container">
         <GlowText :level="3">
           <template v-if="loading || status === 'processing'">
-            Đang xử lý lời mời...
+            Processing invitation...
           </template>
           <template v-else-if="status === 'success'">
-            Tham gia workspace thành công!
+            Joined workspace successfully!
           </template>
           <template v-else>
-            Không thể chấp nhận lời mời
+            Unable to accept invitation
           </template>
         </GlowText>
         <p class="accept-message">
           <template v-if="loading || status === 'processing'">
-            Vui lòng đợi một chút
+            Please wait a moment
           </template>
           <template v-else-if="status === 'success'">
-            Đang chuyển hướng đến workspace...
+            Redirecting to workspace...
           </template>
           <template v-else>
-            Đang chuyển hướng về trang chủ...
+            Redirecting to home...
           </template>
         </p>
       </div>

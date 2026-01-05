@@ -89,19 +89,19 @@ const removeInvite = (index) => {
 const validateForm = () => {
   errors.value = {};
   if (!form.value.name || form.value.name.length < 2) {
-    errors.value.name = "Tên workspace phải có ít nhất 2 ký tự";
+    errors.value.name = "Workspace name must be at least 2 characters";
     return false;
   }
   if (form.value.name.length > 255) {
-    errors.value.name = "Tên workspace không được vượt quá 255 ký tự";
+    errors.value.name = "Workspace name must not exceed 255 characters";
     return false;
   }
   if (!form.value.displayName || form.value.displayName.length < 2) {
-    errors.value.displayName = "Tên hiển thị phải có ít nhất 2 ký tự";
+    errors.value.displayName = "Display name must be at least 2 characters";
     return false;
   }
   if (form.value.displayName.length > 50) {
-    errors.value.displayName = "Tên hiển thị không được vượt quá 50 ký tự";
+    errors.value.displayName = "Display name must not exceed 50 characters";
     return false;
   }
 
@@ -111,7 +111,7 @@ const validateForm = () => {
   );
   if (invalidInvites.length > 0) {
     errors.value.invites =
-      "Vui lòng chọn role hợp lệ cho tất cả các thành viên được mời";
+      "Please select a valid role for all invited members";
     return false;
   }
 
@@ -132,10 +132,10 @@ const handleSubmit = async () => {
     };
 
     const workspace = await workspaceStore.createWorkspace(workspaceData);
-    toast.success("Tạo workspace thành công!");
+    toast.success("Workspace created successfully!");
     router.push(`/workspaces/${workspace.id}`);
   } catch (error) {
-    const message = error.message || "Không thể tạo workspace";
+    const message = error.message || "Unable to create workspace";
     toast.error(message);
     if (error.errors) {
       errors.value = { ...errors.value, ...error.errors };
@@ -160,16 +160,16 @@ const goBack = () => {
           size="sm"
           @click="goBack"
         >
-          ← Quay lại
+          ← Back
         </StarfieldButton>
         <GlowText
           level="1"
           class="page-title"
         >
-          Tạo workspace mới
+          Create new workspace
         </GlowText>
         <p class="page-description">
-          Tạo workspace để bắt đầu làm việc cùng team của bạn
+          Create a workspace to start working with your team
         </p>
       </div>
 
@@ -180,13 +180,13 @@ const goBack = () => {
         >
           <div class="form-group">
             <label for="name">
-              Tên workspace <span class="required">*</span>
+              Workspace name <span class="required">*</span>
             </label>
             <input
               id="name"
               v-model="form.name"
               type="text"
-              placeholder="Ví dụ: My Workspace"
+              placeholder="Example: My Workspace"
               :class="{ error: errors.name }"
             >
             <span
@@ -199,14 +199,14 @@ const goBack = () => {
 
           <div class="form-group">
             <label for="displayName">
-              Tên hiển thị của bạn trong workspace
+              Your display name in the workspace
               <span class="required">*</span>
             </label>
             <input
               id="displayName"
               v-model="form.displayName"
               type="text"
-              placeholder="Ví dụ: John Doe"
+              placeholder="Example: John Doe"
               :class="{ error: errors.displayName }"
             >
             <span
@@ -219,10 +219,10 @@ const goBack = () => {
 
           <div class="form-section">
             <h3 class="section-title">
-              Mời thành viên
+              Invite members
             </h3>
             <p class="section-description">
-              Tìm kiếm và mời thành viên vào workspace (tùy chọn)
+              Search and invite members to the workspace (optional)
             </p>
 
             <div class="invite-search-wrapper">
@@ -230,7 +230,7 @@ const goBack = () => {
                 <input
                   v-model="searchQuery"
                   type="text"
-                  placeholder="Nhập email hoặc tên để tìm kiếm..."
+                  placeholder="Enter email or name to search..."
                   class="search-input"
                   @focus="showSuggestions = searchResults.length > 0"
                   @blur="
@@ -243,7 +243,7 @@ const goBack = () => {
                   v-if="searchLoading"
                   class="search-loading"
                 >
-                  Đang tìm...
+                  Searching...
                 </div>
               </div>
 
@@ -331,14 +331,14 @@ const goBack = () => {
               :disabled="loading"
               @click="goBack"
             >
-              Hủy
+                Cancel
             </StarfieldButton>
             <StarfieldButton
               variant="primary"
               type="submit"
               :disabled="loading"
             >
-              {{ loading ? "Đang tạo..." : "Tạo workspace" }}
+                {{ loading ? "Creating..." : "Create workspace" }}
             </StarfieldButton>
           </div>
         </form>

@@ -20,7 +20,7 @@ const workspaceId = route.params.id;
           Workspace ID: {{ workspaceId }}
         </p>
         <p style="margin-top: 1rem; color: rgba(241, 245, 249, 0.5);">
-          Màn hình chi tiết workspace sẽ được triển khai sau.
+          Workspace details and member list will be implemented here in the future.
         </p>
       </StarfieldCard>
     </div>
