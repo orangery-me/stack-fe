@@ -1,0 +1,27 @@
+.accept-invite-section {
+  padding: 6rem 0;
+  min-height: calc(100vh - 200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container-center {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.accept-container {
+  text-align: center;
+}
+
+.accept-message {
+  color: rgba(241, 245, 249, 0.7);
+  font-size: 1.125rem;
+  font-weight: 300;
+  margin-top: 1rem;
+  font-family: "Merriweather", serif;
+}
+

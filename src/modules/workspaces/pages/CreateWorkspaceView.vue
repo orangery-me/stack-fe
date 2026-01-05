@@ -1,15 +1,16 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
-import workspaceService from "@/services/workspace.service.js";
 import userService from "@/services/user.service.js";
 import StarfieldButton from "@/components/StarfieldButton.vue";
 import StarfieldCard from "@/components/StarfieldCard.vue";
 import GlowText from "@/components/GlowText.vue";
 import { useToast } from "@/composables/useToast.js";
+import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 
 const router = useRouter();
 const toast = useToast();
+const workspaceStore = useWorkspaceStore();
 
 const form = ref({
   name: "",
@@ -17,7 +18,7 @@ const form = ref({
   invites: [],
 });
 
-const loading = ref(false);
+const loading = computed(() => workspaceStore.createWorkspaceLoading);
 const errors = ref({});
 
 // User search for autocomplete
@@ -120,7 +121,6 @@ const validateForm = () => {
 const handleSubmit = async () => {
   if (!validateForm()) return;
 
-  loading.value = true;
   try {
     const workspaceData = {
       name: form.value.name,
@@ -131,7 +131,7 @@ const handleSubmit = async () => {
       })),
     };
 
-    const workspace = await workspaceService.createWorkspace(workspaceData);
+    const workspace = await workspaceStore.createWorkspace(workspaceData);
     toast.success("Tạo workspace thành công!");
     router.push(`/workspaces/${workspace.id}`);
   } catch (error) {
@@ -140,8 +140,6 @@ const handleSubmit = async () => {
     if (error.errors) {
       errors.value = { ...errors.value, ...error.errors };
     }
-  } finally {
-    loading.value = false;
   }
 };
 

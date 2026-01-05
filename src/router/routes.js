@@ -7,6 +7,7 @@ import VerifyEmailView from '@/modules/auth/pages/VerifyEmailView.vue';
 import CreateWorkspaceView from '@/modules/workspaces/pages/CreateWorkspaceView.vue';
 import InviteMemberView from '@/modules/workspaces/pages/InviteMemberView.vue';
 import WorkspaceDetailView from '@/modules/workspaces/pages/WorkspaceDetailView.vue';
+import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
 
 export default [
 	{
@@ -22,16 +23,22 @@ export default [
 		meta: { title: 'Create Workspace', requiresAuth: true },
 	},
 	{
-		path: '/workspaces/:id',
-		name: 'workspaceDetail',
-		component: WorkspaceDetailView,
-		meta: { title: 'Workspace', requiresAuth: true },
+		path: '/workspaces/invite/accept',
+		name: 'acceptInvite',
+		component: AcceptInviteView,
+		meta: { title: 'Accept Invite', requiresAuth: true },
 	},
 	{
 		path: '/workspaces/:id/invite',
 		name: 'inviteMember',
 		component: InviteMemberView,
 		meta: { title: 'Invite Member', requiresAuth: true },
+	},
+	{
+		path: '/workspaces/:id',
+		name: 'workspaceDetail',
+		component: WorkspaceDetailView,
+		meta: { title: 'Workspace', requiresAuth: true },
 	},
 	{
 		path: '/login',

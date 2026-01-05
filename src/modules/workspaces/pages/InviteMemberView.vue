@@ -1,61 +1,62 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import workspaceService from '@/services/workspace.service.js';
-import StarfieldButton from '@/components/StarfieldButton.vue';
-import StarfieldCard from '@/components/StarfieldCard.vue';
-import GlowText from '@/components/GlowText.vue';
-import { useToast } from '@/composables/useToast.js';
+import { ref, onMounted, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import StarfieldButton from "@/components/StarfieldButton.vue";
+import StarfieldCard from "@/components/StarfieldCard.vue";
+import GlowText from "@/components/GlowText.vue";
+import { useToast } from "@/composables/useToast.js";
+import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 
 const router = useRouter();
 const route = useRoute();
 const toast = useToast();
+const workspaceStore = useWorkspaceStore();
 
 const workspaceId = route.params.id;
 const roles = ref([]);
-const members = ref([]);
+const members = computed(() => workspaceStore.members);
 
 const form = ref({
-  email: '',
-  roleId: '',
+  email: "",
+  roleId: "",
 });
 
-const loading = ref(false);
-const loadingData = ref(true);
+const loading = computed(() => workspaceStore.inviteMemberLoading);
+const loadingData = computed(() => workspaceStore.membersLoading);
 const errors = ref({});
 
 const fetchWorkspaceData = async () => {
   try {
-    loadingData.value = true;
-    const [membersData, rolesData] = await Promise.all([
-      workspaceService.getWorkspaceMembers(workspaceId),
-      // TODO: Fetch roles when API is available
-      Promise.resolve([]),
-    ]);
-    members.value = membersData;
+    const membersData = await workspaceStore.fetchMembers(workspaceId);
     // For now, use member roles to get available roles
-    const uniqueRoles = [...new Map(membersData.map(m => [m.roleId, { id: m.roleId, name: m.roleName }])).values()];
+    const uniqueRoles = [
+      ...new Map(
+        membersData.map((m) => [m.roleId, { id: m.roleId, name: m.roleName }])
+      ).values(),
+    ];
     roles.value = uniqueRoles;
     if (roles.value.length > 0 && !form.value.roleId) {
-      form.value.roleId = roles.value.find(r => r.name === 'member')?.id || roles.value[0].id;
+      form.value.roleId =
+        roles.value.find((r) => r.name === "member")?.id || roles.value[0].id;
     }
   } catch (error) {
-    toast.error('Không thể tải thông tin workspace');
+    toast.error("Không thể tải thông tin workspace");
     console.error(error);
     router.back();
-  } finally {
-    loadingData.value = false;
   }
 };
 
 const validateForm = () => {
   errors.value = {};
-  if (!form.value.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
-    errors.value.email = 'Email không hợp lệ';
+  if (
+    !form.value.email ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)
+  ) {
+    errors.value.email = "Email không hợp lệ";
     return false;
   }
   if (!form.value.roleId) {
-    errors.value.roleId = 'Vui lòng chọn role';
+    errors.value.roleId = "Vui lòng chọn role";
     return false;
   }
   return true;
@@ -64,23 +65,19 @@ const validateForm = () => {
 const handleSubmit = async () => {
   if (!validateForm()) return;
 
-  loading.value = true;
   try {
-    await workspaceService.inviteMember(workspaceId, {
+    await workspaceStore.inviteMember(workspaceId, {
       email: form.value.email,
       roleId: form.value.roleId,
     });
-    toast.success('Đã gửi lời mời thành công!');
-    form.value = { email: '', roleId: roles.value[0]?.id || '' };
-    await fetchWorkspaceData();
+    toast.success("Đã gửi lời mời thành công!");
+    form.value = { email: "", roleId: roles.value[0]?.id || "" };
   } catch (error) {
-    const message = error.message || 'Không thể gửi lời mời';
+    const message = error.message || "Không thể gửi lời mời";
     toast.error(message);
     if (error.errors) {
       errors.value = error.errors;
     }
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -132,9 +129,7 @@ onMounted(() => {
             @submit.prevent="handleSubmit"
           >
             <div class="form-group">
-              <label for="email">
-                Email <span class="required">*</span>
-              </label>
+              <label for="email"> Email <span class="required">*</span> </label>
               <input
                 id="email"
                 v-model="form.email"
@@ -164,7 +159,13 @@ onMounted(() => {
                   :key="role.id"
                   :value="role.id"
                 >
-                  {{ role.name === 'owner' ? 'Owner' : role.name === 'admin' ? 'Admin' : 'Member' }}
+                  {{
+                    role.name === "owner"
+                      ? "Owner"
+                      : role.name === "admin"
+                        ? "Admin"
+                        : "Member"
+                  }}
                 </option>
               </select>
               <span
@@ -188,7 +189,7 @@ onMounted(() => {
                 type="submit"
                 :disabled="loading"
               >
-                {{ loading ? 'Đang gửi...' : 'Gửi lời mời' }}
+                {{ loading ? "Đang gửi..." : "Gửi lời mời" }}
               </StarfieldButton>
             </div>
           </form>
@@ -227,7 +228,13 @@ onMounted(() => {
                 </div>
               </div>
               <span class="member-role">
-                {{ member.roleName === 'owner' ? 'Owner' : member.roleName === 'admin' ? 'Admin' : 'Member' }}
+                {{
+                  member.roleName === "owner"
+                    ? "Owner"
+                    : member.roleName === "admin"
+                      ? "Admin"
+                      : "Member"
+                }}
               </span>
             </div>
           </div>
