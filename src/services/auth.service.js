@@ -78,7 +78,10 @@ class AuthService {
     const client_id = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirect_uri = import.meta.env.VITE_GOOGLE_CALLBACK_URL;
 
-    document.cookie = `oauth_state=${state}; path=/; SameSite=Lax`;
+    // Set cookie - use Secure only in production (HTTPS)
+    const isProduction = import.meta.env.PROD;
+    const secureFlag = isProduction ? '; Secure' : '';
+    document.cookie = `google_oauth_state=${state}; path=/; SameSite=Lax${secureFlag}`;
 
     const params = new URLSearchParams({
       client_id: client_id,
