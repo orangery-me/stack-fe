@@ -24,6 +24,15 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Accept invite state
     acceptInviteLoading: false,
     acceptInviteError: null,
+
+    // workspace info detail
+    workspaceDetailLoading: false,
+    workspaceDetailError: null,
+    workspaceDetail: null,
+
+    // workspace members
+    workspaceMembers: [],
+    workspaceMembersLoading: false,
   }),
 
   actions: {
@@ -116,6 +125,24 @@ export const useWorkspaceStore = defineStore('workspace', {
         throw error;
       } finally {
         this.acceptInviteLoading = false;
+      }
+    },
+
+    /**
+     * Fetch workspace details by ID
+     */
+    async fetchWorkspaceById(workspaceId) {
+      this.workspaceDetailLoading = true;
+      this.workspaceDetailError = null;
+      try {
+        const workspace = await workspaceService.getWorkspaceById(workspaceId);
+        this.workspaceDetail = workspace;
+        return workspace;
+      } catch (error) {
+        this.workspaceDetailError = error;
+        throw error;
+      } finally {
+        this.workspaceDetailLoading = false;
       }
     },
   },

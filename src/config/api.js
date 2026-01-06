@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   WORKSPACES: {
     CREATE: '/workspaces',
     GET_MY_WORKSPACES: '/workspaces/me',
+    DETAIL_BY_ID: (id) => `/workspaces/${id}`,
     INVITE: (id) => `/workspaces/${id}/invite`,
     ACCEPT_INVITE: '/workspaces/invite/accept',
     GET_MEMBERS: (id) => `/workspaces/${id}/members`,

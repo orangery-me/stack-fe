@@ -163,7 +163,7 @@ const goBack = () => {
           ← Back
         </StarfieldButton>
         <GlowText
-          level="1"
+          :level="1"
           class="page-title"
         >
           Create new workspace
@@ -331,14 +331,14 @@ const goBack = () => {
               :disabled="loading"
               @click="goBack"
             >
-                Cancel
+              Cancel
             </StarfieldButton>
             <StarfieldButton
               variant="primary"
               type="submit"
               :disabled="loading"
             >
-                {{ loading ? "Creating..." : "Create workspace" }}
+              {{ loading ? "Creating..." : "Create workspace" }}
             </StarfieldButton>
           </div>
         </form>

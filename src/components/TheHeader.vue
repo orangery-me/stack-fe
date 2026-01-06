@@ -81,7 +81,7 @@ const goToLogin = () => {
         </router-link>
 
         <!-- Desktop Navigation -->
-        <div class="navbar-nav-desktop">
+        <!-- <div class="navbar-nav-desktop">
           <router-link
             :to="{ name: 'home' }"
             class="nav-link"
@@ -97,7 +97,7 @@ const goToLogin = () => {
             href="#about"
             class="nav-link"
           >About</a>
-        </div>
+        </div> -->
 
         <!-- CTA Button / User Menu -->
         <div class="navbar-cta">

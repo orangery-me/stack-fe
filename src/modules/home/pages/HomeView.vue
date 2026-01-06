@@ -102,7 +102,7 @@ const features = [
     <div class="container-center">
       <div class="workspaces-header">
         <GlowText
-          level="1"
+          :level="1"
           class="welcome-title"
         >
           Welcome back 👋
@@ -119,7 +119,7 @@ const features = [
               📋
             </div>
             <GlowText
-              level="3"
+              :level="3"
               class="card-title"
             >
               My workspaces
@@ -195,7 +195,7 @@ const features = [
         <StarfieldCard class="template-card">
           <div class="template-content">
             <GlowText
-              level="3"
+              :level="3"
               class="template-title"
             >
               Get started with a template.
@@ -229,7 +229,7 @@ const features = [
             <span>AI-Powered Workspace</span>
           </div>
           <GlowText
-            level="1"
+            :level="1"
             class="hero-title"
           >
             Stack - Your
@@ -320,7 +320,7 @@ const features = [
     <div class="container-center">
       <div class="cta-content">
         <GlowText
-          level="2"
+          :level="2"
           class="cta-title"
         >
           Ready to Transform Your Workflow?

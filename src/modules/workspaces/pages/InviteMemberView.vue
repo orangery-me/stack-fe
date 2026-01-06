@@ -102,7 +102,7 @@ onMounted(() => {
           ← Back
         </StarfieldButton>
         <GlowText
-          level="1"
+          :level="1"
           class="page-title"
         >
           Invite member

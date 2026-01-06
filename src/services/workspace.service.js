@@ -65,6 +65,16 @@ class WorkspaceService {
     const response = await apiService.get(API_ENDPOINTS.WORKSPACES.GET_MEMBERS(workspaceId));
     return response.data.data;
   }
+
+  /**
+   * Get workspace details by ID
+   * @param {string} workspaceId - ID of the workspace
+   * @returns {Promise<{id: string, name: string, slug: string, ownerId: string, plan: string, settings?: object, createdAt: Date}>}
+   */
+  async getWorkspaceById(workspaceId) {
+    const response = await apiService.get(API_ENDPOINTS.WORKSPACES.DETAIL_BY_ID(workspaceId));
+    return response.data.data;
+  }
 }
 
 export default new WorkspaceService();
