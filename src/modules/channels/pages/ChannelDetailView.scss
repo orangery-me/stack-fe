@@ -33,15 +33,9 @@
       .channel-star {
         display: flex;
         align-items: center;
-        color: #6b7280;
         cursor: pointer;
-        transition: color 0.2s ease;
 
-        &:hover {
-          color: #fbbf24;
-        }
-
-        svg {
+        .channel-star-icon {
           width: 18px;
           height: 18px;
         }
@@ -230,7 +224,8 @@
       align-items: center;
       justify-content: flex-start;
 
-      svg {
+      svg,
+      img {
         width: 32px;
         height: 32px;
       }
