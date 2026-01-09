@@ -115,14 +115,30 @@ const features = [
       </div>
 
       <div class="workspaces-content">
-        <StarfieldCard class="workspaces-card">
+        <StarfieldCard
+          class="workspaces-card"
+          :glow="false"
+        >
           <div class="workspaces-card-header">
-            <div class="card-icon">
-              📋
+            <div class="card-heading">
+              <span class="workspace-status"> Ready to launch </span>
+              <div class="card-title-row">
+                <div class="card-icon">
+                  📋
+                </div>
+                <h2 class="card-title heading-lg">
+                  My workspaces
+                </h2>
+              </div>
             </div>
-            <h2 class="card-title heading-lg">
-              My workspaces
-            </h2>
+            <StarfieldButton
+              variant="outline"
+              size="sm"
+              class="create-button"
+              @click="openCreateWorkspaceModal"
+            >
+              Create new
+            </StarfieldButton>
           </div>
 
           <div
@@ -143,6 +159,13 @@ const features = [
               You don't have any workspaces yet. Create a new workspace to get
               started!
             </p>
+            <StarfieldButton
+              variant="primary"
+              size="md"
+              @click="openCreateWorkspaceModal"
+            >
+              Create workspace
+            </StarfieldButton>
           </div>
 
           <div
@@ -159,9 +182,11 @@ const features = [
                 {{ workspace.name.charAt(0).toUpperCase() }}
               </div>
               <div class="workspace-info">
-                <h3 class="workspace-name">
-                  {{ workspace.name }}
-                </h3>
+                <div class="workspace-name-row">
+                  <h3 class="workspace-name">
+                    {{ workspace.name }}
+                  </h3>
+                </div>
                 <p class="workspace-meta">
                   {{ workspace.slug }}
                 </p>
@@ -174,169 +199,196 @@ const features = [
                 >
                   👤
                 </button>
-                <span class="arrow-icon">→</span>
+                <button
+                  class="launch-btn"
+                  title="Open workspace"
+                  aria-label="Open workspace"
+                >
+                  →
+                </button>
               </div>
             </div>
           </div>
 
           <div class="workspaces-footer">
-            <button
-              class="link-button"
+            <StarfieldButton
+              variant="primary"
+              size="md"
+              class="footer-create"
               @click="openCreateWorkspaceModal"
             >
               Create a new workspace
-            </button>
+            </StarfieldButton>
             <button class="link-button">
               Not seeing your workspace? Try a different email
             </button>
           </div>
         </StarfieldCard>
 
-        <StarfieldCard class="template-card">
-          <div class="template-content">
-            <h2 class="template-title heading-lg">
-              Get started with a template.
-            </h2>
-            <p class="template-description">
-              Kickstart projects with one click.
-            </p>
-            <StarfieldButton
-              variant="outline"
-              size="md"
-              class="template-button"
-            >
-              Browse templates
-            </StarfieldButton>
-          </div>
-        </StarfieldCard>
+        <div class="workspaces-sidecards">
+          <StarfieldCard class="template-card">
+            <div class="template-content">
+              <h2 class="template-title heading-lg">
+                Get started with a template.
+              </h2>
+              <p class="template-description">
+                Kickstart projects with one click.
+              </p>
+              <StarfieldButton
+                variant="outline"
+                size="md"
+                class="template-button"
+              >
+                Browse templates
+              </StarfieldButton>
+            </div>
+          </StarfieldCard>
+
+          <StarfieldCard class="invite-card">
+            <div class="template-content">
+              <h2 class="template-title heading-lg">
+                Invite your team
+              </h2>
+              <p class="template-description">
+                Slack works better when you use it together.
+              </p>
+              <StarfieldButton
+                variant="secondary"
+                size="md"
+                class="template-button"
+              >
+                Invite teammates
+              </StarfieldButton>
+            </div>
+          </StarfieldCard>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Hero Section (if not logged in) -->
-  <section
-    v-else
-    class="hero-section"
-  >
-    <div class="container-center">
-      <div class="hero-content">
-        <div class="hero-text">
-          <div class="hero-badge">
-            <span class="badge-dot" />
-            <span>AI-Powered Workspace</span>
+  <div v-else>
+    <!-- Hero Section (if not logged in) -->
+    <section class="hero-section">
+      <div class="container-center">
+        <div class="hero-content">
+          <div class="hero-text">
+            <div class="hero-badge">
+              <span class="badge-dot" />
+              <span>AI-Powered Workspace</span>
+            </div>
+            <GlowText
+              :level="1"
+              class="hero-title"
+            >
+              Stack - Your
+              <span class="gradient-text">AI-Powered</span>
+              Workspace
+            </GlowText>
+            <p class="hero-description">
+              Manage tasks, communicate with your team, collaborate on
+              documents, and boost productivity with AI. Everything you need to
+              work smarter, all in one place.
+            </p>
+            <div class="hero-cta">
+              <StarfieldButton
+                variant="primary"
+                size="lg"
+                @click="goToLogin"
+              >
+                Get Started
+              </StarfieldButton>
+            </div>
           </div>
-          <GlowText
-            :level="1"
-            class="hero-title"
-          >
-            Stack - Your
-            <span class="gradient-text">AI-Powered</span>
-            Workspace
-          </GlowText>
-          <p class="hero-description">
-            Manage tasks, communicate with your team, collaborate on documents,
-            and boost productivity with AI. Everything you need to work smarter,
-            all in one place.
+          <div class="hero-visual">
+            <div class="cube-container">
+              <div class="cube">
+                <div class="cube-face cube-face-front">
+                  <div class="grid-pattern" />
+                </div>
+                <div class="cube-face cube-face-back">
+                  <div class="grid-pattern" />
+                </div>
+                <div class="cube-face cube-face-right">
+                  <div class="grid-pattern" />
+                </div>
+                <div class="cube-face cube-face-left">
+                  <div class="grid-pattern" />
+                </div>
+                <div class="cube-face cube-face-top">
+                  <div class="grid-pattern" />
+                </div>
+                <div class="cube-face cube-face-bottom">
+                  <div class="grid-pattern" />
+                </div>
+              </div>
+              <div class="glow-orb glow-orb-1" />
+              <div class="glow-orb glow-orb-2" />
+              <div class="glow-orb glow-orb-3" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section
+      id="features"
+      class="features-section"
+    >
+      <div class="container-center">
+        <div class="section-header">
+          <h2 class="section-title heading-lg">
+            Everything You Need to Work Better
+          </h2>
+          <p class="section-description">
+            Task management, team communication, document collaboration, and AI
+            assistance - all in one powerful platform
           </p>
-          <div class="hero-cta">
+        </div>
+        <div class="features-grid">
+          <StarfieldCard
+            v-for="(feature, index) in features"
+            :key="index"
+            class="feature-card"
+          >
+            <div class="feature-icon">
+              {{ feature.icon }}
+            </div>
+            <h3 class="feature-title">
+              {{ feature.title }}
+            </h3>
+            <p class="feature-description">
+              {{ feature.description }}
+            </p>
+          </StarfieldCard>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <div class="container-center">
+        <div class="cta-content">
+          <h2 class="cta-title heading-lg">
+            Ready to Transform Your Workflow?
+          </h2>
+          <p class="cta-description">
+            Join teams who are already using Stack to manage tasks, communicate
+            better, and work smarter with AI.
+          </p>
+          <div class="cta-buttons">
             <StarfieldButton
               variant="primary"
               size="lg"
               @click="goToLogin"
             >
-              Get Started
+              Get Started Free
             </StarfieldButton>
           </div>
         </div>
-        <div class="hero-visual">
-          <div class="cube-container">
-            <div class="cube">
-              <div class="cube-face cube-face-front">
-                <div class="grid-pattern" />
-              </div>
-              <div class="cube-face cube-face-back">
-                <div class="grid-pattern" />
-              </div>
-              <div class="cube-face cube-face-right">
-                <div class="grid-pattern" />
-              </div>
-              <div class="cube-face cube-face-left">
-                <div class="grid-pattern" />
-              </div>
-              <div class="cube-face cube-face-top">
-                <div class="grid-pattern" />
-              </div>
-              <div class="cube-face cube-face-bottom">
-                <div class="grid-pattern" />
-              </div>
-            </div>
-            <div class="glow-orb glow-orb-1" />
-            <div class="glow-orb glow-orb-2" />
-            <div class="glow-orb glow-orb-3" />
-          </div>
-        </div>
       </div>
-    </div>
-  </section>
-
-  <!-- Features Section -->
-  <section
-    id="features"
-    class="features-section"
-  >
-    <div class="container-center">
-      <div class="section-header">
-        <h2 class="section-title heading-lg">
-          Everything You Need to Work Better
-        </h2>
-        <p class="section-description">
-          Task management, team communication, document collaboration, and AI
-          assistance - all in one powerful platform
-        </p>
-      </div>
-      <div class="features-grid">
-        <StarfieldCard
-          v-for="(feature, index) in features"
-          :key="index"
-          class="feature-card"
-        >
-          <div class="feature-icon">
-            {{ feature.icon }}
-          </div>
-          <h3 class="feature-title">
-            {{ feature.title }}
-          </h3>
-          <p class="feature-description">
-            {{ feature.description }}
-          </p>
-        </StarfieldCard>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA Section -->
-  <section class="cta-section">
-    <div class="container-center">
-      <div class="cta-content">
-        <h2 class="cta-title heading-lg">
-          Ready to Transform Your Workflow?
-        </h2>
-        <p class="cta-description">
-          Join teams who are already using Stack to manage tasks, communicate
-          better, and work smarter with AI.
-        </p>
-        <div class="cta-buttons">
-          <StarfieldButton
-            variant="primary"
-            size="lg"
-            @click="goToLogin"
-          >
-            Get Started Free
-          </StarfieldButton>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <CreateWorkspaceModal
     v-model:open="isCreateWorkspaceModalOpen"

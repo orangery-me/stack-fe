@@ -4,11 +4,15 @@ import { useRoute } from "vue-router";
 import { useToast } from "@/composables/useToast.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
+import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
+import CreateChannelModal from "@/modules/channels/components/CreateChannelModal.vue";
+import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
 
-const { error } = useToast();
+const { error, success } = useToast();
 const route = useRoute();
 const authStore = useAuthStore();
 const workspaceStore = useWorkspaceStore();
+const channelStore = useChannelStore();
 
 const currentUser = computed(() => authStore.user);
 const workspaceId = route.params.id;
@@ -16,20 +20,12 @@ const workspaceId = route.params.id;
 // Computed values from store
 const workspace = computed(() => workspaceStore.workspaceDetail);
 const members = computed(() => workspaceStore.members);
+const channels = computed(() => channelStore.channels);
+const selectedChannel = computed(() => channelStore.selectedChannel);
 
-// Placeholder channels data (will be replaced when API is ready)
-const channels = ref([
-  { id: "1", name: "all-chau-thi-workspace" },
-  { id: "2", name: "module-automation-zalo" },
-  { id: "3", name: "module-ocr" },
-  { id: "4", name: "module-todo-village" },
-  { id: "5", name: "project-hatang" },
-  { id: "6", name: "social" },
-]);
-
-const selectedChannel = ref("project-hatang");
 const channelsExpanded = ref(true);
 const directMessagesExpanded = ref(true);
+const isCreateChannelModalOpen = ref(false);
 
 // Get workspace initials for logo
 const getWorkspaceInitials = (name) => {
@@ -60,8 +56,22 @@ const getUserInitials = (name) => {
   return name[0].toUpperCase();
 };
 
-const selectChannel = (channelName) => {
-  selectedChannel.value = channelName;
+const selectChannel = (channelId) => {
+  channelStore.selectChannel(channelId);
+};
+
+const openCreateChannelModal = () => {
+  isCreateChannelModalOpen.value = true;
+};
+
+const handleChannelCreated = async () => {
+  // Refresh channels list
+  try {
+    await channelStore.fetchUserChannels(workspaceId);
+    success("Channel created successfully!");
+  } catch (err) {
+    console.error("Error refreshing channels:", err);
+  }
 };
 
 const toggleChannels = () => {
@@ -77,7 +87,18 @@ onMounted(async () => {
     await Promise.all([
       workspaceStore.fetchWorkspaceById(workspaceId),
       workspaceStore.fetchMembers(workspaceId),
+      channelStore.fetchUserChannels(workspaceId),
     ]);
+
+    // Automatically select default channel
+    const defaultChannel = channelStore.channels.find(
+      (channel) => channel.isDefault === true
+    );
+    if (defaultChannel) {
+      channelStore.selectChannel(defaultChannel.id);
+    } else if (channelStore.channels.length > 0) {
+      channelStore.selectChannel(channelStore.channels[0].id);
+    }
   } catch (err) {
     error("Failed to load workspace details");
     console.error("Error loading workspace:", err);
@@ -390,17 +411,36 @@ onMounted(async () => {
             v-if="channelsExpanded"
             class="sidebar-section-content"
           >
-            <button
-              v-for="channel in channels"
-              :key="channel.id"
-              class="sidebar-channel-item"
-              :class="{ active: selectedChannel === channel.name }"
-              @click="selectChannel(channel.name)"
+            <div
+              v-if="channelStore.channelsLoading"
+              class="sidebar-loading"
             >
-              <span class="channel-prefix">#</span>
-              <span class="channel-name">{{ channel.name }}</span>
-            </button>
-            <button class="sidebar-add-item">
+              <span>Loading channels...</span>
+            </div>
+            <template v-else-if="channels && channels.length > 0">
+              <button
+                v-for="channel in channels"
+                :key="channel.id"
+                class="sidebar-channel-item"
+                :class="{ active: selectedChannel?.id === channel.id }"
+                @click="selectChannel(channel.id)"
+              >
+                <span class="channel-prefix">#</span>
+                <span class="channel-name">{{
+                  channel.name || "Unnamed"
+                }}</span>
+              </button>
+            </template>
+            <div
+              v-else
+              class="sidebar-loading"
+            >
+              <span>No channels yet</span>
+            </div>
+            <button
+              class="sidebar-add-item"
+              @click="openCreateChannelModal"
+            >
               <span>+ Add channels</span>
             </button>
           </div>
@@ -471,25 +511,13 @@ onMounted(async () => {
     </div>
 
     <!-- Main Content Area -->
-    <div class="main-content">
-      <div class="main-content-header">
-        <div class="channel-header">
-          <span class="channel-title"># {{ selectedChannel }}</span>
-        </div>
-      </div>
+    <ChannelDetailView />
 
-      <div class="main-content-body">
-        <div class="content-placeholder">
-          <p class="placeholder-text">
-            Workspace: {{ workspace?.name }}
-          </p>
-          <p class="placeholder-description">
-            Main content area will be implemented here. This area uses a white
-            background for better readability.
-          </p>
-        </div>
-      </div>
-    </div>
+    <CreateChannelModal
+      v-model:open="isCreateChannelModalOpen"
+      :workspace-id="workspaceId"
+      @created="handleChannelCreated"
+    />
   </div>
 </template>
 

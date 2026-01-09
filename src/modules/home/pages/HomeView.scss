@@ -386,18 +386,54 @@
 
 // Workspaces Section
 .workspaces-section {
-  padding: 4rem 2.5rem;
+  padding: 6rem 2.5rem;
   min-height: calc(100vh - 200px);
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(
-    135deg,
-    rgba(184, 167, 255, 0.1) 0%,
-    rgba(184, 167, 255, 0.05) 100%
+    180deg,
+    var(--starfield-accent) 0%,
+    rgba(0, 0, 0, 0.85) 80%
   );
+  color: var(--starfield-text);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  &::before {
+    background: radial-gradient(
+        circle at 25% 30%,
+        rgba(0, 0, 0, 0.25),
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 80% 10%,
+        rgba(0, 0, 0, 0.15),
+        transparent 45%
+      );
+  }
+
+  &::after {
+    background: linear-gradient(
+      135deg,
+      rgba(241, 245, 249, 0.05) 0%,
+      rgba(184, 167, 255, 0.05) 40%,
+      rgba(241, 245, 249, 0.05) 80%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.6;
+  }
 }
 
 .workspaces-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin: 0 auto 3rem;
+  max-width: 720px;
 
   .welcome-title {
     font-size: 2.5rem;
@@ -412,10 +448,16 @@
   }
 }
 
+.workspaces-section .container-center {
+  position: relative;
+  z-index: 1;
+}
+
 .workspaces-content {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+  align-items: start;
 
   @media (min-width: 1024px) {
     grid-template-columns: 2fr 1fr;
@@ -423,13 +465,46 @@
 }
 
 .workspaces-card {
+  position: relative;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(241, 245, 249, 0.08);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+  padding: 2rem;
+
   .workspaces-card-header {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
     margin-bottom: 2rem;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid rgba(184, 167, 255, 0.2);
+
+    .card-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .workspace-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(241, 245, 249, 0.15);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(241, 245, 249, 0.85);
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
 
     .card-icon {
       font-size: 1.5rem;
@@ -438,24 +513,30 @@
     .card-title {
       margin: 0;
     }
+
+    .create-button {
+      flex-shrink: 0;
+    }
   }
 
   .loading-state,
   .empty-state {
     text-align: center;
-    padding: 3rem 2rem;
-    color: rgba(241, 245, 249, 0.7);
+    padding: 3rem 2rem 2rem;
+    color: rgba(241, 245, 249, 0.85);
 
     .empty-text {
       font-family: "JetBrains Mono", monospace;
       font-size: 1.25rem;
-      color: rgba(184, 167, 255, 0.8);
+      color: rgba(241, 245, 249, 0.9);
       margin-bottom: 0.5rem;
     }
 
     .empty-description {
       font-size: 0.875rem;
-      color: rgba(241, 245, 249, 0.5);
+      color: rgba(241, 245, 249, 0.7);
+      max-width: 520px;
+      margin: 0 auto 1.5rem;
     }
   }
 
@@ -463,22 +544,23 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    margin-top: 0.5rem;
   }
 
   .workspace-item {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(184, 167, 255, 0.1);
+    padding: 1.5rem 1.25rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(241, 245, 249, 0.08);
     border-radius: 2px;
     cursor: pointer;
     transition: all 0.3s ease;
 
     &:hover {
-      border-color: rgba(184, 167, 255, 0.3);
-      box-shadow: 0 0 20px rgba(184, 167, 255, 0.1);
+      border-color: rgba(241, 245, 249, 0.18);
+      box-shadow: 0 0 20px rgba(184, 167, 255, 0.15);
       transform: translateY(-2px);
     }
   }
@@ -489,10 +571,10 @@
     border-radius: 2px;
     background: linear-gradient(
       135deg,
-      rgba(184, 167, 255, 0.3),
-      rgba(184, 167, 255, 0.1)
+      rgba(184, 167, 255, 0.55),
+      rgba(184, 167, 255, 0.35)
     );
-    border: 1px solid rgba(184, 167, 255, 0.3);
+    border: 1px solid rgba(241, 245, 249, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -506,6 +588,12 @@
   .workspace-info {
     flex: 1;
     min-width: 0;
+
+    .workspace-name-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
 
     .workspace-name {
       font-family: "JetBrains Mono", monospace;
@@ -542,9 +630,21 @@
       }
     }
 
-    .arrow-icon {
-      color: rgba(184, 167, 255, 0.6);
-      font-size: 1.25rem;
+    .launch-btn {
+      background: transparent;
+      border: 1px solid rgba(184, 167, 255, 0.4);
+      color: #f1f5f9;
+      padding: 0.5rem 0.65rem;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 1.1rem;
+
+      &:hover {
+        border-color: rgba(184, 167, 255, 0.65);
+        box-shadow: 0 0 12px rgba(184, 167, 255, 0.35);
+        background: rgba(184, 167, 255, 0.12);
+      }
     }
   }
 
@@ -552,9 +652,12 @@
     margin-top: 2rem;
     padding-top: 1.5rem;
     border-top: 1px solid rgba(184, 167, 255, 0.2);
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 0.75rem;
+
+    .footer-create {
+      width: fit-content;
+    }
   }
 
   .link-button {
@@ -574,7 +677,17 @@
   }
 }
 
-.template-card {
+.workspaces-sidecards {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.template-card,
+.invite-card {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(241, 245, 249, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
   .template-content {
     display: flex;
     flex-direction: column;

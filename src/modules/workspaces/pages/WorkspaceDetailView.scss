@@ -377,56 +377,6 @@
   font-size: 0.875rem;
 }
 
-// Main Content Area
-.main-content {
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.main-content-header {
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 1.5rem;
-  background: #ffffff;
-
-  .channel-header {
-    .channel-title {
-      font-family: "JetBrains Mono", monospace;
-      font-weight: 700;
-      font-size: 1.125rem;
-      color: #1f2937;
-      letter-spacing: 0.05em;
-    }
-  }
-}
-
-.main-content-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 2rem;
-}
-
-.content-placeholder {
-  max-width: 800px;
-  margin: 0 auto;
-
-  .placeholder-text {
-    font-family: "JetBrains Mono", monospace;
-    font-weight: 600;
-    font-size: 1.25rem;
-    color: #1f2937;
-    margin-bottom: 1rem;
-  }
-
-  .placeholder-description {
-    font-family: "Merriweather", serif;
-    font-weight: 300;
-    font-size: 1rem;
-    color: #6b7280;
-    line-height: 1.6;
-  }
-}
 
 // Responsive
 @media (max-width: 1024px) {

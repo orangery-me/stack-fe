@@ -21,5 +21,11 @@ export const API_ENDPOINTS = {
   USERS: {
     SEARCH: '/users/search',
   },
+  CHANNELS: {
+    GET_USER_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels/my`,
+    GET_ALL_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels`,
+    CREATE: (workspaceId) => `/workspaces/${workspaceId}/channels`,
+    GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
+  },
 };
 
