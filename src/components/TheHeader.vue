@@ -46,8 +46,8 @@ const goToLogin = () => {
           class="navbar-logo"
         >
           <svg
-            width="32"
-            height="32"
+            width="24"
+            height="24"
             viewBox="0 0 32 32"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -200,7 +200,7 @@ const goToLogin = () => {
 	background: rgba(0, 0, 0, 0.6);
 	backdrop-filter: blur(20px);
 	border-bottom: 1px solid rgba(184, 167, 255, 0.2);
-	padding: 1rem 0;
+	padding: 0.75rem 0;
 	position: sticky;
 	top: 0;
 	z-index: 1000;
@@ -217,12 +217,12 @@ const goToLogin = () => {
 .navbar-logo {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
+	gap: 0.5rem;
 	text-decoration: none;
 	color: #F1F5F9;
 	font-family: 'JetBrains Mono', monospace;
 	font-weight: 700;
-	font-size: 1.5rem;
+	font-size: 1.25rem;
 	letter-spacing: 0.05em;
 	transition: all 0.3s ease;
 	

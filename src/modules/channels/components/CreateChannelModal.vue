@@ -68,9 +68,6 @@ const validateCreateChannelForm = () => {
     errors.name = "Channel name is required";
   } else if (name.length > 255) {
     errors.name = "Channel name must not exceed 255 characters";
-  } else if (!/^[a-z0-9-]+$/.test(name.trim().toLowerCase())) {
-    errors.name =
-      "Channel name can only contain lowercase letters, numbers, and hyphens";
   }
 
   if (!["public", "private"].includes(type)) {

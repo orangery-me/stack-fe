@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 
@@ -9,6 +9,29 @@ const channelStore = useChannelStore();
 const workspace = computed(() => workspaceStore.workspaceDetail);
 const selectedChannel = computed(() => channelStore.selectedChannel);
 const members = computed(() => workspaceStore.members);
+
+const messages = ref([]);
+const newMessage = ref("");
+
+const addTemporaryMessage = (content) => {
+  const trimmed = content.trim();
+  if (!trimmed) return;
+
+  const now = new Date();
+
+  messages.value.push({
+    id: Date.now(),
+    authorName: "You",
+    content: trimmed,
+    createdAt: now.toISOString(),
+    isOwn: true,
+  });
+};
+
+const handleSendMessage = () => {
+  addTemporaryMessage(newMessage.value);
+  newMessage.value = "";
+};
 
 // Get creator name from channel
 const getChannelCreator = (channel) => {
@@ -23,6 +46,15 @@ const formatDate = (dateString) => {
   const date = new Date(dateString);
   const options = { month: "long", day: "numeric", year: "numeric" };
   return date.toLocaleDateString("en-US", options);
+};
+
+const formatTime = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 </script>
 
@@ -113,45 +145,103 @@ const formatDate = (dateString) => {
       </div>
       <div
         v-else
-        class="channel-welcome"
+        class="channel-content"
       >
-        <h1 class="channel-welcome-title">
-          # {{ selectedChannel.name }}
-        </h1>
-        <p class="channel-welcome-message">
-          <span class="channel-creator">
-            {{ getChannelCreator(selectedChannel) || "Someone" }}
-          </span>
-          created this channel on
-          <span class="channel-date">
-            {{ formatDate(selectedChannel.createdAt) }} </span>. This is the very beginning of the
-          <span class="channel-name-highlight">#{{ selectedChannel.name }}</span>
-          channel.
-        </p>
-        <div class="channel-action-cards">
-          <div class="action-card action-card--purple">
-            <div class="action-card-icon">
-              <img
-                src="/icons/message-circle-dot.svg"
-                alt="Add people icon"
-              >
+        <div class="channel-welcome">
+          <h1 class="channel-welcome-title">
+            # {{ selectedChannel.name }}
+          </h1>
+          <p class="channel-welcome-message">
+            <span class="channel-creator">
+              {{ getChannelCreator(selectedChannel) || "Someone" }}
+            </span>
+            created this channel on
+            <span class="channel-date">
+              {{ formatDate(selectedChannel.createdAt) }} </span>. This is the very beginning of the
+            <span class="channel-name-highlight">#{{ selectedChannel.name }}</span>
+            channel.
+          </p>
+          <div class="channel-action-cards">
+            <div class="action-card action-card--purple">
+              <div class="action-card-icon">
+                <img
+                  src="/icons/message-circle-dot.svg"
+                  alt="Add people icon"
+                >
+              </div>
+              <h3 class="action-card-title">
+                Add people to channel
+              </h3>
             </div>
-            <h3 class="action-card-title">
-              Add people to channel
-            </h3>
-          </div>
-          <div class="action-card action-card--blue">
-            <div class="action-card-icon">
-              <img
-                src="/icons/file.svg"
-                alt="Channel description icon"
-              >
+            <div class="action-card action-card--blue">
+              <div class="action-card-icon">
+                <img
+                  src="/icons/file.svg"
+                  alt="Channel description icon"
+                >
+              </div>
+              <h3 class="action-card-title">
+                Add channel description
+              </h3>
             </div>
-            <h3 class="action-card-title">
-              Add channel description
-            </h3>
           </div>
         </div>
+
+        <div class="channel-messages-container">
+          <div class="channel-day-divider">
+            <span>
+              {{ formatDate(selectedChannel.createdAt) }}
+            </span>
+          </div>
+
+          <div
+            v-for="message in messages"
+            :key="message.id"
+            class="channel-message"
+          >
+            <div class="channel-message-avatar">
+              <span>
+                {{ message.authorName?.charAt(0).toUpperCase() || "U" }}
+              </span>
+            </div>
+            <div class="channel-message-body">
+              <div class="channel-message-header">
+                <span class="channel-message-author">
+                  {{ message.authorName }}
+                </span>
+                <span class="channel-message-time">
+                  {{ formatTime(message.createdAt) }}
+                </span>
+              </div>
+              <div class="channel-message-content">
+                {{ message.content }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="selectedChannel"
+      class="channel-message-input"
+    >
+      <div class="channel-message-input-inner">
+        <textarea
+          v-model="newMessage"
+          class="channel-message-textarea"
+          :placeholder="`Message #${selectedChannel.name}`"
+          rows="1"
+          @keydown.enter.exact.prevent="handleSendMessage"
+          @keydown.shift.enter.stop
+        />
+        <button
+          class="channel-message-send"
+          type="button"
+          @click="handleSendMessage"
+        >
+          Send
+        </button>
       </div>
     </div>
   </div>
