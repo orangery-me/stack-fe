@@ -93,7 +93,11 @@ const handleDismiss = () => {
         {{ message }}
       </p>
     </div>
-    <button class="toast__close" aria-label="Đóng" @click="handleDismiss" />
+    <button
+      class="toast__close"
+      aria-label="Đóng"
+      @click="handleDismiss"
+    />
   </div>
 </template>
 
