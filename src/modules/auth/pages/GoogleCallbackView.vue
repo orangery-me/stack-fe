@@ -41,7 +41,7 @@ onMounted(async () => {
   <section class="callback-section">
     <div class="container-center">
       <div class="callback-container">
-        <GlowText level="3">
+        <GlowText :level="3">
           Processing sign in...
         </GlowText>
         <p class="callback-message">
