@@ -10,14 +10,14 @@ class SocketService {
     this.isConnected = false;
   }
 
-  connect() {
+  connect () {
     if (this.socket && this.isConnected) {
       return this.socket;
     }
 
     const accessToken = localStorage.getItem('accessToken');
 
-    const baseUrl = CHAT_BASE_URL.replace(/\/$/, '');
+    const baseUrl = CHAT_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
     this.socket = io(baseUrl + CHAT_NAMESPACE, {
       transports: ['websocket'],
@@ -47,7 +47,7 @@ class SocketService {
     return this.socket;
   }
 
-  disconnect() {
+  disconnect () {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -56,7 +56,7 @@ class SocketService {
     }
   }
 
-  on(event, handler) {
+  on (event, handler) {
     if (!this.socket) {
       this.connect();
     }
@@ -72,7 +72,7 @@ class SocketService {
     }
   }
 
-  off(event, handler) {
+  off (event, handler) {
     if (!this.socket) return;
     const handlers = this.listeners.get(event);
     if (!handlers) return;
@@ -87,10 +87,21 @@ class SocketService {
     }
   }
 
-  emit(event, payload) {
+  emit (event, payload) {
     if (!this.socket) {
       this.connect();
     }
+
+    // Log outgoing socket events (especially chat messages)
+    if (event === 'send_channel_message' || event === 'join_channel') {
+      console.log(`[Socket Service] 📤 Emitting event: ${event}`, {
+        channelId: payload?.channelId,
+        ...(event === 'send_channel_message' && {
+          content: payload?.content?.substring(0, 50) + (payload?.content?.length > 50 ? "..." : ""),
+        }),
+      });
+    }
+
     this.socket.emit(event, payload);
   }
 }
@@ -98,10 +109,22 @@ class SocketService {
 const socketService = new SocketService();
 
 export const CHAT_EVENTS = {
-  SEND_MESSAGE: 'send_message',
+  // Channel messaging
+  SEND_CHANNEL_MESSAGE: 'send_channel_message',
+  // Direct messaging
+  SEND_DM_MESSAGE: 'send_dm_message',
+
+  // Generic chat events
   NEW_MESSAGE: 'new_message',
   MESSAGE_SENT: 'message_sent',
   ERROR: 'error',
+
+  // Room management
+  JOIN_CHANNEL: 'join_channel',
+
+  // Message loading / pagination
+  LOAD_MESSAGES: 'load_messages',
+  MESSAGES_LOADED: 'messages_loaded',
 };
 
 export default socketService;
