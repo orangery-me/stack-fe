@@ -2,7 +2,7 @@
 import { computed, ref, nextTick, watch, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
-import { useChatStore } from "@/modules/channels/stores/chat.store.js";
+import { useChatStore } from "@/modules/channels/stores/chat.store";
 
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
@@ -41,6 +41,16 @@ const handleSendMessage = () => {
 
   newMessage.value = "";
   // Auto scroll will happen via watch on messages
+};
+
+const handleRetryMessage = (message) => {
+  if (!selectedChannel.value || !workspace.value) return;
+
+  chatStore.retryMessage(
+    selectedChannel.value.id,
+    message.id,
+    workspace.value.id
+  );
 };
 
 // Get creator name from channel
@@ -251,6 +261,10 @@ onUnmounted(() => {
             v-for="message in messages"
             :key="message.id"
             class="channel-message"
+            :class="{
+              'channel-message--pending': message.status === 'pending',
+              'channel-message--failed': message.status === 'failed',
+            }"
           >
             <div class="channel-message-avatar">
               <span>
@@ -268,6 +282,18 @@ onUnmounted(() => {
               </div>
               <div class="channel-message-content">
                 {{ message.content }}
+              </div>
+              <div
+                v-if="message.status === 'failed'"
+                class="channel-message-error"
+              >
+                Gửi thất bại.
+                <button
+                  class="channel-message-retry"
+                  @click="handleRetryMessage(message)"
+                >
+                  Thử lại
+                </button>
               </div>
             </div>
           </div>
