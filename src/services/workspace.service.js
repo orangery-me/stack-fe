@@ -1,4 +1,4 @@
-import apiService from './api.service.js';
+import apiHelper from '@/helpers/apiHelper.js';
 import { API_ENDPOINTS } from '@/config/api.js';
 
 /**
@@ -15,7 +15,7 @@ class WorkspaceService {
    * @returns {Promise<{id: string, name: string, slug: string, ownerId: string, plan: string, settings?: object, createdAt: Date}>}
    */
   async createWorkspace(workspaceData) {
-    const response = await apiService.post(API_ENDPOINTS.WORKSPACES.CREATE, workspaceData);
+    const response = await apiHelper.post(API_ENDPOINTS.WORKSPACES.CREATE, workspaceData);
     return response.data.data;
   }
 
@@ -28,7 +28,7 @@ class WorkspaceService {
    * @returns {Promise<{message: string}>}
    */
   async inviteMember(workspaceId, inviteData) {
-    const response = await apiService.post(
+    const response = await apiHelper.post(
       API_ENDPOINTS.WORKSPACES.INVITE(workspaceId),
       inviteData
     );
@@ -41,7 +41,7 @@ class WorkspaceService {
    * @returns {Promise<{message: string, workspaceId: string}>}
    */
   async acceptInvite(token) {
-    const response = await apiService.post(API_ENDPOINTS.WORKSPACES.ACCEPT_INVITE, {
+    const response = await apiHelper.post(API_ENDPOINTS.WORKSPACES.ACCEPT_INVITE, {
       token,
     });
     return response.data.data;
@@ -52,7 +52,7 @@ class WorkspaceService {
    * @returns {Promise<Array<{id: string, name: string, slug: string, ownerId: string, plan: string, settings?: object, createdAt: Date}>>}
    */
   async getMyWorkspaces() {
-    const response = await apiService.get(API_ENDPOINTS.WORKSPACES.GET_MY_WORKSPACES);
+    const response = await apiHelper.get(API_ENDPOINTS.WORKSPACES.GET_MY_WORKSPACES);
     return response.data.data;
   }
 
@@ -62,7 +62,7 @@ class WorkspaceService {
    * @returns {Promise<Array<{id: string, workspaceId: string, userId: string, email: string, name: string, avatar?: string, roleId: string, roleName: string, permissions?: object, status: string, joinedAt: Date}>>}
    */
   async getWorkspaceMembers(workspaceId) {
-    const response = await apiService.get(API_ENDPOINTS.WORKSPACES.GET_MEMBERS(workspaceId));
+    const response = await apiHelper.get(API_ENDPOINTS.WORKSPACES.GET_MEMBERS(workspaceId));
     return response.data.data;
   }
 
@@ -72,7 +72,7 @@ class WorkspaceService {
    * @returns {Promise<{id: string, name: string, slug: string, ownerId: string, plan: string, settings?: object, createdAt: Date}>}
    */
   async getWorkspaceById(workspaceId) {
-    const response = await apiService.get(API_ENDPOINTS.WORKSPACES.DETAIL_BY_ID(workspaceId));
+    const response = await apiHelper.get(API_ENDPOINTS.WORKSPACES.DETAIL_BY_ID(workspaceId));
     return response.data.data;
   }
 }

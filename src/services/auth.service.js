@@ -1,4 +1,4 @@
-import apiService from "./api.service.js";
+import apiHelper from "@/helpers/apiHelper.js";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/config/api.js";
 import { API_BASE_URL } from "@/config/api.js";
@@ -14,7 +14,7 @@ class AuthService {
    * @returns {Promise<{accessToken: string, refreshToken?: string, name?: string}>}
    */
   async login(email, password) {
-    const response = await apiService.post(API_ENDPOINTS.AUTH.LOGIN, {
+    const response = await apiHelper.post(API_ENDPOINTS.AUTH.LOGIN, {
       email,
       password,
     });
@@ -31,7 +31,7 @@ class AuthService {
    * @returns {Promise<{message: string, email: string}>}
    */
   async register(registerData) {
-    const response = await apiService.post(
+    const response = await apiHelper.post(
       API_ENDPOINTS.AUTH.REGISTER,
       registerData
     );
@@ -43,7 +43,7 @@ class AuthService {
    * @returns {Promise<void>}
    */
   async logout() {
-    await apiService.get(API_ENDPOINTS.AUTH.LOGOUT);
+    await apiHelper.get(API_ENDPOINTS.AUTH.LOGOUT);
   }
 
   /**
@@ -100,7 +100,7 @@ class AuthService {
     }
     sessionStorage.removeItem("google_oauth_state");
     
-    const response = await apiService.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, {
+    const response = await apiHelper.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, {
       code,
       state,
     });
@@ -113,7 +113,7 @@ class AuthService {
    * @returns {Promise<{message: string}>}
    */
   async verifyEmail(token) {
-    const response = await apiService.get(
+    const response = await apiHelper.get(
       `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`
     );
     return response.data.data;

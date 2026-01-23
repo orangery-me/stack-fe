@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import chatService from "../../../services/chat.service";
-import socketService, { CHAT_EVENTS } from "../../../services/socket.service";
+import socketHelper from "../../../helpers/socketHelper";
+import { CHAT_EVENTS, CHAT_NAMESPACE } from "../constants";
 import { useAuthStore } from "../../auth/stores/auth.store";
 import type {
   MessageStatus,
@@ -16,7 +17,6 @@ import {
 } from "../constants";
 
 export type { MessageStatus, ChatMessage } from "../types";
-
 
 function generateTempId(): string {
   return `${TEMP_ID_PREFIX}${Date.now()}_${Math.random()
@@ -42,13 +42,20 @@ export const useChatStore = defineStore("chat", {
   actions: {
     // ==================== Message Fetching ====================
 
-    async fetchMessages(channelId: string, members: any[] = []) {
+    async fetchMessages(
+      workspaceId: string,
+      channelId: string,
+      members: any[] = []
+    ) {
       this.messagesLoading = true;
       this.messagesError = null;
 
       try {
-        const result: any = await chatService.getMessagesByChannelId(channelId);
-        const messages = result?.messages || [];
+        const result: any = await chatService.getMessages(
+          workspaceId,
+          channelId
+        );
+        const messages = result?.data?.messages || [];
 
         this.messagesByChannel[channelId] = this.formatMessages(
           messages,
@@ -82,7 +89,7 @@ export const useChatStore = defineStore("chat", {
       const user = authStore.user as { id?: string; name?: string } | null;
       const optimisticMessage: ChatMessage = {
         id: tempId,
-        senderId: user?.id ?? '',
+        senderId: user?.id ?? "",
         authorName: user?.name || DEFAULT_AUTHOR_NAME,
         content: trimmedContent,
         createdAt: new Date().toISOString(),
@@ -114,7 +121,7 @@ export const useChatStore = defineStore("chat", {
       };
 
       // Emit socket event
-      socketService.emit(CHAT_EVENTS.SEND_CHANNEL_MESSAGE, {
+      socketHelper.emit(CHAT_EVENTS.SEND_CHANNEL_MESSAGE, {
         workspaceId,
         channelId,
         content: trimmedContent,
@@ -197,7 +204,7 @@ export const useChatStore = defineStore("chat", {
     // ==================== Socket Management ====================
 
     joinChannel(channelId: string) {
-      socketService.emit(CHAT_EVENTS.JOIN_CHANNEL, { channelId });
+      socketHelper.emit(CHAT_EVENTS.JOIN_CHANNEL, { channelId });
     },
 
     setupSocketListeners(channelId: string, members: any[] = []) {
@@ -207,15 +214,18 @@ export const useChatStore = defineStore("chat", {
       if (this.socketListeners._globalSetup) return;
       this.socketListeners._globalSetup = true;
 
-      socketService.on(
+      // Connect to chat namespace with logging enabled
+      socketHelper.connect(CHAT_NAMESPACE, { enableLogging: true });
+
+      socketHelper.on(
         CHAT_EVENTS.NEW_MESSAGE,
         this.handleNewMessage.bind(this)
       );
-      socketService.on(
+      socketHelper.on(
         CHAT_EVENTS.MESSAGE_SENT,
         this.handleMessageSent.bind(this)
       );
-      socketService.on(CHAT_EVENTS.ERROR, this.handleSocketError.bind(this));
+      socketHelper.on(CHAT_EVENTS.ERROR, this.handleSocketError.bind(this));
     },
     // Handle new message from server
     handleNewMessage(message: any) {
@@ -253,7 +263,7 @@ export const useChatStore = defineStore("chat", {
         console.log("[Chat Store] Message already exists, skipping duplicate");
       }
     },
-    // Handle message sent confirmation 
+    // Handle message sent confirmation
     handleMessageSent(message: any) {
       const channelId = message.channelId;
       const channelData = this.socketListeners[channelId];

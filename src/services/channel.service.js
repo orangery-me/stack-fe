@@ -1,4 +1,4 @@
-import apiService from './api.service.js';
+import apiHelper from '@/helpers/apiHelper.js';
 import { API_ENDPOINTS } from '@/config/api.js';
 
 /**
@@ -11,7 +11,7 @@ class ChannelService {
    * @returns {Promise<Array<{id: string, workspaceId: string, type: string, name?: string, createdById: string, createdAt: Date}>>}
    */
   async getUserChannels(workspaceId) {
-    const response = await apiService.get(API_ENDPOINTS.CHANNELS.GET_USER_CHANNELS(workspaceId));
+    const response = await apiHelper.get(API_ENDPOINTS.CHANNELS.GET_USER_CHANNELS(workspaceId));
     return response.data.data;
   }
 
@@ -21,7 +21,7 @@ class ChannelService {
    * @returns {Promise<Array<{id: string, workspaceId: string, type: string, name?: string, createdById: string, createdAt: Date, metadata?: object, settings?: object}>>}
    */
   async getAllChannels(workspaceId) {
-    const response = await apiService.get(API_ENDPOINTS.CHANNELS.GET_ALL_CHANNELS(workspaceId));
+    const response = await apiHelper.get(API_ENDPOINTS.CHANNELS.GET_ALL_CHANNELS(workspaceId));
     return response.data.data;
   }
 
@@ -36,7 +36,7 @@ class ChannelService {
    * @returns {Promise<{id: string, workspaceId: string, type: string, name?: string, createdById: string, createdAt: Date}>}
    */
   async createChannel(workspaceId, channelData) {
-    const response = await apiService.post(
+    const response = await apiHelper.post(
       API_ENDPOINTS.CHANNELS.CREATE(workspaceId),
       channelData
     );
@@ -50,7 +50,7 @@ class ChannelService {
    * @returns {Promise<{id: string, workspaceId: string, type: string, name?: string, createdById: string, createdAt: Date, metadata?: object, settings?: object}>}
    */
   async getChannelById(workspaceId, channelId) {
-    const response = await apiService.get(
+    const response = await apiHelper.get(
       API_ENDPOINTS.CHANNELS.GET_BY_ID(workspaceId, channelId)
     );
     return response.data.data;
