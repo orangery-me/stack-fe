@@ -1,9 +1,7 @@
 // API Configuration
-// REST API (stack-api - authentication, workspaces, channels, users, ...)
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8105/api';
 
-// WebSocket / Realtime API (stack-chat - chat service)
-export const CHAT_BASE_URL = import.meta.env.VITE_CHAT_BASE_URL || 'http://localhost:3000';
+export const CHAT_BASE_URL = import.meta.env.VITE_CHAT_BASE_URL || 'http://localhost:3000/api';
 
 export const API_ENDPOINTS = {
   AUTH: {
@@ -30,6 +28,9 @@ export const API_ENDPOINTS = {
     GET_ALL_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     CREATE: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
+  },
+  CHAT: {
+    GET_MESSAGES_BY_CHANNEL_ID: () => `/chat/messages`,
   },
 };
 
