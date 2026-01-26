@@ -63,11 +63,11 @@ export const useChatStore = defineStore("chat", {
           "sent"
         );
 
-        this.joinChannel(channelId);
-
         if (!this.socketListeners[channelId]) {
-          this.setupSocketListeners(channelId, members);
+          await this.setupSocketListeners(channelId, members);
         }
+
+        await this.joinChannel(channelId);
       } catch (error) {
         this.messagesError = error as Error;
         throw error;
@@ -78,7 +78,7 @@ export const useChatStore = defineStore("chat", {
 
     // ==================== Message Sending ====================
 
-    sendMessage({ workspaceId, channelId, content }: SendMessagePayload) {
+    async sendMessage({ workspaceId, channelId, content }: SendMessagePayload) {
       if (!content?.trim()) return;
 
       const trimmedContent = content.trim();
@@ -121,7 +121,7 @@ export const useChatStore = defineStore("chat", {
       };
 
       // Emit socket event
-      socketHelper.emit(CHAT_EVENTS.SEND_CHANNEL_MESSAGE, {
+      await socketHelper.emit(CHAT_EVENTS.SEND_CHANNEL_MESSAGE, {
         workspaceId,
         channelId,
         content: trimmedContent,
@@ -203,19 +203,28 @@ export const useChatStore = defineStore("chat", {
 
     // ==================== Socket Management ====================
 
-    joinChannel(channelId: string) {
-      socketHelper.emit(CHAT_EVENTS.JOIN_CHANNEL, { channelId });
+    async joinChannel(channelId: string) {
+      try {
+        await socketHelper.emit(CHAT_EVENTS.JOIN_CHANNEL, { channelId });
+      } catch (error) {
+        console.error('[Chat Store] Failed to join channel:', error);
+        throw error;
+      }
     },
 
-    setupSocketListeners(channelId: string, members: any[] = []) {
+    async setupSocketListeners(channelId: string, members: any[] = []) {
       this.socketListeners[channelId] = { members };
 
       // Setup global listeners only once
-      if (this.socketListeners._globalSetup) return;
+      if (this.socketListeners._globalSetup) {
+        // Wait for socket connection
+        await socketHelper.waitForConnection();
+        return;
+      }
       this.socketListeners._globalSetup = true;
 
       // Connect to chat namespace with logging enabled
-      socketHelper.connect(CHAT_NAMESPACE, { enableLogging: true });
+      await socketHelper.connect(CHAT_NAMESPACE, { enableLogging: true });
 
       socketHelper.on(
         CHAT_EVENTS.NEW_MESSAGE,
