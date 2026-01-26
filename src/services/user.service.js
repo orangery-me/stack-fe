@@ -1,4 +1,4 @@
-import apiService from './api.service.js';
+import apiHelper from '@/helpers/apiHelper.js';
 import { API_ENDPOINTS } from '@/config/api.js';
 
 /**
@@ -12,7 +12,7 @@ class UserService {
    * @returns {Promise<Array<{id: string, email: string, name: string, avatar?: string}>>}
    */
   async searchUsers(query, limit = 10) {
-    const response = await apiService.get(API_ENDPOINTS.USERS.SEARCH, {
+    const response = await apiHelper.get(API_ENDPOINTS.USERS.SEARCH, {
       params: { query, limit },
     });
     return response.data.data;

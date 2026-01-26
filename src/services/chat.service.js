@@ -1,37 +1,22 @@
-import { CHAT_BASE_URL, API_ENDPOINTS } from '../config/api.js';
-import axios from 'axios';
-
-const chatApiService = axios.create({
-  baseURL: CHAT_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor - Add Bearer token to requests
-chatApiService.interceptors.request.use(
-  (config) => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-/**
- * Channel API Service
- */
+import apiHelper from '@/helpers/apiHelper.js';
+import { API_ENDPOINTS } from '@/config/api.js';
 class ChatService {
-  async getMessagesByChannelId (channelId, page = 1, size = 20) {
-    const response = await chatApiService.post(API_ENDPOINTS.CHAT.GET_MESSAGES_BY_CHANNEL_ID(), {
-      channelId,
-      page,
-      size
-    });
+  constructor() { 
+    
+  }
+  async getMessages (workspaceId, channelId, page = 1, size = 20) {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CHAT.GET_MESSAGES(workspaceId, channelId),
+      { params: { page, size } }
+    );
+    return response.data;
+  }
+
+  async sendMessage (workspaceId, channelId, content, messageType = 'text') {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CHAT.SEND_MESSAGE(workspaceId, channelId),
+      { content, messageType }
+    );
     return response.data;
   }
 }

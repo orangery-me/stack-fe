@@ -1,7 +1,4 @@
-// API Configuration
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8105/api';
-
-export const CHAT_BASE_URL = import.meta.env.VITE_CHAT_BASE_URL || 'http://localhost:3000/api';
 
 export const API_ENDPOINTS = {
   AUTH: {
@@ -30,7 +27,8 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
   },
   CHAT: {
-    GET_MESSAGES_BY_CHANNEL_ID: () => `/chat/messages`,
+    GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+    SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
   },
 };
 

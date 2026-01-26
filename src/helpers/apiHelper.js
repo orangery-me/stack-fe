@@ -2,7 +2,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '@/config/api.js';
 
 // Create axios instance
-const apiService = axios.create({
+const apiHelper = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -10,7 +10,7 @@ const apiService = axios.create({
 });
 
 // Request interceptor - Add Bearer token to requests
-apiService.interceptors.request.use(
+apiHelper.interceptors.request.use(
   (config) => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
@@ -38,7 +38,7 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-apiService.interceptors.response.use(
+apiHelper.interceptors.response.use(
   (response) => {
     return response;
   },
@@ -63,7 +63,7 @@ apiService.interceptors.response.use(
         })
           .then((token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            return apiService(originalRequest);
+            return apiHelper(originalRequest);
           })
           .catch((err) => {
             const errorData = err.response?.data || err;
@@ -102,7 +102,7 @@ apiService.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
         processQueue(null, accessToken);
-        return apiService(originalRequest);
+        return apiHelper(originalRequest);
       } catch (refreshError) {
         // Refresh failed, clear tokens and redirect to login
         processQueue(refreshError, null);
@@ -124,5 +124,4 @@ apiService.interceptors.response.use(
   }
 );
 
-export default apiService;
-
+export default apiHelper;
