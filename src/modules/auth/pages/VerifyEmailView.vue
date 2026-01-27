@@ -3,7 +3,7 @@ import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useToast } from "@/composables/useToast.js";
 import authService from "@/services/auth.service.js";
-import GlowText from "@/components/GlowText.vue";
+import CalmHeading from "@/components/calm/CalmHeading.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -66,10 +66,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="verify-email-section">
+  <section class="auth-status">
     <div class="container-center">
-      <div class="verify-container">
-        <GlowText :level="3">
+      <div class="auth-status__container">
+        <CalmHeading :level="3">
           <template v-if="loading || status === 'processing'">
             Verifying email...
           </template>
@@ -79,8 +79,8 @@ onMounted(async () => {
           <template v-else>
             Verification failed
           </template>
-        </GlowText>
-        <p class="verify-message">
+        </CalmHeading>
+        <p class="auth-status__message ui-muted">
           <template v-if="loading || status === 'processing'">
             Please wait a moment
           </template>
@@ -97,30 +97,22 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.verify-email-section {
-  padding: 6rem 0;
+.auth-status {
+  padding: var(--space-48) 0;
   min-height: calc(100vh - 200px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.container-center {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.verify-container {
+.auth-status__container {
   text-align: center;
+  display: grid;
+  gap: var(--space-12);
 }
 
-.verify-message {
-  color: rgba(241, 245, 249, 0.7);
-  font-size: 1.125rem;
-  font-weight: 300;
-  margin-top: 1rem;
-  font-family: "Merriweather", serif;
+.auth-status__message {
+  margin: 0;
+  font-size: 14px;
 }
 </style>

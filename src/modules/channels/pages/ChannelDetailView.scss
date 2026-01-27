@@ -8,37 +8,36 @@
 }
 
 .main-content-header {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--ui-divider);
   background: #ffffff;
 
   .channel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    padding: var(--space-16) var(--space-24);
+    border-bottom: 1px solid var(--ui-divider);
 
     .channel-header-left {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: var(--space-12);
 
       .channel-title {
-        font-family: "JetBrains Mono", monospace;
-        font-weight: 700;
-        font-size: 1.125rem;
-        color: #1f2937;
-        letter-spacing: 0.05em;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--ui-text);
       }
 
       .channel-star {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         cursor: pointer;
 
         .channel-star-icon {
           width: 18px;
           height: 18px;
+          opacity: 0.8;
         }
       }
     }
@@ -46,28 +45,28 @@
     .channel-header-right {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: var(--space-8);
 
       .header-button {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        padding: 0.5rem 1rem;
-        background: transparent;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        color: #374151;
-        font-size: 0.875rem;
-        font-weight: 500;
+        padding: 0 var(--space-12);
+        height: 36px;
+        background: #ffffff;
+        border: 1px solid var(--ui-divider);
+        border-radius: var(--ui-radius-button);
+        color: var(--ui-text-muted);
+        font-size: 14px;
+        font-weight: 400;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: background var(--ui-duration) var(--ui-ease),
+          border-color var(--ui-duration) var(--ui-ease),
+          color var(--ui-duration) var(--ui-ease);
 
         &:hover {
-          background: #f9fafb;
-          border-color: #d1d5db;
-        }
-
-        svg {
-          color: #6b7280;
+          background: var(--gray-50);
+          border-color: var(--ui-border);
+          color: var(--ui-text);
         }
       }
     }
@@ -76,30 +75,30 @@
   .channel-tabs {
     display: flex;
     align-items: center;
-    gap: 0;
-    padding: 0 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 0 var(--space-24);
+    border-bottom: 1px solid var(--ui-divider);
 
     .channel-tab {
-      padding: 0.75rem 1.25rem;
+      padding: var(--space-12) var(--space-16);
       background: transparent;
       border: none;
       border-bottom: 2px solid transparent;
-      color: #6b7280;
-      font-size: 0.875rem;
-      font-weight: 500;
+      color: var(--ui-text-hint);
+      font-size: 14px;
+      font-weight: 400;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: color var(--ui-duration) var(--ui-ease),
+        border-color var(--ui-duration) var(--ui-ease);
       position: relative;
       top: 1px;
 
       &:hover {
-        color: #374151;
+        color: var(--ui-text);
       }
 
       &.active {
-        color: #1f2937;
-        border-bottom-color: #1f2937;
+        color: var(--ui-text);
+        border-bottom-color: var(--primary-500);
         font-weight: 600;
       }
     }
@@ -109,27 +108,23 @@
 .main-content-body {
   flex: 1;
   overflow-y: auto;
-  // padding: 2rem;
-  // padding-bottom: 5.5rem; // space for message input bar
 }
 
 .content-placeholder {
   max-width: 800px;
   margin: 0 auto;
+  padding: var(--space-32) var(--space-24);
 
   .placeholder-text {
-    font-family: "JetBrains Mono", monospace;
     font-weight: 600;
-    font-size: 1.25rem;
-    color: #1f2937;
-    margin-bottom: 1rem;
+    font-size: 18px;
+    color: var(--ui-text);
+    margin-bottom: var(--space-8);
   }
 
   .placeholder-description {
-    font-family: "Merriweather", serif;
-    font-weight: 300;
-    font-size: 1rem;
-    color: #6b7280;
+    font-size: 14px;
+    color: var(--ui-text-muted);
     line-height: 1.6;
   }
 }
@@ -138,106 +133,75 @@
 .channel-welcome {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 3rem 2rem;
+  padding: var(--space-32) var(--space-24);
 
   .channel-welcome-title {
-    font-family: "JetBrains Mono", monospace;
-    font-weight: 700;
-    font-size: 2rem;
-    color: #1f2937;
-    margin: 0 0 1.5rem;
-    letter-spacing: 0.02em;
+    font-weight: 600;
+    font-size: 22px;
+    color: var(--ui-text);
+    margin: 0 0 var(--space-16);
   }
 
   .channel-welcome-message {
-    font-family: "Merriweather", serif;
-    font-weight: 300;
-    font-size: 1rem;
-    color: #4b5563;
+    font-weight: 400;
+    font-size: 14px;
+    color: var(--ui-text-muted);
     line-height: 1.6;
-    margin: 0 0 3rem;
-    max-width: 600px;
+    margin: 0 0 var(--space-24);
+    max-width: 70ch;
 
-    .channel-creator {
+    .channel-creator,
+    .channel-name-highlight {
       font-weight: 600;
-      color: #1f2937;
+      color: var(--ui-text);
     }
 
     .channel-date {
-      color: #6b7280;
-    }
-
-    .channel-name-highlight {
-      font-weight: 600;
-      color: #1f2937;
+      color: var(--ui-text-hint);
     }
   }
 
   .channel-action-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-top: 2rem;
+    gap: var(--space-16);
   }
 
   .action-card {
-    padding: 2rem;
-    border-radius: 0.75rem;
+    padding: var(--space-24);
+    border-radius: var(--ui-radius-card);
     cursor: pointer;
-    transition: all 0.3s ease;
-    border: 1px solid transparent;
+    border: 1px solid var(--ui-divider);
+    background: #ffffff;
+    box-shadow: var(--ui-shadow-card);
+    transition: transform var(--ui-duration) var(--ui-ease),
+      border-color var(--ui-duration) var(--ui-ease),
+      background var(--ui-duration) var(--ui-ease);
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    }
-
-    &--purple {
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.05));
-      border-color: rgba(139, 92, 246, 0.2);
-
-      &:hover {
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(167, 139, 250, 0.1));
-        border-color: rgba(139, 92, 246, 0.3);
-      }
-
-      .action-card-icon {
-        color: #8b5cf6;
-      }
-    }
-
-    &--blue {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(96, 165, 250, 0.05));
-      border-color: rgba(59, 130, 246, 0.2);
-
-      &:hover {
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(96, 165, 250, 0.1));
-        border-color: rgba(59, 130, 246, 0.3);
-      }
-
-      .action-card-icon {
-        color: #3b82f6;
-      }
+      transform: translateY(-1px);
+      border-color: var(--ui-border);
+      background: var(--gray-50);
     }
 
     .action-card-icon {
-      margin-bottom: 1rem;
+      margin-bottom: var(--space-12);
       display: flex;
       align-items: center;
       justify-content: flex-start;
+      color: var(--ui-text-hint);
 
-      svg,
       img {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
+        opacity: 0.85;
       }
     }
 
     .action-card-title {
-      font-family: "JetBrains Mono", monospace;
       font-weight: 600;
-      font-size: 1rem;
-      color: #1f2937;
+      font-size: 14px;
+      color: var(--ui-text);
       margin: 0;
       line-height: 1.4;
     }
@@ -247,21 +211,20 @@
 .channel-content {
   max-width: 86%;
   margin: 0 auto;
-  // padding: 2rem 2rem 0;
 }
 
 .channel-messages-container {
-  margin-top: 2rem;
-  padding-bottom: 1rem;
+  margin-top: var(--space-24);
+  padding-bottom: var(--space-16);
 }
 
 .channel-day-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.5rem;
-  color: #6b7280;
-  font-size: 0.75rem;
+  margin-bottom: var(--space-16);
+  color: var(--ui-text-hint);
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 
@@ -270,36 +233,37 @@
     content: "";
     flex: 1;
     height: 1px;
-    background: #e5e7eb;
-    margin: 0 0.75rem;
+    background: var(--ui-divider);
+    margin: 0 var(--space-12);
   }
 
   span {
     background: #ffffff;
-    padding: 0 0.75rem;
+    padding: 0 var(--space-12);
     border-radius: 999px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--ui-divider);
   }
 }
 
 .channel-message {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
 }
 
 .channel-message-avatar {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: #e5e7eb;
+  background: var(--gray-100);
+  border: 1px solid var(--ui-divider);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.875rem;
-  color: #374151;
+  font-size: 12px;
+  color: var(--ui-text-muted);
 }
 
 .channel-message-body {
@@ -309,24 +273,24 @@
 .channel-message-header {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.125rem;
+  gap: var(--space-8);
+  margin-bottom: 2px;
 }
 
 .channel-message-author {
   font-weight: 600;
-  font-size: 0.9rem;
-  color: #111827;
+  font-size: 13px;
+  color: var(--ui-text);
 }
 
 .channel-message-time {
-  font-size: 0.75rem;
-  color: #9ca3af;
+  font-size: 12px;
+  color: var(--ui-text-hint);
 }
 
 .channel-message-content {
-  font-size: 0.95rem;
-  color: #111827;
+  font-size: 14px;
+  color: var(--ui-text);
   white-space: pre-wrap;
 }
 
@@ -335,89 +299,93 @@
   opacity: 0.7;
 
   .channel-message-content {
-    color: #6b7280;
+    color: var(--ui-text-muted);
   }
 }
 
 .channel-message--failed {
   .channel-message-content {
-    color: #6b7280;
+    color: var(--ui-text-muted);
   }
 }
 
 .channel-message-error {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: #dc2626;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+  font-size: 12px;
+  color: var(--error);
 }
 
 .channel-message-retry {
   background: none;
   border: none;
   padding: 0;
-  color: #3b82f6;
-  font-size: 0.75rem;
-  font-weight: 500;
+  color: var(--primary-600);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
 
   &:hover {
-    color: #2563eb;
+    color: var(--primary-500);
   }
 }
 
 .channel-message-input {
-  border-top: 1px solid #e5e7eb;
-  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--ui-divider);
+  padding: var(--space-12) var(--space-24);
   background: #ffffff;
 }
 
 .channel-message-input-inner {
-  // max-width: 1000px;
   margin: 0 auto;
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: var(--space-12);
 }
 
 .channel-message-textarea {
   flex: 1;
   resize: none;
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
+  border-radius: var(--ui-radius-input);
+  border: 1px solid var(--ui-divider);
+  padding: var(--space-8) var(--space-12);
+  font-size: 14px;
   line-height: 1.4;
   font-family: inherit;
   outline: none;
-  color: #000000;
+  color: var(--ui-text);
+
+  &::placeholder {
+    color: var(--ui-text-hint);
+  }
 
   &:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+    border-color: var(--primary-500);
+    box-shadow: var(--ui-focus-ring);
   }
 }
 
 .channel-message-send {
   border-radius: 999px;
   border: none;
-  padding: 0.4rem 0.9rem;
-  background: #3b82f6;
+  padding: 0.45rem 0.95rem;
+  background: var(--primary-500);
   color: #ffffff;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--ui-duration-fast) var(--ui-ease);
 
   &:hover {
-    background: #2563eb;
+    background: var(--primary-600);
   }
 
   &:disabled {
-    background: #9ca3af;
+    background: rgba(107, 114, 128, 0.7);
     cursor: default;
   }
 }
+

@@ -3,9 +3,10 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useToast } from "@/composables/useToast.js";
-import StarfieldButton from "@/components/StarfieldButton.vue";
-import StarfieldCard from "@/components/StarfieldCard.vue";
-import GlowText from "@/components/GlowText.vue";
+import CalmButton from "@/components/calm/CalmButton.vue";
+import CalmCard from "@/components/calm/CalmCard.vue";
+import CalmHeading from "@/components/calm/CalmHeading.vue";
+import CalmInput from "@/components/calm/CalmInput.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -56,83 +57,68 @@ const goToRegister = () => {
 </script>
 
 <template>
-  <section class="login-section">
+  <section class="auth-page">
     <div class="container-center">
-      <div class="login-container">
-        <StarfieldCard class="login-card">
-          <div class="login-header">
-            <GlowText :level="2">
-              Sign In
-            </GlowText>
-            <p class="login-subtitle">
-              Welcome back
-            </p>
-          </div>
+      <div class="auth-page__container">
+        <CalmCard class="auth-card" padding="lg">
+          <header class="auth-card__header">
+            <CalmHeading :level="2">Sign in</CalmHeading>
+            <p class="ui-muted auth-card__subtitle">Welcome back.</p>
+          </header>
 
           <form
-            class="login-form"
+            class="auth-form"
             @submit.prevent="handleLogin"
           >
-            <div class="form-group">
-              <label
-                for="email"
-                class="form-label"
-              >Email</label>
-              <input
-                id="email"
-                v-model="email"
-                type="email"
-                class="form-input"
-                placeholder="your@email.com"
-                required
-                autocomplete="email"
-              >
-            </div>
+            <CalmInput
+              id="email"
+              v-model="email"
+              label="Email"
+              type="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              :required="true"
+            />
 
-            <div class="form-group">
-              <label
-                for="password"
-                class="form-label"
-              >Password</label>
-              <input
-                id="password"
-                v-model="password"
-                type="password"
-                class="form-input"
-                placeholder="••••••••"
-                required
-                autocomplete="current-password"
-              >
-            </div>
+            <CalmInput
+              id="password"
+              v-model="password"
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              :required="true"
+            />
 
-            <StarfieldButton
+            <CalmButton
               type="submit"
               variant="primary"
               size="lg"
+              class="auth-form__submit"
+              :loading="loading"
               :disabled="!isValid || loading"
-              class="login-button"
             >
-              {{ loading ? "Signing in..." : "Sign In" }}
-            </StarfieldButton>
+              Sign in
+            </CalmButton>
           </form>
 
-          <div class="divider">
+          <div class="auth-divider">
             <span>or</span>
           </div>
 
-          <StarfieldButton
+          <CalmButton
             variant="secondary"
             size="lg"
+            class="auth-google"
             :disabled="loading"
-            class="google-button"
             @click="handleGoogleLogin"
           >
             <svg
-              class="google-icon"
+              class="auth-google__icon"
               viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="currentColor"
+              width="18"
+              height="18"
+              aria-hidden="true"
             >
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -151,128 +137,77 @@ const goToRegister = () => {
                 fill="#EA4335"
               />
             </svg>
-            Sign in with Google
-          </StarfieldButton>
+            Continue with Google
+          </CalmButton>
 
-          <div class="register-link">
-            <p>
-              Don't have an account?
-              <button
-                type="button"
-                class="link-button"
-                @click="goToRegister"
-              >
-                Sign up now
-              </button>
-            </p>
+          <div class="auth-footer ui-muted">
+            Don’t have an account?
+            <button
+              type="button"
+              class="auth-link"
+              @click="goToRegister"
+            >
+              Create one
+            </button>
           </div>
-        </StarfieldCard>
+        </CalmCard>
       </div>
     </div>
   </section>
 </template>
 
 <style scoped lang="scss">
-.login-section {
-  padding: 6rem 0;
+.auth-page {
+  padding: var(--space-48) 0;
   min-height: calc(100vh - 200px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.container-center {
+.auth-page__container {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.login-container {
   display: flex;
   justify-content: center;
-  align-items: center;
-  width: 100%;
 }
 
-.login-card {
+.auth-card {
   width: 100%;
-  max-width: 450px;
-  padding: 3rem 2rem;
+  max-width: 480px;
 }
 
-.login-header {
+.auth-card__header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: var(--space-24);
 
-  .login-subtitle {
-    font-size: 1.125rem;
-    color: rgba(241, 245, 249, 0.7);
-    font-weight: 300;
-    margin-top: 0.5rem;
+  .auth-card__subtitle {
+    margin-top: var(--space-8);
   }
 }
 
-.login-form {
-  margin-bottom: 2rem;
+.auth-form {
+  display: grid;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
 }
 
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-label {
-  display: block;
-  color: #f1f5f9;
-  font-size: 0.875rem;
-  font-weight: 300;
-  margin-bottom: 0.5rem;
-  font-family: "Merriweather", serif;
-}
-
-.form-input {
+.auth-form__submit {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(184, 167, 255, 0.3);
-  border-radius: 2px;
-  color: #f1f5f9;
-  font-size: 1rem;
-  font-family: "Merriweather", serif;
-  font-weight: 300;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: #b8a7ff;
-    box-shadow: 0 0 10px rgba(184, 167, 255, 0.3);
-  }
-
-  &::placeholder {
-    color: rgba(241, 245, 249, 0.5);
-  }
 }
 
-.login-button {
-  width: 100%;
-  margin-top: 0.5rem;
-}
-
-.divider {
+.auth-divider {
   display: flex;
   align-items: center;
   text-align: center;
-  margin: 2rem 0;
-  color: rgba(241, 245, 249, 0.5);
-  font-size: 0.875rem;
-  font-family: "Merriweather", serif;
+  margin: var(--space-16) 0;
+  color: var(--ui-text-hint);
+  font-size: 12px;
 
   &::before,
   &::after {
     content: "";
     flex: 1;
-    border-bottom: 1px solid rgba(184, 167, 255, 0.2);
+    border-bottom: 1px solid var(--ui-divider);
   }
 
   span {
@@ -280,55 +215,40 @@ const goToRegister = () => {
   }
 }
 
-.google-button {
+.auth-google {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
 }
 
-.google-icon {
+.auth-google__icon {
   flex-shrink: 0;
 }
 
-.register-link {
-  margin-top: 2rem;
+.auth-footer {
+  margin-top: var(--space-16);
   text-align: center;
-  color: rgba(241, 245, 249, 0.7);
-  font-size: 0.875rem;
-  font-family: "Merriweather", serif;
-
-  p {
-    margin: 0;
-  }
 }
 
-.link-button {
+.auth-link {
   background: none;
   border: none;
-  color: #b8a7ff;
+  color: var(--primary-600);
   cursor: pointer;
-  text-decoration: underline;
-  font-family: "Merriweather", serif;
-  font-size: 0.875rem;
+  font-size: 12px;
   padding: 0;
   margin-left: 0.25rem;
-  transition: all 0.3s ease;
+  text-decoration: underline;
 
   &:hover {
-    color: #f1f5f9;
-    text-shadow: 0 0 10px rgba(184, 167, 255, 0.5);
+    color: var(--primary-500);
   }
 }
 
 @media (max-width: 768px) {
-  .login-section {
-    padding: 4rem 0;
-  }
-
-  .login-card {
-    padding: 2rem 1.5rem;
+  .auth-page {
+    padding: var(--space-40) 0;
   }
 }
 </style>

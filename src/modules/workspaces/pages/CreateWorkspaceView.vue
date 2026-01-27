@@ -2,9 +2,11 @@
 import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 import userService from "@/services/user.service.js";
-import StarfieldButton from "@/components/StarfieldButton.vue";
-import StarfieldCard from "@/components/StarfieldCard.vue";
-import GlowText from "@/components/GlowText.vue";
+import CalmButton from "@/components/calm/CalmButton.vue";
+import CalmCard from "@/components/calm/CalmCard.vue";
+import CalmHeading from "@/components/calm/CalmHeading.vue";
+import CalmInput from "@/components/calm/CalmInput.vue";
+import CalmSelect from "@/components/calm/CalmSelect.vue";
 import { useToast } from "@/composables/useToast.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 
@@ -30,6 +32,10 @@ const searchTimeout = ref(null);
 
 // Invite list
 const invites = ref([]);
+const roleOptions = [
+  { value: "member", label: "Member" },
+  { value: "admin", label: "Admin" },
+];
 
 // Search users with debounce
 const searchUsers = async (query) => {
@@ -155,83 +161,58 @@ const goBack = () => {
   <div class="create-workspace-page">
     <div class="container-center">
       <div class="page-header">
-        <StarfieldButton
-          variant="outline"
+        <CalmButton
+          variant="secondary"
           size="sm"
+          type="button"
           @click="goBack"
         >
-          ← Back
-        </StarfieldButton>
-        <GlowText
-          :level="1"
-          class="page-title"
-        >
-          Create new workspace
-        </GlowText>
-        <p class="page-description">
+          Back
+        </CalmButton>
+        <CalmHeading :level="1" class="page-title">
+          Create workspace
+        </CalmHeading>
+        <p class="page-description ui-muted">
           Create a workspace to start working with your team
         </p>
       </div>
 
-      <StarfieldCard class="form-card">
+      <CalmCard class="form-card" padding="lg">
         <form
           class="workspace-form"
           @submit.prevent="handleSubmit"
         >
-          <div class="form-group">
-            <label for="name">
-              Workspace name <span class="required">*</span>
-            </label>
-            <input
-              id="name"
-              v-model="form.name"
-              type="text"
-              placeholder="Example: My Workspace"
-              :class="{ error: errors.name }"
-            >
-            <span
-              v-if="errors.name"
-              class="error-message"
-            >
-              {{ errors.name }}
-            </span>
-          </div>
+          <CalmInput
+            id="name"
+            v-model="form.name"
+            label="Workspace name"
+            placeholder="Example: My Workspace"
+            :required="true"
+            :error="errors.name"
+          />
 
-          <div class="form-group">
-            <label for="displayName">
-              Your display name in the workspace
-              <span class="required">*</span>
-            </label>
-            <input
-              id="displayName"
-              v-model="form.displayName"
-              type="text"
-              placeholder="Example: John Doe"
-              :class="{ error: errors.displayName }"
-            >
-            <span
-              v-if="errors.displayName"
-              class="error-message"
-            >
-              {{ errors.displayName }}
-            </span>
-          </div>
+          <CalmInput
+            id="displayName"
+            v-model="form.displayName"
+            label="Your display name"
+            placeholder="Example: John Doe"
+            :required="true"
+            :error="errors.displayName"
+          />
 
           <div class="form-section">
-            <h3 class="section-title">
-              Invite members
-            </h3>
-            <p class="section-description">
+            <h3 class="section-title ui-h3">Invite members</h3>
+            <p class="section-description ui-hint">
               Search and invite members to the workspace (optional)
             </p>
 
-            <div class="invite-search-wrapper">
-              <div class="search-input-wrapper">
+            <div class="invite-search">
+              <div class="invite-search__inputWrap">
                 <input
                   v-model="searchQuery"
                   type="text"
-                  placeholder="Enter email or name to search..."
-                  class="search-input"
+                  placeholder="Enter email or name to search…"
+                  class="invite-search__input ui-focusable"
                   @focus="showSuggestions = searchResults.length > 0"
                   @blur="
                     setTimeout(() => {
@@ -241,75 +222,59 @@ const goBack = () => {
                 >
                 <div
                   v-if="searchLoading"
-                  class="search-loading"
+                  class="invite-search__loading ui-hint"
                 >
-                  Searching...
+                  Searching…
                 </div>
               </div>
 
               <div
                 v-if="showSuggestions && searchResults.length > 0"
-                class="suggestions-dropdown"
+                class="invite-search__dropdown"
               >
-                <div
+                <button
                   v-for="user in searchResults"
                   :key="user.id"
-                  class="suggestion-item"
+                  type="button"
+                  class="invite-search__item"
                   @mousedown.prevent="selectUser(user)"
                 >
-                  <div class="user-avatar">
+                  <div class="invite-search__avatar" aria-hidden="true">
                     {{ user.name.charAt(0).toUpperCase() }}
                   </div>
-                  <div class="user-info">
-                    <p class="user-name">
-                      {{ user.name }}
-                    </p>
-                    <p class="user-email">
-                      {{ user.email }}
-                    </p>
+                  <div class="invite-search__info">
+                    <div class="invite-search__name">{{ user.name }}</div>
+                    <div class="invite-search__email">{{ user.email }}</div>
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
             <div
               v-if="invites.length > 0"
-              class="invites-list"
+              class="invites"
             >
               <div
                 v-for="(invite, index) in invites"
                 :key="index"
-                class="invite-item"
+                class="invites__row"
               >
-                <div class="invite-user-info">
-                  <div class="user-avatar">
+                <div class="invites__user">
+                  <div class="invites__avatar" aria-hidden="true">
                     {{ invite.name.charAt(0).toUpperCase() }}
                   </div>
-                  <div class="user-details">
-                    <p class="user-name">
-                      {{ invite.name }}
-                    </p>
-                    <p class="user-email">
-                      {{ invite.email }}
-                    </p>
+                  <div class="invites__meta">
+                    <div class="invites__name">{{ invite.name }}</div>
+                    <div class="invites__email">{{ invite.email }}</div>
                   </div>
                 </div>
-                <div class="invite-role-select">
-                  <select
-                    v-model="invite.role"
-                    class="role-select"
-                  >
-                    <option value="member">
-                      Member
-                    </option>
-                    <option value="admin">
-                      Admin
-                    </option>
-                  </select>
-                </div>
+                <CalmSelect
+                  v-model="invite.role"
+                  :options="roleOptions"
+                />
                 <button
                   type="button"
-                  class="remove-btn"
+                  class="invites__remove ui-focusable"
                   @click="removeInvite(index)"
                 >
                   ×
@@ -326,23 +291,25 @@ const goBack = () => {
           </div>
 
           <div class="form-actions">
-            <StarfieldButton
-              variant="outline"
+            <CalmButton
+              variant="secondary"
+              type="button"
               :disabled="loading"
               @click="goBack"
             >
               Cancel
-            </StarfieldButton>
-            <StarfieldButton
+            </CalmButton>
+            <CalmButton
               variant="primary"
               type="submit"
+              :loading="loading"
               :disabled="loading"
             >
-              {{ loading ? "Creating..." : "Create workspace" }}
-            </StarfieldButton>
+              Create workspace
+            </CalmButton>
           </div>
         </form>
-      </StarfieldCard>
+      </CalmCard>
     </div>
   </div>
 </template>

@@ -32,6 +32,7 @@ watch(isWorkspaceDetail, (isDetail) => {
 
 <style scoped lang="scss">
 main {
-	min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 200px);
+  background: var(--ui-bg-page);
 }
 </style>

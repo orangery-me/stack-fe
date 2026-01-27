@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useToast } from "@/composables/useToast.js";
-import GlowText from "@/components/GlowText.vue";
+import CalmHeading from "@/components/calm/CalmHeading.vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 
 const router = useRouter();
@@ -62,10 +62,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="accept-invite-section">
+  <section class="invite-status">
     <div class="container-center">
-      <div class="accept-container">
-        <GlowText :level="3">
+      <div class="invite-status__container">
+        <CalmHeading :level="3">
           <template v-if="loading || status === 'processing'">
             Processing invitation...
           </template>
@@ -75,8 +75,8 @@ onMounted(async () => {
           <template v-else>
             Unable to accept invitation
           </template>
-        </GlowText>
-        <p class="accept-message">
+        </CalmHeading>
+        <p class="invite-status__message ui-muted">
           <template v-if="loading || status === 'processing'">
             Please wait a moment
           </template>
