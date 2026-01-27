@@ -154,19 +154,33 @@ const suiteApps = [
     icon: "/icons/meeting.svg",
   },
 ];
+
+const discoverCards = [
+  {
+    key: "apps",
+    title: "Connect your apps.",
+    description: "Choose from integrations, or build your own.",
+    cta: "Browse apps",
+    imageUrl:
+      "https://a.slack-edge.com/02ee189/marketing/img/homepage/signed-in-users/card-assets/Apps@2x.png",
+  },
+  {
+    key: "guide",
+    title: "Quick start guide to Stack",
+    description: "Learn the basics of getting your team started.",
+    cta: "Get started",
+    imageUrl:
+      "https://a.slack-edge.com/02ee189/marketing/img/homepage/signed-in-users/card-assets/Quick-start-guide@2x.png",
+  },
+];
 </script>
 
 <template>
   <!-- Workspaces Section (if logged in) -->
-  <section
-    v-if="isAuthenticated"
-    class="home-auth"
-  >
+  <section v-if="isAuthenticated" class="home-auth">
     <div class="container-center">
       <header class="home-auth__header">
-        <CalmHeading :level="1">
-          Workspaces
-        </CalmHeading>
+        <CalmHeading :level="1"> Workspaces </CalmHeading>
         <p class="home-auth__subtitle ui-muted">
           Choose where you want to work.
         </p>
@@ -176,12 +190,8 @@ const suiteApps = [
         <CalmCard class="home-auth__card">
           <div class="home-auth__cardHeader">
             <div class="home-auth__cardTitleWrap">
-              <h2 class="ui-h3 home-auth__cardTitle">
-                My workspaces
-              </h2>
-              <p class="ui-hint home-auth__cardHint">
-                Recent and active work.
-              </p>
+              <h2 class="ui-h3 home-auth__cardTitle">My workspaces</h2>
+              <p class="ui-hint home-auth__cardHint">Recent and active work.</p>
             </div>
             <CalmButton
               variant="secondary"
@@ -192,20 +202,12 @@ const suiteApps = [
             </CalmButton>
           </div>
 
-          <div
-            v-if="loading"
-            class="home-auth__state ui-muted"
-          >
+          <div v-if="loading" class="home-auth__state ui-muted">
             <p>Loading...</p>
           </div>
 
-          <div
-            v-else-if="workspaces.length === 0"
-            class="home-auth__state"
-          >
-            <p class="ui-h3 home-auth__emptyTitle">
-              No workspaces yet
-            </p>
+          <div v-else-if="workspaces.length === 0" class="home-auth__state">
+            <p class="ui-h3 home-auth__emptyTitle">No workspaces yet</p>
             <p class="ui-muted home-auth__emptyDesc">
               Create a workspace to start working with your team.
             </p>
@@ -218,20 +220,14 @@ const suiteApps = [
             </CalmButton>
           </div>
 
-          <div
-            v-else
-            class="home-auth__list"
-          >
+          <div v-else class="home-auth__list">
             <div
               v-for="workspace in workspaces"
               :key="workspace.id"
               class="home-auth__item"
               @click="goToWorkspace(workspace.id)"
             >
-              <div
-                class="home-auth__avatar"
-                aria-hidden="true"
-              >
+              <div class="home-auth__avatar" aria-hidden="true">
                 {{ workspace.name?.charAt(0)?.toUpperCase() }}
               </div>
               <div class="home-auth__info">
@@ -319,9 +315,7 @@ const suiteApps = [
 
         <div class="home-auth__side">
           <CalmCard padding="md">
-            <h3 class="ui-h3 home-auth__sideTitle">
-              Get started
-            </h3>
+            <h3 class="ui-h3 home-auth__sideTitle">Get started</h3>
             <p class="ui-muted home-auth__sideText">
               Create a workspace, invite people, and start a channel.
             </p>
@@ -335,9 +329,7 @@ const suiteApps = [
           </CalmCard>
 
           <CalmCard padding="md">
-            <h3 class="ui-h3 home-auth__sideTitle">
-              Invite your team
-            </h3>
+            <h3 class="ui-h3 home-auth__sideTitle">Invite your team</h3>
             <p class="ui-muted home-auth__sideText">
               Add members when you create a workspace or from the invite page.
             </p>
@@ -354,11 +346,69 @@ const suiteApps = [
     </div>
   </section>
 
+  <!-- Discover section (only when signed in) -->
+  <section
+    v-if="isAuthenticated"
+    class="ui-section home-discover"
+  >
+    <div class="container-center">
+      <div class="home-discover__header">
+        <span class="home-discover__sparkle" aria-hidden="true">✶</span>
+        <span class="home-discover__label">Discover more</span>
+      </div>
+      <div class="home-discover__grid">
+        <CalmCard
+          v-for="card in discoverCards"
+          :key="card.key"
+          class="home-discover__card"
+        >
+          <div class="home-discover__inner">
+            <div class="home-discover__text">
+              <h3 class="ui-h4 home-discover__title">
+                {{ card.title }}
+              </h3>
+              <p class="ui-muted home-discover__desc">
+                {{ card.description }}
+              </p>
+              <CalmButton
+                variant="secondary"
+                size="sm"
+              >
+                {{ card.cta }}
+              </CalmButton>
+            </div>
+            <div
+              class="home-discover__media"
+              aria-hidden="true"
+            >
+              <img
+                v-if="card.imageUrl"
+                class="home-discover__img"
+                :src="card.imageUrl"
+                :alt="card.title"
+                loading="lazy"
+              >
+              <div
+                v-else
+                class="home-placeholder"
+              >
+                Placeholder for illustration
+              </div>
+            </div>
+          </div>
+        </CalmCard>
+      </div>
+    </div>
+  </section>
+
   <div
-    v-else
+    v-if="!isAuthenticated"
     class="home-public"
   >
-    <section class="home-hero ui-section">
+    <section
+      v-if="!isAuthenticated"
+      class="home-hero ui-section"
+    >
       <div class="container-center">
         <div class="home-hero__grid">
           <div class="home-hero__text">
@@ -367,10 +417,7 @@ const suiteApps = [
               <span>Enterprise Calm UI</span>
             </div> -->
 
-            <CalmHeading
-              :level="1"
-              class="home-hero__title"
-            >
+            <CalmHeading :level="1" class="home-hero__title">
               Workspaces that keep teams aligned
             </CalmHeading>
 
@@ -380,34 +427,19 @@ const suiteApps = [
             </p>
 
             <div class="home-hero__cta">
-              <CalmButton
-                variant="primary"
-                size="lg"
-                @click="goToLogin"
-              >
+              <CalmButton variant="primary" size="lg" @click="goToLogin">
                 Sign in
               </CalmButton>
-              <CalmButton
-                variant="secondary"
-                size="lg"
-                @click="goToRegister"
-              >
+              <CalmButton variant="secondary" size="lg" @click="goToRegister">
                 Create account
               </CalmButton>
             </div>
           </div>
 
-          <CalmCard
-            padding="lg"
-            class="home-hero__preview"
-          >
+          <CalmCard padding="lg" class="home-hero__preview">
             <div class="home-preview__header">
-              <div class="home-preview__title">
-                Today
-              </div>
-              <div class="home-preview__pill">
-                Calm
-              </div>
+              <div class="home-preview__title">Today</div>
+              <div class="home-preview__pill">Calm</div>
             </div>
 
             <div class="ui-divider" />
@@ -416,9 +448,7 @@ const suiteApps = [
               <div class="home-preview__row">
                 <span class="home-preview__dot home-preview__dot--primary" />
                 <div class="home-preview__main">
-                  <div class="home-preview__rowTitle">
-                    Review roadmap
-                  </div>
+                  <div class="home-preview__rowTitle">Review roadmap</div>
                   <div class="home-preview__rowMeta">
                     In “Product” workspace
                   </div>
@@ -427,23 +457,15 @@ const suiteApps = [
               <div class="home-preview__row">
                 <span class="home-preview__dot" />
                 <div class="home-preview__main">
-                  <div class="home-preview__rowTitle">
-                    Draft kickoff notes
-                  </div>
-                  <div class="home-preview__rowMeta">
-                    Docs
-                  </div>
+                  <div class="home-preview__rowTitle">Draft kickoff notes</div>
+                  <div class="home-preview__rowMeta">Docs</div>
                 </div>
               </div>
               <div class="home-preview__row">
                 <span class="home-preview__dot" />
                 <div class="home-preview__main">
-                  <div class="home-preview__rowTitle">
-                    Summarize updates
-                  </div>
-                  <div class="home-preview__rowMeta">
-                    AI
-                  </div>
+                  <div class="home-preview__rowTitle">Summarize updates</div>
+                  <div class="home-preview__rowMeta">AI</div>
                 </div>
               </div>
             </div>
@@ -459,7 +481,10 @@ const suiteApps = [
     <!-- Features Section -->
 
     <!-- Workflow Highlights (placeholder images) -->
-    <section class="ui-section home-workflows">
+    <section
+      id="features"
+      class="ui-section home-workflows"
+    >
       <div class="container-center">
         <div class="ui-sectionHeader">
           <CalmHeading :level="1">
@@ -475,10 +500,7 @@ const suiteApps = [
             :key="item.title"
             class="home-workflows__card"
           >
-            <div
-              class="home-workflows__media"
-              aria-hidden="true"
-            >
+            <div class="home-workflows__media" aria-hidden="true">
               <img
                 v-if="item.imageUrl"
                 class="home-workflows__img"
@@ -486,10 +508,7 @@ const suiteApps = [
                 :alt="item.title"
                 loading="lazy"
               >
-              <div
-                v-else
-                class="home-placeholder"
-              >
+              <div v-else class="home-placeholder">
                 Placeholder for illustration
               </div>
             </div>
@@ -500,12 +519,7 @@ const suiteApps = [
               <p class="ui-muted">
                 {{ item.description }}
               </p>
-              <a
-                class="home-link"
-                href="#"
-              >
-                {{ item.cta }} →
-              </a>
+              <a class="home-link" href="#"> {{ item.cta }} → </a>
             </div>
           </article>
         </div>
@@ -513,22 +527,24 @@ const suiteApps = [
     </section>
 
     <!-- Efficiency Stats -->
-    <section class="ui-section home-metrics">
+    <section
+      id="savings"
+      class="ui-section home-metrics"
+    >
       <div class="container-center home-metrics__content">
         <div class="home-metrics__copy">
-          <CalmHeading :level="1">
-            Fewer tools, fewer costs
-          </CalmHeading>
+          <CalmHeading :level="1"> Fewer tools, fewer costs </CalmHeading>
           <p class="ui-muted">
             Cut software bloat while keeping teams fast, clear, and connected.
           </p>
           <CalmButton
-  class="home-metrics__pillButton"
-  variant="secondary"
-  size="lg"
->
-  Unlock your savings
-</CalmButton>
+            class="home-metrics__pillButton"
+            variant="secondary"
+            size="lg"
+            style="margin-top: 30px;"
+          >
+            Unlock your savings
+          </CalmButton>
         </div>
         <div class="home-metrics__stats">
           <div
@@ -548,7 +564,10 @@ const suiteApps = [
     </section>
 
     <!-- Integrated Suite -->
-    <section class="ui-section ui-section--muted home-suite">
+    <section
+      id="integrations"
+      class="ui-section ui-section--muted home-suite"
+    >
       <div class="container-center">
         <div class="home-suite__header">
           <div class="home-suite__titles">
@@ -558,26 +577,18 @@ const suiteApps = [
             <p class="ui-muted">
               Replace scattered tools with one unified superapp.
             </p>
-            <CalmButton
-              class="home-suite__cta"
-              variant="primary"
-              size="lg"
-            >
+            <CalmButton class="home-suite__cta" variant="primary" size="lg">
               Get started for free
             </CalmButton>
           </div>
-        </div>
-
-        <div
-          class="home-suite__orbit"
-          aria-hidden="true"
-        >
-          <img
-            class="home-suite__orbitImg"
-            src="https://p16-hera-overseas.larksuitecdn.com/tos-mya-i-lojyj5t9n9/44204f81c7314ba4a0c52b0d690142ec.png~tplv-lojyj5t9n9-png:0:0.png"
-            alt="Suite overview"
-            loading="lazy"
-          >
+          <div class="home-suite__orbit" aria-hidden="true">
+            <img
+              class="home-suite__orbitImg"
+              src="https://p16-hera-overseas.larksuitecdn.com/tos-mya-i-lojyj5t9n9/44204f81c7314ba4a0c52b0d690142ec.png~tplv-lojyj5t9n9-png:0:0.png"
+              alt="Suite overview"
+              loading="lazy"
+            >
+          </div>
         </div>
 
         <div class="home-suite__grid">
@@ -594,10 +605,7 @@ const suiteApps = [
                 :alt="app.name"
                 loading="lazy"
               >
-              <div
-                v-else
-                class="home-placeholder home-placeholder--icon"
-              >
+              <div v-else class="home-placeholder home-placeholder--icon">
                 Icon
               </div>
             </div>
@@ -612,8 +620,10 @@ const suiteApps = [
       </div>
     </section>
 
-    <!-- CTA Section -->
-    <section class="ui-section">
+    <section
+      v-if="!isAuthenticated"
+      class="ui-section"
+    >
       <div class="container-center">
         <div class="home-cta">
           <div class="home-cta__copy">
@@ -625,18 +635,10 @@ const suiteApps = [
             </p>
           </div>
           <div class="home-cta__actions">
-            <CalmButton
-              variant="primary"
-              size="lg"
-              @click="goToLogin"
-            >
+            <CalmButton variant="primary" size="lg" @click="goToLogin">
               Sign in
             </CalmButton>
-            <CalmButton
-              variant="secondary"
-              size="lg"
-              @click="goToRegister"
-            >
+            <CalmButton variant="secondary" size="lg" @click="goToRegister">
               Create account
             </CalmButton>
           </div>
