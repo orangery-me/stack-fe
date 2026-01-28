@@ -60,10 +60,17 @@ const goToRegister = () => {
   <section class="auth-page">
     <div class="container-center">
       <div class="auth-page__container">
-        <CalmCard class="auth-card" padding="lg">
+        <CalmCard
+          class="auth-card"
+          padding="lg"
+        >
           <header class="auth-card__header">
-            <CalmHeading :level="2">Sign in</CalmHeading>
-            <p class="ui-muted auth-card__subtitle">Welcome back.</p>
+            <CalmHeading :level="2">
+              Sign in
+            </CalmHeading>
+            <p class="ui-muted auth-card__subtitle">
+              Welcome back.
+            </p>
           </header>
 
           <form

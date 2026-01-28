@@ -11,14 +11,20 @@
             alt="Stack"
           >
           <div class="app-footer__brandText">
-            <div class="app-footer__name">Stack</div>
-            <div class="app-footer__meta">Minimal product interface.</div>
+            <div class="app-footer__name">
+              Stack
+            </div>
+            <div class="app-footer__meta">
+              Minimal product interface.
+            </div>
           </div>
         </div>
 
         <div class="app-footer__cols">
           <div class="app-footer__col">
-            <div class="app-footer__colTitle">Product</div>
+            <div class="app-footer__colTitle">
+              Product
+            </div>
             <router-link
               class="app-footer__link"
               :to="{ name: 'home', hash: '#features' }"
@@ -40,17 +46,39 @@
           </div>
 
           <div class="app-footer__col">
-            <div class="app-footer__colTitle">Resources</div>
-            <a class="app-footer__link" href="#">Docs</a>
-            <a class="app-footer__link" href="#">Changelog</a>
-            <a class="app-footer__link" href="#">Support</a>
+            <div class="app-footer__colTitle">
+              Resources
+            </div>
+            <a
+              class="app-footer__link"
+              href="#"
+            >Docs</a>
+            <a
+              class="app-footer__link"
+              href="#"
+            >Changelog</a>
+            <a
+              class="app-footer__link"
+              href="#"
+            >Support</a>
           </div>
 
           <div class="app-footer__col">
-            <div class="app-footer__colTitle">Company</div>
-            <a class="app-footer__link" href="#">Privacy</a>
-            <a class="app-footer__link" href="#">Terms</a>
-            <a class="app-footer__link" href="#">Contact</a>
+            <div class="app-footer__colTitle">
+              Company
+            </div>
+            <a
+              class="app-footer__link"
+              href="#"
+            >Privacy</a>
+            <a
+              class="app-footer__link"
+              href="#"
+            >Terms</a>
+            <a
+              class="app-footer__link"
+              href="#"
+            >Contact</a>
           </div>
         </div>
       </div>

@@ -169,7 +169,10 @@ const goBack = () => {
         >
           Back
         </CalmButton>
-        <CalmHeading :level="1" class="page-title">
+        <CalmHeading
+          :level="1"
+          class="page-title"
+        >
           Create workspace
         </CalmHeading>
         <p class="page-description ui-muted">
@@ -177,7 +180,10 @@ const goBack = () => {
         </p>
       </div>
 
-      <CalmCard class="form-card" padding="lg">
+      <CalmCard
+        class="form-card"
+        padding="lg"
+      >
         <form
           class="workspace-form"
           @submit.prevent="handleSubmit"
@@ -201,7 +207,9 @@ const goBack = () => {
           />
 
           <div class="form-section">
-            <h3 class="section-title ui-h3">Invite members</h3>
+            <h3 class="section-title ui-h3">
+              Invite members
+            </h3>
             <p class="section-description ui-hint">
               Search and invite members to the workspace (optional)
             </p>
@@ -239,12 +247,19 @@ const goBack = () => {
                   class="invite-search__item"
                   @mousedown.prevent="selectUser(user)"
                 >
-                  <div class="invite-search__avatar" aria-hidden="true">
+                  <div
+                    class="invite-search__avatar"
+                    aria-hidden="true"
+                  >
                     {{ user.name.charAt(0).toUpperCase() }}
                   </div>
                   <div class="invite-search__info">
-                    <div class="invite-search__name">{{ user.name }}</div>
-                    <div class="invite-search__email">{{ user.email }}</div>
+                    <div class="invite-search__name">
+                      {{ user.name }}
+                    </div>
+                    <div class="invite-search__email">
+                      {{ user.email }}
+                    </div>
                   </div>
                 </button>
               </div>
@@ -260,12 +275,19 @@ const goBack = () => {
                 class="invites__row"
               >
                 <div class="invites__user">
-                  <div class="invites__avatar" aria-hidden="true">
+                  <div
+                    class="invites__avatar"
+                    aria-hidden="true"
+                  >
                     {{ invite.name.charAt(0).toUpperCase() }}
                   </div>
                   <div class="invites__meta">
-                    <div class="invites__name">{{ invite.name }}</div>
-                    <div class="invites__email">{{ invite.email }}</div>
+                    <div class="invites__name">
+                      {{ invite.name }}
+                    </div>
+                    <div class="invites__email">
+                      {{ invite.email }}
+                    </div>
                   </div>
                 </div>
                 <CalmSelect

@@ -139,9 +139,14 @@ const goToLogin = () => {
   <section class="auth-page">
     <div class="container-center">
       <div class="auth-page__container">
-        <CalmCard class="auth-card" padding="lg">
+        <CalmCard
+          class="auth-card"
+          padding="lg"
+        >
           <header class="auth-card__header">
-            <CalmHeading :level="2">Create account</CalmHeading>
+            <CalmHeading :level="2">
+              Create account
+            </CalmHeading>
             <p class="ui-muted auth-card__subtitle">
               Use your email to get started.
             </p>
