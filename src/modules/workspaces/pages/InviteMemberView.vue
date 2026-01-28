@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import StarfieldButton from "@/components/StarfieldButton.vue";
-import StarfieldCard from "@/components/StarfieldCard.vue";
-import GlowText from "@/components/GlowText.vue";
+import CalmButton from "@/components/calm/CalmButton.vue";
+import CalmCard from "@/components/calm/CalmCard.vue";
+import CalmHeading from "@/components/calm/CalmHeading.vue";
+import CalmInput from "@/components/calm/CalmInput.vue";
+import CalmSelect from "@/components/calm/CalmSelect.vue";
 import { useToast } from "@/composables/useToast.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 
@@ -24,6 +26,13 @@ const form = ref({
 const loading = computed(() => workspaceStore.inviteMemberLoading);
 const loadingData = computed(() => workspaceStore.membersLoading);
 const errors = ref({});
+const roleOptions = computed(() =>
+  roles.value.map((r) => ({
+    value: r.id,
+    label:
+      r.name === "owner" ? "Owner" : r.name === "admin" ? "Admin" : "Member",
+  }))
+);
 
 const fetchWorkspaceData = async () => {
   try {
@@ -94,20 +103,18 @@ onMounted(() => {
   <div class="invite-member-page">
     <div class="container-center">
       <div class="page-header">
-        <StarfieldButton
-          variant="outline"
+        <CalmButton
+          variant="secondary"
           size="sm"
+          type="button"
           @click="goBack"
         >
-          ← Back
-        </StarfieldButton>
-        <GlowText
-          :level="1"
-          class="page-title"
-        >
+          Back
+        </CalmButton>
+        <CalmHeading :level="1" class="page-title">
           Invite member
-        </GlowText>
-        <p class="page-description">
+        </CalmHeading>
+        <p class="page-description ui-muted">
           Send invitations to add members to this workspace
         </p>
       </div>
@@ -116,94 +123,65 @@ onMounted(() => {
         v-if="loadingData"
         class="loading-state"
       >
-        <p>Loading...</p>
+        <p class="ui-muted">Loading...</p>
       </div>
 
       <div
         v-else
         class="content-grid"
       >
-        <StarfieldCard class="form-card">
+        <CalmCard class="form-card" padding="lg">
           <form
             class="invite-form"
             @submit.prevent="handleSubmit"
           >
-            <div class="form-group">
-              <label for="email"> Email <span class="required">*</span> </label>
-              <input
-                id="email"
-                v-model="form.email"
-                type="email"
-                placeholder="user@example.com"
-                :class="{ error: errors.email }"
-              >
-              <span
-                v-if="errors.email"
-                class="error-message"
-              >
-                {{ errors.email }}
-              </span>
-            </div>
+            <CalmInput
+              id="email"
+              v-model="form.email"
+              label="Email"
+              type="email"
+              placeholder="user@example.com"
+              :required="true"
+              :error="errors.email"
+            />
 
-            <div class="form-group">
-              <label for="roleId">
-                Role <span class="required">*</span>
-              </label>
-              <select
-                id="roleId"
-                v-model="form.roleId"
-                :class="{ error: errors.roleId }"
-              >
-                <option
-                  v-for="role in roles"
-                  :key="role.id"
-                  :value="role.id"
-                >
-                  {{
-                    role.name === "owner"
-                      ? "Owner"
-                      : role.name === "admin"
-                        ? "Admin"
-                        : "Member"
-                  }}
-                </option>
-              </select>
-              <span
-                v-if="errors.roleId"
-                class="error-message"
-              >
-                {{ errors.roleId }}
-              </span>
-            </div>
+            <CalmSelect
+              id="roleId"
+              v-model="form.roleId"
+              label="Role"
+              :required="true"
+              :options="roleOptions"
+              :error="errors.roleId"
+            />
 
             <div class="form-actions">
-              <StarfieldButton
-                variant="outline"
+              <CalmButton
+                variant="secondary"
+                type="button"
                 :disabled="loading"
                 @click="goBack"
               >
                 Cancel
-              </StarfieldButton>
-              <StarfieldButton
+              </CalmButton>
+              <CalmButton
                 variant="primary"
                 type="submit"
+                :loading="loading"
                 :disabled="loading"
               >
-                {{ loading ? "Sending..." : "Send invitation" }}
-              </StarfieldButton>
+                Send invitation
+              </CalmButton>
             </div>
           </form>
-        </StarfieldCard>
+        </CalmCard>
 
-        <StarfieldCard class="members-card">
-          <h3 class="card-title">
-            Current members
-          </h3>
+        <CalmCard class="members-card" padding="lg">
+          <h3 class="ui-h3 card-title">Current members</h3>
           <div
             v-if="members.length === 0"
             class="empty-state"
           >
-            <p>No members yet</p>
+            <p class="ui-hint">No members yet</p>
           </div>
           <div
             v-else
@@ -238,7 +216,7 @@ onMounted(() => {
               </span>
             </div>
           </div>
-        </StarfieldCard>
+        </CalmCard>
       </div>
     </div>
   </div>

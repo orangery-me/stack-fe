@@ -2,192 +2,225 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
-import StarfieldButton from "@/components/StarfieldButton.vue";
+import CalmButton from "@/components/calm/CalmButton.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
-const title = "Stack";
 
 const mobileMenu = ref(null);
-const mobileMenuBtn = ref(null);
+const userMenuOpen = ref(false);
 
 const isAuthenticated = computed(() => authStore.isLoggedIn);
 const userName = computed(() => authStore.userName || authStore.userEmail);
 
 const toggleMobileMenu = () => {
-  if (mobileMenu.value) {
-    mobileMenu.value.classList.toggle("active");
-  }
+  if (mobileMenu.value) mobileMenu.value.classList.toggle("active");
 };
 
 const closeMobileMenu = () => {
-  if (mobileMenu.value) {
-    mobileMenu.value.classList.remove("active");
-  }
+  if (mobileMenu.value) mobileMenu.value.classList.remove("active");
+};
+
+const toggleUserMenu = () => {
+  userMenuOpen.value = !userMenuOpen.value;
+};
+
+const closeUserMenu = () => {
+  userMenuOpen.value = false;
 };
 
 const handleLogout = async () => {
+  closeUserMenu();
   await authStore.logout();
   router.push("/login");
 };
 
-const goToLogin = () => {
-  router.push("/login");
-};
+const goToLogin = () => router.push("/login");
+const goToRegister = () => router.push("/register");
 </script>
 
 <template>
-  <nav class="starfield-navbar">
+  <nav class="app-header">
     <div class="container-center">
-      <div class="navbar-content">
-        <!-- Logo -->
+      <div class="app-header__row">
         <router-link
           :to="{ name: 'home' }"
-          class="navbar-logo"
+          class="app-header__brand"
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 32 32"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+          <img
+            class="app-header__logo"
+            src="/logos/stack-colored-logo.webp"
+            alt="Stack"
           >
-            <circle
-              cx="16"
-              cy="16"
-              r="14"
-              stroke="#B8A7FF"
-              stroke-width="2"
-              fill="none"
-              opacity="0.5"
-            />
-            <circle
-              cx="16"
-              cy="16"
-              r="8"
-              stroke="#B8A7FF"
-              stroke-width="1"
-              fill="none"
-              opacity="0.3"
-            />
-            <circle
-              cx="16"
-              cy="16"
-              r="2"
-              fill="#B8A7FF"
-            />
-          </svg>
-          <span class="logo-text">{{ title }}</span>
+          <span class="app-header__name">Stack</span>
         </router-link>
 
-        <!-- Desktop Navigation -->
-        <!-- <div class="navbar-nav-desktop">
+        <div class="app-header__nav">
           <router-link
-            :to="{ name: 'home' }"
-            class="nav-link"
-            :class="{ 'nav-link--active': router.currentRoute.value.name === 'home' }"
+            class="app-header__navLink"
+            :to="{ name: 'home', hash: '#features' }"
           >
-            Home
+            Features
           </router-link>
-          <a
-            href="#features"
-            class="nav-link"
-          >Features</a>
-          <a
-            href="#about"
-            class="nav-link"
-          >About</a>
-        </div> -->
+          <router-link
+            class="app-header__navLink"
+            :to="{ name: 'home', hash: '#savings' }"
+          >
+            Savings
+          </router-link>
+          <router-link
+            class="app-header__navLink"
+            :to="{ name: 'home', hash: '#integrations' }"
+          >
+            Integrations
+          </router-link>
+        </div>
 
-        <!-- CTA Button / User Menu -->
-        <div class="navbar-cta">
+        <div class="app-header__actions">
           <template v-if="isAuthenticated">
-            <div class="user-menu">
-              <span class="user-name">{{ userName }}</span>
-              <StarfieldButton
-                variant="outline"
-                size="sm"
-                @click="handleLogout"
+            <div class="app-header__userMenu">
+              <button
+                type="button"
+                class="app-header__userTrigger ui-focusable"
+                @click="toggleUserMenu"
               >
-                Sign out
-              </StarfieldButton>
+                <span class="app-header__user">
+                  {{ userName }}
+                </span>
+                <svg
+                  class="app-header__userCaret"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <div
+                v-if="userMenuOpen"
+                class="app-header__userDropdown"
+              >
+                <button
+                  type="button"
+                  class="app-header__userItem app-header__userItem--danger"
+                  @click="handleLogout"
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           </template>
           <template v-else>
-            <StarfieldButton
+            <CalmButton
+              variant="ghost"
+              size="sm"
+              @click="goToRegister"
+            >
+              Create account
+            </CalmButton>
+            <CalmButton
               variant="primary"
-              size="md"
+              size="sm"
               @click="goToLogin"
             >
               Sign in
-            </StarfieldButton>
+            </CalmButton>
           </template>
         </div>
 
-        <!-- Mobile Menu Button -->
         <button
-          ref="mobileMenuBtn"
-          class="mobile-menu-btn"
+          class="app-header__mobileToggle ui-focusable"
+          type="button"
+          aria-label="Open menu"
           @click="toggleMobileMenu"
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
-            stroke="currentColor"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
               d="M4 6h16M4 12h16M4 18h16"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
             />
           </svg>
         </button>
       </div>
 
-      <!-- Mobile Navigation -->
       <div
         ref="mobileMenu"
-        class="navbar-nav-mobile"
+        class="app-header__mobileMenu"
       >
         <router-link
           :to="{ name: 'home' }"
-          class="nav-link-mobile"
+          class="app-header__mobileLink"
           @click="closeMobileMenu"
         >
           Home
         </router-link>
-        <a
-          href="#features"
-          class="nav-link-mobile"
+        <router-link
+          :to="{ name: 'home', hash: '#features' }"
+          class="app-header__mobileLink"
           @click="closeMobileMenu"
-        >Features</a>
-        <a
-          href="#about"
-          class="nav-link-mobile"
+        >
+          Features
+        </router-link>
+        <router-link
+          :to="{ name: 'home', hash: '#savings' }"
+          class="app-header__mobileLink"
           @click="closeMobileMenu"
-        >About</a>
+        >
+          Savings
+        </router-link>
+        <router-link
+          :to="{ name: 'home', hash: '#integrations' }"
+          class="app-header__mobileLink"
+          @click="closeMobileMenu"
+        >
+          Integrations
+        </router-link>
+
         <template v-if="isAuthenticated">
-          <div class="nav-link-mobile user-info-mobile">
-            <span>{{ userName }}</span>
+          <div class="app-header__mobileMeta">
+            Signed in as <strong>{{ userName }}</strong>
           </div>
           <button
-            class="nav-link-mobile logout-btn-mobile"
+            type="button"
+            class="app-header__mobileLink"
             @click="handleLogout"
           >
-            Logout
+            Sign out
           </button>
         </template>
         <template v-else>
-          <router-link
-            to="/login"
-            class="nav-link-mobile"
-            @click="closeMobileMenu"
+          <button
+            type="button"
+            class="app-header__mobileLink"
+            @click="goToRegister"
           >
-            Login
-          </router-link>
+            Create account
+          </button>
+          <button
+            type="button"
+            class="app-header__mobileLink"
+            @click="goToLogin"
+          >
+            Sign in
+          </button>
         </template>
       </div>
     </div>
@@ -195,116 +228,162 @@ const goToLogin = () => {
 </template>
 
 <style scoped lang="scss">
-.starfield-navbar {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(184, 167, 255, 0.2);
-  padding: 0.75rem 0;
+.app-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid var(--ui-divider);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 0 20px rgba(184, 167, 255, 0.1);
 }
 
-.navbar-content {
+.app-header__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2rem;
+  gap: var(--space-16);
+  height: 64px;
 }
 
-.navbar-logo {
+.app-header__brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  text-decoration: none;
-  color: #f1f5f9;
-  font-family: "JetBrains Mono", monospace;
-  font-weight: 700;
-  font-size: 1.25rem;
-  letter-spacing: 0.05em;
-  transition: all 0.3s ease;
-
-  &:hover {
-    text-shadow: 0 0 20px rgba(184, 167, 255, 0.5);
-    transform: scale(1.05);
-  }
-
-  .logo-text {
-    background: linear-gradient(135deg, #f1f5f9 0%, #b8a7ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+  gap: var(--space-8);
+  color: var(--ui-text);
 }
 
-.navbar-nav-desktop {
+.app-header__logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.app-header__name {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.app-header__nav {
   display: none;
-  align-items: center;
-  gap: 2rem;
 
   @media (min-width: 768px) {
     display: flex;
+    align-items: center;
+    gap: var(--space-16);
   }
 }
 
-.nav-link {
-  color: #f1f5f9;
-  text-decoration: none;
-  font-weight: 300;
-  font-size: 1rem;
-  padding: 0.5rem 0;
-  position: relative;
-  transition: all 0.3s ease;
-
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 1px;
-    background: #b8a7ff;
-    transition: width 0.3s ease;
-    box-shadow: 0 0 10px #b8a7ff;
-  }
-
-  &:hover::after,
-  &--active::after {
-    width: 100%;
-  }
+.app-header__navLink {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-text-muted);
+  padding: var(--space-8) var(--space-8);
+  border-radius: 10px;
+  transition: background var(--ui-duration) var(--ui-ease),
+    color var(--ui-duration) var(--ui-ease);
 
   &:hover {
-    color: #b8a7ff;
-    text-shadow: 0 0 10px rgba(184, 167, 255, 0.5);
-  }
-
-  &--active {
-    color: #b8a7ff;
+    background: var(--gray-50);
+    color: var(--ui-text);
   }
 }
 
-.navbar-cta {
+.app-header__actions {
   display: none;
 
   @media (min-width: 768px) {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
   }
 }
 
-.mobile-menu-btn {
-  display: block;
+.app-header__user {
+  font-size: 12px;
+  color: var(--ui-text-muted);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header__userMenu {
+  position: relative;
+}
+
+.app-header__userTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: transparent;
-  border: 1px solid rgba(184, 167, 255, 0.3);
-  border-radius: 2px;
-  padding: 0.5rem;
-  color: #f1f5f9;
+  color: var(--ui-text);
   cursor: pointer;
-  transition: all 0.3s ease;
+  font-size: 12px;
 
   &:hover {
-    border-color: #b8a7ff;
-    box-shadow: 0 0 10px rgba(184, 167, 255, 0.3);
+    background: var(--gray-50);
+    border-color: var(--ui-divider);
+  }
+}
+
+.app-header__userCaret {
+  color: var(--ui-text-hint);
+}
+
+.app-header__userDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 160px;
+  padding: var(--space-4);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--ui-divider);
+  z-index: 20;
+}
+
+.app-header__userItem {
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gray-50);
+  }
+}
+
+.app-header__userItem--danger {
+  color: #b91c1c;
+}
+
+.app-header__mobileToggle {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-divider);
+  background: #ffffff;
+  color: var(--ui-text);
+  cursor: pointer;
+  transition: background var(--ui-duration) var(--ui-ease),
+    border-color var(--ui-duration) var(--ui-ease);
+
+  &:hover {
+    background: var(--gray-50);
+    border-color: var(--ui-border);
   }
 
   @media (min-width: 768px) {
@@ -312,16 +391,16 @@ const goToLogin = () => {
   }
 }
 
-.navbar-nav-mobile {
+.app-header__mobileMenu {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(184, 167, 255, 0.2);
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+  padding: var(--space-12) 0;
+  border-top: 1px solid var(--ui-divider);
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height var(--ui-duration) var(--ui-ease);
 
   &.active {
     max-height: 500px;
@@ -332,68 +411,25 @@ const goToLogin = () => {
   }
 }
 
-.nav-link-mobile {
-  color: #f1f5f9;
-  text-decoration: none;
-  font-weight: 300;
-  padding: 0.75rem 1rem;
-  border-radius: 2px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: rgba(184, 167, 255, 0.1);
-    color: #b8a7ff;
-    padding-left: 1.5rem;
-  }
-}
-
-.user-menu {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-name {
-  color: #f1f5f9;
-  font-size: 0.875rem;
-  font-weight: 300;
-  font-family: "Merriweather", serif;
-
-  @media (max-width: 767px) {
-    display: none;
-  }
-}
-
-.user-info-mobile {
-  color: rgba(241, 245, 249, 0.7);
-  font-size: 0.875rem;
-  cursor: default;
-
-  &:hover {
-    background: transparent;
-    padding-left: 1rem;
-    color: rgba(241, 245, 249, 0.7);
-  }
-}
-
-.logout-btn-mobile {
-  background: none;
-  border: none;
-  color: #f1f5f9;
-  text-decoration: none;
-  font-weight: 300;
-  padding: 0.75rem 1rem;
-  border-radius: 2px;
-  transition: all 0.3s ease;
-  cursor: pointer;
+.app-header__mobileLink {
+  display: block;
   width: 100%;
   text-align: left;
-  font-family: "Merriweather", serif;
+  padding: var(--space-12) var(--space-12);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ui-text);
+  cursor: pointer;
 
   &:hover {
-    background: rgba(184, 167, 255, 0.1);
-    color: #b8a7ff;
-    padding-left: 1.5rem;
+    background: var(--gray-100);
   }
+}
+
+.app-header__mobileMeta {
+  padding: 0 var(--space-12);
+  font-size: 12px;
+  color: var(--ui-text-muted);
 }
 </style>

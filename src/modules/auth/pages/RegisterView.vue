@@ -3,9 +3,10 @@ import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useToast } from "@/composables/useToast.js";
-import StarfieldButton from "@/components/StarfieldButton.vue";
-import StarfieldCard from "@/components/StarfieldCard.vue";
-import GlowText from "@/components/GlowText.vue";
+import CalmButton from "@/components/calm/CalmButton.vue";
+import CalmCard from "@/components/calm/CalmCard.vue";
+import CalmHeading from "@/components/calm/CalmHeading.vue";
+import CalmInput from "@/components/calm/CalmInput.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -135,314 +136,171 @@ const goToLogin = () => {
 </script>
 
 <template>
-  <section class="register-section">
+  <section class="auth-page">
     <div class="container-center">
-      <div class="register-container">
-        <StarfieldCard class="register-card">
-          <div class="register-header">
-            <GlowText :level="2">
-              Sign Up
-            </GlowText>
-            <p class="register-subtitle">
-              Create a new account
+      <div class="auth-page__container">
+        <CalmCard class="auth-card" padding="lg">
+          <header class="auth-card__header">
+            <CalmHeading :level="2">Create account</CalmHeading>
+            <p class="ui-muted auth-card__subtitle">
+              Use your email to get started.
             </p>
-          </div>
+          </header>
 
           <form
-            class="register-form"
+            class="auth-form"
             @submit.prevent="handleRegister"
           >
-            <div class="form-group">
-              <label
-                for="email"
-                class="form-label"
-              >Email *</label>
-              <input
-                id="email"
-                v-model="formData.email"
-                type="email"
-                class="form-input"
-                :class="{ 'form-input--error': fieldErrors.email }"
-                placeholder="your@email.com"
-                required
-                autocomplete="email"
-                @blur="handleFieldBlur('email')"
-              >
-              <span
-                v-if="fieldErrors.email"
-                class="field-error"
-              >
-                {{ fieldErrors.email }}
-              </span>
-            </div>
+            <CalmInput
+              id="email"
+              v-model="formData.email"
+              label="Email"
+              type="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              :required="true"
+              :error="fieldErrors.email"
+              @blur="handleFieldBlur('email')"
+            />
 
-            <div class="form-group">
-              <label
-                for="phone"
-                class="form-label"
-              >Phone *</label>
-              <input
-                id="phone"
-                v-model="formData.phone"
-                type="tel"
-                class="form-input"
-                :class="{ 'form-input--error': fieldErrors.phone }"
-                placeholder="0123456789"
-                required
-                maxlength="10"
-                autocomplete="tel"
-                @blur="handleFieldBlur('phone')"
-              >
-              <span
-                v-if="fieldErrors.phone"
-                class="field-error"
-              >
-                {{ fieldErrors.phone }}
-              </span>
-            </div>
+            <CalmInput
+              id="phone"
+              v-model="formData.phone"
+              label="Phone"
+              type="tel"
+              placeholder="0123456789"
+              autocomplete="tel"
+              :required="true"
+              :error="fieldErrors.phone"
+              @blur="handleFieldBlur('phone')"
+            />
 
-            <div class="form-group">
-              <label
-                for="name"
-                class="form-label"
-              >Full Name *</label>
-              <input
-                id="name"
-                v-model="formData.name"
-                type="text"
-                class="form-input"
-                :class="{ 'form-input--error': fieldErrors.name }"
-                placeholder="John Doe"
-                required
-                maxlength="50"
-                autocomplete="name"
-                @blur="handleFieldBlur('name')"
-              >
-              <span
-                v-if="fieldErrors.name"
-                class="field-error"
-              >
-                {{ fieldErrors.name }}
-              </span>
-            </div>
+            <CalmInput
+              id="name"
+              v-model="formData.name"
+              label="Full name"
+              type="text"
+              placeholder="John Doe"
+              autocomplete="name"
+              :required="true"
+              :error="fieldErrors.name"
+              @blur="handleFieldBlur('name')"
+            />
 
-            <div class="form-group">
-              <label
-                for="password"
-                class="form-label"
-              >Password *</label>
-              <input
-                id="password"
-                v-model="formData.password"
-                type="password"
-                class="form-input"
-                :class="{ 'form-input--error': fieldErrors.password }"
-                placeholder="••••••••"
-                required
-                minlength="6"
-                autocomplete="new-password"
-                @blur="handleFieldBlur('password')"
-              >
-              <span
-                v-if="fieldErrors.password"
-                class="field-error"
-              >
-                {{ fieldErrors.password }}
-              </span>
-            </div>
+            <CalmInput
+              id="password"
+              v-model="formData.password"
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              :required="true"
+              :error="fieldErrors.password"
+              @blur="handleFieldBlur('password')"
+            />
 
-            <div class="form-group">
-              <label
-                for="confirmPassword"
-                class="form-label"
-              >
-                Confirm Password *
-              </label>
-              <input
-                id="confirmPassword"
-                v-model="confirmPassword"
-                type="password"
-                class="form-input"
-                :class="{ 'form-input--error': fieldErrors.confirmPassword }"
-                placeholder="••••••••"
-                required
-                autocomplete="new-password"
-                @blur="handleFieldBlur('confirmPassword')"
-              >
-              <span
-                v-if="fieldErrors.confirmPassword"
-                class="field-error"
-              >
-                {{ fieldErrors.confirmPassword }}
-              </span>
-            </div>
+            <CalmInput
+              id="confirmPassword"
+              v-model="confirmPassword"
+              label="Confirm password"
+              type="password"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              :required="true"
+              :error="fieldErrors.confirmPassword"
+              @blur="handleFieldBlur('confirmPassword')"
+            />
 
-            <StarfieldButton
+            <CalmButton
               type="submit"
               variant="primary"
               size="lg"
               :disabled="!isValid || loading"
-              class="register-button"
+              class="auth-form__submit"
+              :loading="loading"
             >
-              {{ loading ? "Signing up..." : "Sign Up" }}
-            </StarfieldButton>
+              Create account
+            </CalmButton>
           </form>
 
-          <div class="login-link">
-            <p>
-              Already have an account?
-              <button
-                type="button"
-                class="link-button"
-                @click="goToLogin"
-              >
-                Sign in now
-              </button>
-            </p>
+          <div class="auth-footer ui-muted">
+            Already have an account?
+            <button
+              type="button"
+              class="auth-link"
+              @click="goToLogin"
+            >
+              Sign in
+            </button>
           </div>
-        </StarfieldCard>
+        </CalmCard>
       </div>
     </div>
   </section>
 </template>
 
 <style scoped lang="scss">
-.register-section {
-  padding: 6rem 0;
+.auth-page {
+  padding: var(--space-48) 0;
   min-height: calc(100vh - 200px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.container-center {
+.auth-page__container {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.register-container {
   display: flex;
   justify-content: center;
-  align-items: center;
-  width: 100%;
 }
 
-.register-card {
+.auth-card {
   width: 100%;
-  max-width: 500px;
-  padding: 3rem 2rem;
+  max-width: 520px;
 }
 
-.register-header {
+.auth-card__header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: var(--space-24);
 
-  .register-subtitle {
-    font-size: 1.125rem;
-    color: rgba(241, 245, 249, 0.7);
-    font-weight: 300;
-    margin-top: 0.5rem;
+  .auth-card__subtitle {
+    margin-top: var(--space-8);
   }
 }
 
-.register-form {
-  margin-bottom: 2rem;
+.auth-form {
+  display: grid;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
 }
 
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-label {
-  display: block;
-  color: #f1f5f9;
-  font-size: 0.875rem;
-  font-weight: 300;
-  margin-bottom: 0.5rem;
-  font-family: "Merriweather", serif;
-}
-
-.form-input {
+.auth-form__submit {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(184, 167, 255, 0.3);
-  border-radius: 2px;
-  color: #f1f5f9;
-  font-size: 1rem;
-  font-family: "Merriweather", serif;
-  font-weight: 300;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: #b8a7ff;
-    box-shadow: 0 0 10px rgba(184, 167, 255, 0.3);
-  }
-
-  &::placeholder {
-    color: rgba(241, 245, 249, 0.5);
-  }
-
-  &--error {
-    border-color: rgba(239, 68, 68, 0.5);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
-  }
 }
 
-.field-error {
-  display: block;
-  color: #fca5a5;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-  font-family: "Merriweather", serif;
-}
-
-.register-button {
-  width: 100%;
-  margin-top: 0.5rem;
-}
-
-.login-link {
-  margin-top: 2rem;
+.auth-footer {
+  margin-top: var(--space-16);
   text-align: center;
-  color: rgba(241, 245, 249, 0.7);
-  font-size: 0.875rem;
-  font-family: "Merriweather", serif;
-
-  p {
-    margin: 0;
-  }
 }
 
-.link-button {
+.auth-link {
   background: none;
   border: none;
-  color: #b8a7ff;
+  color: var(--primary-600);
   cursor: pointer;
-  text-decoration: underline;
-  font-family: "Merriweather", serif;
-  font-size: 0.875rem;
+  font-size: 12px;
   padding: 0;
   margin-left: 0.25rem;
-  transition: all 0.3s ease;
+  text-decoration: underline;
 
   &:hover {
-    color: #f1f5f9;
-    text-shadow: 0 0 10px rgba(184, 167, 255, 0.5);
+    color: var(--primary-500);
   }
 }
 
 @media (max-width: 768px) {
-  .register-section {
-    padding: 4rem 0;
-  }
-
-  .register-card {
-    padding: 2rem 1.5rem;
+  .auth-page {
+    padding: var(--space-40) 0;
   }
 }
 </style>

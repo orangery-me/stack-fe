@@ -39,6 +39,7 @@ const { toasts, dismiss } = useToast();
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-end;
+  pointer-events: auto;
 }
 
 .toast-list-enter-active {

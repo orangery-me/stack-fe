@@ -1,7 +1,10 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
-import StarfieldButton from "@/components/StarfieldButton.vue";
+import CalmModal from "@/components/calm/CalmModal.vue";
+import CalmButton from "@/components/calm/CalmButton.vue";
+import CalmInput from "@/components/calm/CalmInput.vue";
+import CalmSelect from "@/components/calm/CalmSelect.vue";
 import userService from "@/services/user.service.js";
 import { useToast } from "@/composables/useToast.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
@@ -46,6 +49,10 @@ const searchLoading = ref(false);
 const showSuggestions = ref(false);
 const searchTimeout = ref(null);
 const invites = ref([]);
+const roleOptions = [
+  { value: "member", label: "Member" },
+  { value: "admin", label: "Admin" },
+];
 
 const resetCreateWorkspaceForm = () => {
   createWorkspaceForm.value = {
@@ -193,201 +200,157 @@ const handleCreateWorkspace = async () => {
 </script>
 
 <template>
-  <div
-    v-if="isCreateWorkspaceModalOpen"
-    class="create-workspace-modal"
+  <CalmModal
+    v-model:open="isCreateWorkspaceModalOpen"
+    title="Create workspace"
+    :busy="createWorkspaceLoading"
   >
-    <div
-      class="create-workspace-modal__backdrop"
-      @click="closeCreateWorkspaceModal"
-    />
-    <div class="create-workspace-modal__dialog">
-      <div class="create-workspace-modal__header">
-        <h2 class="heading-lg create-workspace-modal__title">
-          Create new workspace
-        </h2>
-        <button
-          type="button"
-          class="create-workspace-modal__close"
-          @click="closeCreateWorkspaceModal"
-        >
-          ×
-        </button>
-      </div>
-      <p class="create-workspace-modal__description">
-        Create a workspace to start working with your team.
-      </p>
-      <form
-        class="create-workspace-modal__form"
-        @submit.prevent="handleCreateWorkspace"
-      >
-        <div class="form-group">
-          <label for="workspaceName">
-            Workspace name <span class="required">*</span>
-          </label>
-          <input
-            id="workspaceName"
-            v-model="createWorkspaceForm.name"
-            type="text"
-            placeholder="Example: Marketing Team"
-            :class="{ error: createWorkspaceErrors.name }"
-          >
-          <span
-            v-if="createWorkspaceErrors.name"
-            class="error-message"
-          >
-            {{ createWorkspaceErrors.name }}
-          </span>
-        </div>
+    <p class="create-workspace__description ui-muted">
+      Create a workspace to start working with your team.
+    </p>
 
-        <div class="form-group">
-          <label for="workspaceDisplayName">
-            Your display name in the workspace
-            <span class="required">*</span>
-          </label>
-          <input
-            id="workspaceDisplayName"
-            v-model="createWorkspaceForm.displayName"
-            type="text"
-            placeholder="Example: John Doe"
-            :class="{ error: createWorkspaceErrors.displayName }"
-          >
-          <span
-            v-if="createWorkspaceErrors.displayName"
-            class="error-message"
-          >
-            {{ createWorkspaceErrors.displayName }}
-          </span>
-        </div>
+    <form
+      class="create-workspace__form"
+      @submit.prevent="handleCreateWorkspace"
+    >
+      <CalmInput
+        id="workspaceName"
+        v-model="createWorkspaceForm.name"
+        label="Workspace name"
+        placeholder="Example: Marketing Team"
+        :required="true"
+        :error="createWorkspaceErrors.name"
+      />
 
-        <div class="form-section">
-          <h3 class="form-section__title">
-            Invite members
-          </h3>
-          <p class="form-section__description">
-            Search and invite members to the workspace (optional).
+      <CalmInput
+        id="workspaceDisplayName"
+        v-model="createWorkspaceForm.displayName"
+        label="Your display name"
+        placeholder="Example: John Doe"
+        :required="true"
+        :error="createWorkspaceErrors.displayName"
+      />
+
+      <div class="create-workspace__section">
+        <div class="create-workspace__sectionHeader">
+          <h3 class="ui-h3 create-workspace__sectionTitle">Invite members</h3>
+          <p class="ui-hint">
+            Search and invite members (optional).
           </p>
+        </div>
 
-          <div class="invite-search-wrapper">
-            <div class="search-input-wrapper">
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Enter email or name to search..."
-                class="search-input"
-                @focus="showSuggestions = searchResults.length > 0"
-                @blur="
-                  setTimeout(() => {
-                    showSuggestions = false;
-                  }, 200)
-                "
-              >
-              <div
-                v-if="searchLoading"
-                class="search-loading"
-              >
-                Searching...
-              </div>
-            </div>
-
-            <div
-              v-if="showSuggestions && searchResults.length > 0"
-              class="suggestions-dropdown"
+        <div class="invite-search">
+          <div class="invite-search__inputWrap">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Enter email or name to search…"
+              class="invite-search__input ui-focusable"
+              @focus="showSuggestions = searchResults.length > 0"
+              @blur="
+                setTimeout(() => {
+                  showSuggestions = false;
+                }, 200)
+              "
             >
-              <div
-                v-for="user in searchResults"
-                :key="user.id"
-                class="suggestion-item"
-                @mousedown.prevent="selectUser(user)"
-              >
-                <div class="user-avatar">
-                  {{ user.name.charAt(0).toUpperCase() }}
-                </div>
-                <div class="user-info">
-                  <p class="user-name">
-                    {{ user.name }}
-                  </p>
-                  <p class="user-email">
-                    {{ user.email }}
-                  </p>
-                </div>
-              </div>
+            <div
+              v-if="searchLoading"
+              class="invite-search__loading ui-hint"
+            >
+              Searching…
             </div>
           </div>
 
           <div
-            v-if="invites.length > 0"
-            :class="['invites-list', { 'invites-list--scrollable': invites.length > 3 }]"
+            v-if="showSuggestions && searchResults.length > 0"
+            class="invite-search__dropdown"
           >
-            <div
-              v-for="(invite, index) in invites"
-              :key="index"
-              class="invite-item"
+            <button
+              v-for="user in searchResults"
+              :key="user.id"
+              type="button"
+              class="invite-search__item"
+              @mousedown.prevent="selectUser(user)"
             >
-              <div class="invite-user-info">
-                <div class="user-avatar">
-                  {{ invite.name.charAt(0).toUpperCase() }}
-                </div>
-                <div class="user-details">
-                  <p class="user-name">
-                    {{ invite.name }}
-                  </p>
-                  <p class="user-email">
-                    {{ invite.email }}
-                  </p>
-                </div>
+              <div class="invite-search__avatar" aria-hidden="true">
+                {{ user.name.charAt(0).toUpperCase() }}
               </div>
-              <div class="invite-role-select">
-                <select
-                  v-model="invite.role"
-                  class="role-select"
-                >
-                  <option value="member">
-                    Member
-                  </option>
-                  <option value="admin">
-                    Admin
-                  </option>
-                </select>
+              <div class="invite-search__info">
+                <div class="invite-search__name">{{ user.name }}</div>
+                <div class="invite-search__email">{{ user.email }}</div>
               </div>
-              <button
-                type="button"
-                class="remove-btn"
-                @click="removeInvite(index)"
-              >
-                ×
-              </button>
-            </div>
+            </button>
           </div>
-
-          <span
-            v-if="createWorkspaceErrors.invites"
-            class="error-message"
-          >
-            {{ createWorkspaceErrors.invites }}
-          </span>
         </div>
 
-        <div class="create-workspace-modal__actions">
-          <StarfieldButton
-            variant="outline"
-            type="button"
-            :disabled="createWorkspaceLoading"
-            @click="closeCreateWorkspaceModal"
+        <div
+          v-if="invites.length > 0"
+          :class="[
+            'invites',
+            { 'invites--scrollable': invites.length > 3 },
+          ]"
+        >
+          <div
+            v-for="(invite, index) in invites"
+            :key="index"
+            class="invites__row"
           >
-            Cancel
-          </StarfieldButton>
-          <StarfieldButton
-            variant="primary"
-            type="submit"
-            :disabled="createWorkspaceLoading"
-          >
-            {{ createWorkspaceLoading ? "Creating..." : "Create workspace" }}
-          </StarfieldButton>
+            <div class="invites__user">
+              <div class="invites__avatar" aria-hidden="true">
+                {{ invite.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="invites__meta">
+                <div class="invites__name">{{ invite.name }}</div>
+                <div class="invites__email">{{ invite.email }}</div>
+              </div>
+            </div>
+
+            <CalmSelect
+              v-model="invite.role"
+              :options="roleOptions"
+              class="invites__role"
+            />
+
+            <button
+              type="button"
+              class="invites__remove ui-focusable"
+              aria-label="Remove"
+              @click="removeInvite(index)"
+            >
+              ×
+            </button>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
+
+        <p
+          v-if="createWorkspaceErrors.invites"
+          class="create-workspace__error"
+        >
+          {{ createWorkspaceErrors.invites }}
+        </p>
+      </div>
+    </form>
+
+    <template #actions>
+      <CalmButton
+        variant="secondary"
+        type="button"
+        :disabled="createWorkspaceLoading"
+        @click="closeCreateWorkspaceModal"
+      >
+        Cancel
+      </CalmButton>
+      <CalmButton
+        variant="primary"
+        type="submit"
+        :loading="createWorkspaceLoading"
+        :disabled="createWorkspaceLoading"
+        @click="handleCreateWorkspace"
+      >
+        Create workspace
+      </CalmButton>
+    </template>
+  </CalmModal>
 </template>
 
 <style scoped lang="scss" src="./CreateWorkspaceModal.scss"></style>
