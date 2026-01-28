@@ -111,7 +111,10 @@ onMounted(() => {
         >
           Back
         </CalmButton>
-        <CalmHeading :level="1" class="page-title">
+        <CalmHeading
+          :level="1"
+          class="page-title"
+        >
           Invite member
         </CalmHeading>
         <p class="page-description ui-muted">
@@ -123,14 +126,19 @@ onMounted(() => {
         v-if="loadingData"
         class="loading-state"
       >
-        <p class="ui-muted">Loading...</p>
+        <p class="ui-muted">
+          Loading...
+        </p>
       </div>
 
       <div
         v-else
         class="content-grid"
       >
-        <CalmCard class="form-card" padding="lg">
+        <CalmCard
+          class="form-card"
+          padding="lg"
+        >
           <form
             class="invite-form"
             @submit.prevent="handleSubmit"
@@ -175,13 +183,20 @@ onMounted(() => {
           </form>
         </CalmCard>
 
-        <CalmCard class="members-card" padding="lg">
-          <h3 class="ui-h3 card-title">Current members</h3>
+        <CalmCard
+          class="members-card"
+          padding="lg"
+        >
+          <h3 class="ui-h3 card-title">
+            Current members
+          </h3>
           <div
             v-if="members.length === 0"
             class="empty-state"
           >
-            <p class="ui-hint">No members yet</p>
+            <p class="ui-hint">
+              No members yet
+            </p>
           </div>
           <div
             v-else

@@ -233,7 +233,9 @@ const handleCreateWorkspace = async () => {
 
       <div class="create-workspace__section">
         <div class="create-workspace__sectionHeader">
-          <h3 class="ui-h3 create-workspace__sectionTitle">Invite members</h3>
+          <h3 class="ui-h3 create-workspace__sectionTitle">
+            Invite members
+          </h3>
           <p class="ui-hint">
             Search and invite members (optional).
           </p>
@@ -272,12 +274,19 @@ const handleCreateWorkspace = async () => {
               class="invite-search__item"
               @mousedown.prevent="selectUser(user)"
             >
-              <div class="invite-search__avatar" aria-hidden="true">
+              <div
+                class="invite-search__avatar"
+                aria-hidden="true"
+              >
                 {{ user.name.charAt(0).toUpperCase() }}
               </div>
               <div class="invite-search__info">
-                <div class="invite-search__name">{{ user.name }}</div>
-                <div class="invite-search__email">{{ user.email }}</div>
+                <div class="invite-search__name">
+                  {{ user.name }}
+                </div>
+                <div class="invite-search__email">
+                  {{ user.email }}
+                </div>
               </div>
             </button>
           </div>
@@ -296,12 +305,19 @@ const handleCreateWorkspace = async () => {
             class="invites__row"
           >
             <div class="invites__user">
-              <div class="invites__avatar" aria-hidden="true">
+              <div
+                class="invites__avatar"
+                aria-hidden="true"
+              >
                 {{ invite.name.charAt(0).toUpperCase() }}
               </div>
               <div class="invites__meta">
-                <div class="invites__name">{{ invite.name }}</div>
-                <div class="invites__email">{{ invite.email }}</div>
+                <div class="invites__name">
+                  {{ invite.name }}
+                </div>
+                <div class="invites__email">
+                  {{ invite.email }}
+                </div>
               </div>
             </div>
 

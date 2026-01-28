@@ -7,13 +7,20 @@ import CalmHeading from "@/components/calm/CalmHeading.vue";
   <div class="not-found">
     <div class="container-center">
       <div class="not-found__inner">
-        <div class="not-found__code">404</div>
-        <CalmHeading :level="2">Page not found</CalmHeading>
+        <div class="not-found__code">
+          404
+        </div>
+        <CalmHeading :level="2">
+          Page not found
+        </CalmHeading>
         <p class="ui-muted not-found__desc">
           The page you’re looking for doesn’t exist.
         </p>
         <router-link to="/">
-          <CalmButton variant="primary" size="lg">
+          <CalmButton
+            variant="primary"
+            size="lg"
+          >
             Go back to home
           </CalmButton>
         </router-link>
