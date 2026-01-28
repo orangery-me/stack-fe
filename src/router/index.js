@@ -55,4 +55,8 @@ router.beforeEach((to, from, next) => {
   }
 });
 
+router.afterEach((to) => {
+  document.title = `${to.meta.title} - Stack | Workspaces that keep teams aligned`;
+});
+
 export default router;

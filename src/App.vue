@@ -7,20 +7,24 @@ import TheHeader from "@/components/TheHeader.vue";
 import ToastContainer from "@/components/ToastContainer.vue";
 
 const route = useRoute();
-const isWorkspaceDetail = computed(() => route.name === 'workspaceDetail');
+const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
 
 // Prevent body scroll when on workspace detail page
-watch(isWorkspaceDetail, (isDetail) => {
-  if (isDetail) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = '';
-  }
-}, { immediate: true });
+watch(
+  isWorkspaceDetail,
+  (isDetail) => {
+    if (isDetail) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
-  <TheHeader />
+  <TheHeader v-if="!isWorkspaceDetail" />
 
   <main>
     <router-view />
