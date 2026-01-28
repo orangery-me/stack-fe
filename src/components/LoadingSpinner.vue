@@ -19,7 +19,10 @@ const sizePx = computed(() => `${props.size}px`);
     role="status"
     aria-live="polite"
   >
-    <span class="loading-spinner__spinner" aria-hidden="true" />
+    <span
+      class="loading-spinner__spinner"
+      aria-hidden="true"
+    />
     <span class="loading-spinner__label">
       {{ label }}
     </span>

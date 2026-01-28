@@ -25,7 +25,6 @@
 
 // Left Icon Menu Bar
 .icon-menu-bar {
-  /* Đậm hơn sidebar một chút, dùng primary rất nhạt */
   background: rgba(37, 99, 235, 0.06);
   border-right: 1px solid var(--ui-divider);
   display: flex;
@@ -86,7 +85,6 @@
   img {
     width: 20px;
     height: 20px;
-    /* Icon rõ, phù hợp nền xanh nhạt */
     opacity: 1;
     filter: brightness(0) saturate(100%);
   }
@@ -143,7 +141,6 @@
 
 // Sidebar
 .sidebar {
-  /* Nhạt hơn menu bar để phân lớp */
   background: var(--gray-50);
   border-right: 1px solid var(--ui-divider);
   display: flex;
