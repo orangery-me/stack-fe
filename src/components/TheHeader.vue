@@ -49,7 +49,7 @@ const goToRegister = () => router.push("/register");
         >
           <img
             class="app-header__logo"
-            src="/logos/stack-colored-logo.webp"
+            src="/logos/stack-logo.jpg"
             alt="Stack"
           >
           <span class="app-header__name">Stack</span>

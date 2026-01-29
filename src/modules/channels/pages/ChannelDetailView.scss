@@ -218,6 +218,14 @@
   padding-bottom: var(--space-16);
 }
 
+.channel-messages-loading-older {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--space-8) 0;
+  background: #ffffff;
+}
+
 .channel-day-divider {
   display: flex;
   align-items: center;
@@ -268,6 +276,7 @@
 
 .channel-message-body {
   flex: 1;
+  min-width: 0;
 }
 
 .channel-message-header {
@@ -292,6 +301,7 @@
   font-size: 14px;
   color: var(--ui-text);
   white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 // Message status styles

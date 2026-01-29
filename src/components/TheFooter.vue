@@ -7,7 +7,7 @@
         <div class="app-footer__brand">
           <img
             class="app-footer__logo"
-            src="/logos/stack-colored-logo.webp"
+            src="/logos/stack-logo.jpg"
             alt="Stack"
           >
           <div class="app-footer__brandText">

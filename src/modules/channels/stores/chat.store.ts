@@ -31,11 +31,18 @@ export const useChatStore = defineStore("chat", {
     messagesError: null as Error | null,
     socketListeners: {} as Record<string, { members: any[] } | boolean>,
     pendingMessages: {} as Record<string, PendingMessageInfo>,
+    currentPage: {} as Record<string, number>,
+    hasMoreByChannel: {} as Record<string, boolean>,
+    isLoadingMoreByChannel: {} as Record<string, boolean>,
   }),
 
   getters: {
     getMessagesByChannelId: (state) => (channelId: string) => {
       return state.messagesByChannel[channelId] || [];
+    },
+    hasMoreForChannel: (state) => (channelId: string) => {
+      const value = state.hasMoreByChannel[channelId];
+      return typeof value === "boolean" ? value : true;
     },
   },
 
@@ -45,23 +52,63 @@ export const useChatStore = defineStore("chat", {
     async fetchMessages(
       workspaceId: string,
       channelId: string,
-      members: any[] = []
+      members: any[] = [],
+      options: { appendOlder?: boolean } = {}
     ) {
-      this.messagesLoading = true;
+      const { appendOlder = false } = options;
       this.messagesError = null;
 
+      if (appendOlder) {
+        // If no more messages or already loading more for this channel, skip
+        if (this.hasMoreByChannel[channelId] === false) {
+          return;
+        }
+        if (this.isLoadingMoreByChannel[channelId]) {
+          return;
+        }
+        this.isLoadingMoreByChannel[channelId] = true;
+      } else {
+        this.messagesLoading = true;
+      }
+
       try {
+        const nextPage = appendOlder
+          ? (this.currentPage[channelId] || 1) + 1
+          : 1;
+
         const result: any = await chatService.getMessages(
           workspaceId,
-          channelId
+          channelId,
+          nextPage
         );
-        const messages = result?.data?.messages || [];
 
-        this.messagesByChannel[channelId] = this.formatMessages(
-          messages,
-          members,
-          "sent"
-        );
+        // Support both wrapped and unwrapped API responses
+        const payload = result?.data ?? result ?? {};
+        const messages = payload.messages || [];
+        const hasMore = typeof payload.hasMore === "boolean" ? payload.hasMore : false;
+
+        const formattedMessages = this.formatMessages(messages, members, "sent");
+
+        this.ensureChannelExists(channelId);
+
+        if (appendOlder) {
+          const existingIds = new Set(
+            this.messagesByChannel[channelId].map((m) => m.id)
+          );
+          const newMessages = formattedMessages.filter(
+            (m) => !existingIds.has(m.id)
+          );
+          this.messagesByChannel[channelId] = [
+            ...newMessages,
+            ...this.messagesByChannel[channelId],
+          ];
+          this.currentPage[channelId] = nextPage;
+        } else {
+          this.messagesByChannel[channelId] = formattedMessages;
+          this.currentPage[channelId] = nextPage;
+        }
+
+        this.hasMoreByChannel[channelId] = hasMore;
 
         if (!this.socketListeners[channelId]) {
           await this.setupSocketListeners(channelId, members);
@@ -72,7 +119,11 @@ export const useChatStore = defineStore("chat", {
         this.messagesError = error as Error;
         throw error;
       } finally {
-        this.messagesLoading = false;
+        if (appendOlder) {
+          this.isLoadingMoreByChannel[channelId] = false;
+        } else {
+          this.messagesLoading = false;
+        }
       }
     },
 
@@ -207,7 +258,7 @@ export const useChatStore = defineStore("chat", {
       try {
         await socketHelper.emit(CHAT_EVENTS.JOIN_CHANNEL, { channelId });
       } catch (error) {
-        console.error('[Chat Store] Failed to join channel:', error);
+        console.error("[Chat Store] Failed to join channel:", error);
         throw error;
       }
     },
