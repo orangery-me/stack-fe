@@ -3,7 +3,7 @@ import { computed } from "vue";
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
-  label: { type: String, default: "Loading..." },
+  label: { type: String, default: "" },
   size: { type: Number, default: 18 },
   center: { type: Boolean, default: true },
 });
@@ -23,7 +23,10 @@ const sizePx = computed(() => `${props.size}px`);
       class="loading-spinner__spinner"
       aria-hidden="true"
     />
-    <span class="loading-spinner__label">
+    <span
+      v-if="label"
+      class="loading-spinner__label"
+    >
       {{ label }}
     </span>
   </div>
@@ -32,14 +35,10 @@ const sizePx = computed(() => `${props.size}px`);
 <style scoped>
 .loading-spinner {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--ui-divider);
-  border-radius: 999px;
-  background: #ffffff;
+  gap: 8px;
   color: var(--ui-text-muted);
-  font-size: 13px;
 }
 
 .loading-spinner--center {
@@ -58,8 +57,9 @@ const sizePx = computed(() => `${props.size}px`);
 }
 
 .loading-spinner__label {
-  line-height: 1;
-  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 @keyframes loading-spinner-rotate {

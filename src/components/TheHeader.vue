@@ -433,3 +433,5 @@ const goToRegister = () => router.push("/register");
   color: var(--ui-text-muted);
 }
 </style>
+
+</style>
