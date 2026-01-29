@@ -178,7 +178,8 @@ watch(
 watch(
   () => selectedChannel.value,
   async (newChannel, oldChannel) => {
-    if (oldChannel?.id) {
+    // Cleanup listeners for old channel when switching channels
+    if (oldChannel?.id && oldChannel.id !== newChannel?.id) {
       chatStore.cleanupChannelListeners(oldChannel.id);
     }
 
@@ -189,6 +190,8 @@ watch(
           newChannel.id,
           members.value
         );
+
+        // Force scroll to bottom once on initial load per channel
         if (!initialScrolledChannelIds.has(newChannel.id)) {
           await scrollToBottom();
           initialScrolledChannelIds.add(newChannel.id);
@@ -201,6 +204,7 @@ watch(
   { immediate: true }
 );
 
+// Cleanup when rời hẳn khỏi ChannelDetailView
 onUnmounted(() => {
   if (selectedChannel.value?.id) {
     chatStore.cleanupChannelListeners(selectedChannel.value.id);
@@ -209,143 +213,145 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    ref="messagesContainerRef"
-    class="main-content-body"
-    @scroll="handleScroll"
-  >
+  <div class="message-tab-root">
     <div
-      v-if="!selectedChannel"
-      class="content-placeholder"
-    >
-      <p class="placeholder-text">
-        Workspace: {{ workspace?.name }}
-      </p>
-      <p class="placeholder-description">
-        Select a channel from the sidebar to start chatting.
-      </p>
-    </div>
-    <div
-      v-else
-      class="channel-content"
+      ref="messagesContainerRef"
+      class="main-content-body"
+      @scroll="handleScroll"
     >
       <div
-        v-if="isLoadingMessages"
-        class="d-flex justify-content-center align-items-center"
-        style="height: 100vh"
+        v-if="!selectedChannel"
+        class="content-placeholder"
+      >
+        <p class="placeholder-text">
+          Workspace: {{ workspace?.name }}
+        </p>
+        <p class="placeholder-description">
+          Select a channel from the sidebar to start chatting.
+        </p>
+      </div>
+      <div
+        v-else
+        class="message-tab-content"
       >
         <div
-          class="spinner-border"
-          role="status"
+          v-if="isLoadingMessages"
+          class="d-flex justify-content-center align-items-center"
+          style="height: 100vh"
         >
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
-      <div v-else>
-        <div
-          v-if="selectedChannel && messages.length === 0"
-          class="channel-welcome"
-        >
-          <h1 class="channel-welcome-title">
-            # {{ selectedChannel.name }}
-          </h1>
-          <p class="channel-welcome-message">
-            <span class="channel-creator">
-              {{ getChannelCreator(selectedChannel) || "Someone" }}
-            </span>
-            created this channel on
-            <span class="channel-date">
-              {{ formatDate(selectedChannel.createdAt) }} </span>. This is the very beginning of the
-            <span class="channel-name-highlight">#{{ selectedChannel.name }}</span>
-            channel.
-          </p>
-          <div class="channel-action-cards">
-            <div class="action-card action-card--purple">
-              <div class="action-card-icon">
-                <img
-                  src="/icons/message-circle-dot.svg"
-                  alt="Add people icon"
-                >
-              </div>
-              <h3 class="action-card-title">
-                Add people to channel
-              </h3>
-            </div>
-            <div class="action-card action-card--blue">
-              <div class="action-card-icon">
-                <img
-                  src="/icons/file.svg"
-                  alt="Channel description icon"
-                >
-              </div>
-              <h3 class="action-card-title">
-                Add channel description
-              </h3>
-            </div>
-          </div>
-        </div>
-
-        <div class="channel-messages-container">
-          <div class="channel-messages-loading-older">
-            <div
-              v-if="isLoadingOlder"
-              class="d-flex justify-content-center"
-            >
-              <div
-                class="spinner-border"
-                role="status"
-              >
-                <span class="visually-hidden">Loading...</span>
-              </div>
-            </div>
-          </div>
           <div
-            v-for="day in messagesByDay"
-            :key="day.dateKey"
+            class="spinner-border"
+            role="status"
           >
-            <div class="channel-day-divider">
-              <span>
-                {{ day.label }}
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <div v-else>
+          <div
+            v-if="selectedChannel && messages.length === 0"
+            class="message-tab-welcome"
+          >
+            <h1 class="message-tab-welcome-title">
+              # {{ selectedChannel.name }}
+            </h1>
+            <p class="message-tab-welcome-message">
+              <span class="message-tab-creator">
+                {{ getChannelCreator(selectedChannel) || "Someone" }}
               </span>
+              created this channel on
+              <span class="message-tab-date">
+                {{ formatDate(selectedChannel.createdAt) }} </span>. This is the very beginning of the
+              <span class="message-tab-name-highlight">#{{ selectedChannel.name }}</span>
+              channel.
+            </p>
+            <div class="message-tab-action-cards">
+              <div class="action-card action-card--purple">
+                <div class="action-card-icon">
+                  <img
+                    src="/icons/message-circle-dot.svg"
+                    alt="Add people icon"
+                  >
+                </div>
+                <h3 class="action-card-title">
+                  Add people to channel
+                </h3>
+              </div>
+              <div class="action-card action-card--blue">
+                <div class="action-card-icon">
+                  <img
+                    src="/icons/file.svg"
+                    alt="Channel description icon"
+                  >
+                </div>
+                <h3 class="action-card-title">
+                  Add channel description
+                </h3>
+              </div>
             </div>
-
+          </div>
+  
+          <div class="message-tab-messages">
+            <div class="message-tab-messages-loading-older">
+              <div
+                v-if="isLoadingOlder"
+                class="d-flex justify-content-center"
+              >
+                <div
+                  class="spinner-border"
+                  role="status"
+                >
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
             <div
-              v-for="message in day.messages"
-              :key="message.id"
-              class="channel-message"
-              :class="{
-                'channel-message--pending': message.status === 'pending',
-                'channel-message--failed': message.status === 'failed',
-              }"
+              v-for="day in messagesByDay"
+              :key="day.dateKey"
             >
-              <div class="channel-message-avatar">
+              <div class="message-tab-day-divider">
                 <span>
-                  {{ message.authorName?.charAt(0).toUpperCase() || "U" }}
+                  {{ day.label }}
                 </span>
               </div>
-              <div class="channel-message-body">
-                <div class="channel-message-header">
-                  <span class="channel-message-author">
-                    {{ message.authorName }}
-                  </span>
-                  <span class="channel-message-time">
-                    {{ formatTime(message.createdAt) }}
+  
+              <div
+                v-for="message in day.messages"
+                :key="message.id"
+                class="message-item"
+                :class="{
+                  'message-item--pending': message.status === 'pending',
+                  'message-item--failed': message.status === 'failed',
+                }"
+              >
+                <div class="message-item-avatar">
+                  <span>
+                    {{ message.authorName?.charAt(0).toUpperCase() || "U" }}
                   </span>
                 </div>
-                <div class="channel-message-content">
-                  {{ message.content }}
-                </div>
-                <div
-                  v-if="message.status === 'failed'"
-                  class="channel-message-error"
-                >
-                  Gửi thất bại.
-                  <button
-                    class="channel-message-retry"
-                    @click="handleRetryMessage(message)"
+                <div class="message-item-body">
+                  <div class="message-item-header">
+                    <span class="message-item-author">
+                      {{ message.authorName }}
+                    </span>
+                    <span class="message-item-time">
+                      {{ formatTime(message.createdAt) }}
+                    </span>
+                  </div>
+                  <div class="message-item-content">
+                    {{ message.content }}
+                  </div>
+                  <div
+                    v-if="message.status === 'failed'"
+                    class="message-item-error"
                   >
-                    Thử lại
-                  </button>
+                    Gửi thất bại.
+                    <button
+                      class="message-item-retry"
+                      @click="handleRetryMessage(message)"
+                    >
+                      Thử lại
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -353,28 +359,28 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-  </div>
-
-  <div
-    v-if="selectedChannel"
-    class="channel-message-input"
-  >
-    <div class="channel-message-input-inner">
-      <textarea
-        v-model="newMessage"
-        class="channel-message-textarea"
-        :placeholder="`Message #${selectedChannel.name}`"
-        rows="1"
-        @keydown.enter.exact.prevent="handleSendMessage"
-        @keydown.shift.enter.stop
-      />
-      <button
-        class="channel-message-send"
-        type="button"
-        @click="handleSendMessage"
-      >
-        Send
-      </button>
+  
+    <div
+      v-if="selectedChannel"
+      class="message-input"
+    >
+      <div class="message-input-inner">
+        <textarea
+          v-model="newMessage"
+          class="message-input-textarea"
+          :placeholder="`Message #${selectedChannel.name}`"
+          rows="1"
+          @keydown.enter.exact.prevent="handleSendMessage"
+          @keydown.shift.enter.stop
+        />
+        <button
+          class="message-input-send"
+          type="button"
+          @click="handleSendMessage"
+        >
+          Send
+        </button>
+      </div>
     </div>
   </div>
 </template>

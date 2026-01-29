@@ -22,19 +22,19 @@
   }
 }
 
-.channel-welcome {
+.message-tab-welcome {
   max-width: 1000px;
   margin: 0 auto;
   padding: var(--space-32) var(--space-24);
 
-  .channel-welcome-title {
+  .message-tab-welcome-title {
     font-weight: 600;
     font-size: 22px;
     color: var(--ui-text);
     margin: 0 0 var(--space-16);
   }
 
-  .channel-welcome-message {
+  .message-tab-welcome-message {
     font-weight: 400;
     font-size: 14px;
     color: var(--ui-text-muted);
@@ -42,18 +42,18 @@
     margin: 0 0 var(--space-24);
     max-width: 70ch;
 
-    .channel-creator,
-    .channel-name-highlight {
+    .message-tab-creator,
+    .message-tab-name-highlight {
       font-weight: 600;
       color: var(--ui-text);
     }
 
-    .channel-date {
+    .message-tab-date {
       color: var(--ui-text-hint);
     }
   }
 
-  .channel-action-cards {
+  .message-tab-action-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--space-16);
@@ -100,17 +100,17 @@
   }
 }
 
-.channel-content {
+.message-tab-content {
   max-width: 86%;
   margin: 0 auto;
 }
 
-.channel-messages-container {
+.message-tab-messages {
   margin-top: var(--space-24);
   padding-bottom: var(--space-16);
 }
 
-.channel-messages-loading-older {
+.message-tab-messages-loading-older {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -118,7 +118,7 @@
   background: #ffffff;
 }
 
-.channel-day-divider {
+.message-tab-day-divider {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,14 +145,14 @@
   }
 }
 
-.channel-message {
+.message-item {
   display: flex;
   align-items: flex-start;
   gap: var(--space-12);
   margin-bottom: var(--space-12);
 }
 
-.channel-message-avatar {
+.message-item-avatar {
   width: 32px;
   height: 32px;
   border-radius: 999px;
@@ -166,51 +166,51 @@
   color: var(--ui-text-muted);
 }
 
-.channel-message-body {
+.message-item-body {
   flex: 1;
   min-width: 0;
 }
 
-.channel-message-header {
+.message-item-header {
   display: flex;
   align-items: baseline;
   gap: var(--space-8);
   margin-bottom: 2px;
 }
 
-.channel-message-author {
+.message-item-author {
   font-weight: 600;
   font-size: 13px;
   color: var(--ui-text);
 }
 
-.channel-message-time {
+.message-item-time {
   font-size: 12px;
   color: var(--ui-text-hint);
 }
 
-.channel-message-content {
+.message-item-content {
   font-size: 14px;
   color: var(--ui-text);
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
 
-.channel-message--pending {
+.message-item--pending {
   opacity: 0.7;
 
-  .channel-message-content {
+  .message-item-content {
     color: var(--ui-text-muted);
   }
 }
 
-.channel-message--failed {
-  .channel-message-content {
+.message-item--failed {
+  .message-item-content {
     color: var(--ui-text-muted);
   }
 }
 
-.channel-message-error {
+.message-item-error {
   display: flex;
   align-items: center;
   gap: var(--space-8);
@@ -219,7 +219,7 @@
   color: var(--error);
 }
 
-.channel-message-retry {
+.message-item-retry {
   background: none;
   border: none;
   padding: 0;
@@ -234,20 +234,20 @@
   }
 }
 
-.channel-message-input {
+.message-input {
   border-top: 1px solid var(--ui-divider);
   padding: var(--space-12) var(--space-24);
   background: #ffffff;
 }
 
-.channel-message-input-inner {
+.message-input-inner {
   margin: 0 auto;
   display: flex;
   align-items: flex-end;
   gap: var(--space-12);
 }
 
-.channel-message-textarea {
+.message-input-textarea {
   flex: 1;
   resize: none;
   border-radius: var(--ui-radius-input);
@@ -269,7 +269,7 @@
   }
 }
 
-.channel-message-send {
+.message-input-send {
   border-radius: 999px;
   border: none;
   padding: 0.45rem 0.95rem;
@@ -288,5 +288,11 @@
     background: rgba(107, 114, 128, 0.7);
     cursor: default;
   }
+}
+.message-tab-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
