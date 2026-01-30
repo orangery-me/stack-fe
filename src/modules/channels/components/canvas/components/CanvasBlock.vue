@@ -21,6 +21,7 @@ export default {
     "update:content",
     "add-after",
     "focus-prev",
+    "focus-next",
     "delete",
     "merge-with-prev",
     "split-block",
@@ -300,6 +301,18 @@ export default {
         e.preventDefault();
         // Nối block sau vào block hiện tại
         this.$emit("merge-with-prev");
+        return;
+      }
+      // Nếu nhấn mũi tên hướng lên, focus block trước đó
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        this.$emit("focus-prev");
+        return;
+      }
+      // Nếu nhấn mũi tên hướng xuống, focus block sau đó
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        this.$emit("focus-next");
         return;
       }
     },

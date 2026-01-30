@@ -222,6 +222,15 @@ function focusPrevFrom(index: number): void {
 }
 
 /**
+ * Focus block sau đó
+ * @param index - index của block hiện tại
+ */
+function focusNextFrom(index: number): void {
+  if (index >= blocks.value.length - 1) return;
+  focusNextIndex.value = index + 1;
+  setTimeout(() => focusBlockAt(focusNextIndex.value!), 0);
+}
+/**
  * Focus block tại index
  * @param index - index của block cần focus
  * @param atEnd - có đặt cursor ở cuối dòng không (mặc định false)
@@ -329,6 +338,7 @@ onBeforeUnmount(() => {
           @update:content="(content: string) => updateBlockContent(block.id, content)"
           @add-after="addBlockAfter(index)"
           @focus-prev="focusPrevFrom(index)"
+          @focus-next="focusNextFrom(index)"
           @delete="deleteBlock(index)"
           @merge-with-prev="mergeWithPrev(index)"
           @split-block="(data: { before: string; after: string }) => splitBlock(index, data.before, data.after)"
