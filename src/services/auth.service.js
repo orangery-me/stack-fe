@@ -1,4 +1,4 @@
-import apiHelper from "@/helpers/apiHelper.js";
+import apiHelper from "@/helpers/api.helper.js";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/config/api.js";
 import { API_BASE_URL } from "@/config/api.js";

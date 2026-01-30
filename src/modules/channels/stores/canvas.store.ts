@@ -80,7 +80,7 @@ export const useCanvasStore = defineStore("canvas", {
       this.createCanvasError = null;
       try {
         const payload: CreateCanvasPayload = {
-          title: data?.title ?? "Untitled",
+          title: data?.title ?? "New page",
           description: data?.description,
           initialContent: data?.initialContent,
         };

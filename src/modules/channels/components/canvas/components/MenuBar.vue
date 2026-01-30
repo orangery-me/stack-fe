@@ -12,79 +12,109 @@ export default {
 };
 </script>
 <template>
-  <div v-if="editor" className="control-group">
-    <div className="button-group">
+  <div v-if="editor" class="menu-bar">
+    <div class="menu-group">
+      <!-- Headings -->
       <button
-        :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive('heading', { level: 1 }) },
+        ]"
         @click="editor.chain().focus().toggleHeading({ level: 1 }).run()"
       >
         H1
       </button>
       <button
-        :class="{ 'is-active': editor.isActive('heading', { level: 2 }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive('heading', { level: 2 }) },
+        ]"
         @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
       >
         H2
       </button>
       <button
-        :class="{ 'is-active': editor.isActive('heading', { level: 3 }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive('heading', { level: 3 }) },
+        ]"
         @click="editor.chain().focus().toggleHeading({ level: 3 }).run()"
       >
         H3
       </button>
+
+      <div class="divider" />
+
+      <!-- Text style -->
       <button
-        :class="{ 'is-active': editor.isActive('paragraph') }"
+        :class="['menu-btn', { active: editor.isActive('paragraph') }]"
         @click="editor.chain().focus().setParagraph().run()"
       >
-        Paragraph
+        P
       </button>
       <button
-        :class="{ 'is-active': editor.isActive('bold') }"
+        :class="['menu-btn', { active: editor.isActive('bold') }]"
         @click="editor.chain().focus().toggleBold().run()"
       >
-        Bold
+        <b>B</b>
       </button>
       <button
-        :class="{ 'is-active': editor.isActive('italic') }"
+        :class="['menu-btn', { active: editor.isActive('italic') }]"
         @click="editor.chain().focus().toggleItalic().run()"
       >
-        Italic
+        <i>I</i>
       </button>
       <button
-        :class="{ 'is-active': editor.isActive('strike') }"
+        :class="['menu-btn', { active: editor.isActive('strike') }]"
         @click="editor.chain().focus().toggleStrike().run()"
       >
-        Strike
+        S
       </button>
       <button
-        :class="{ 'is-active': editor.isActive('highlight') }"
+        :class="['menu-btn', { active: editor.isActive('highlight') }]"
         @click="editor.chain().focus().toggleHighlight().run()"
       >
-        Highlight
+        H
       </button>
+
+      <div class="divider" />
+
+      <!-- Align -->
       <button
-        :class="{ 'is-active': editor.isActive({ textAlign: 'left' }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive({ textAlign: 'left' }) },
+        ]"
         @click="editor.chain().focus().setTextAlign('left').run()"
       >
-        Left
+        ⬅
       </button>
       <button
-        :class="{ 'is-active': editor.isActive({ textAlign: 'center' }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive({ textAlign: 'center' }) },
+        ]"
         @click="editor.chain().focus().setTextAlign('center').run()"
       >
-        Center
+        ⬍
       </button>
       <button
-        :class="{ 'is-active': editor.isActive({ textAlign: 'right' }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive({ textAlign: 'right' }) },
+        ]"
         @click="editor.chain().focus().setTextAlign('right').run()"
       >
-        Right
+        ➡
       </button>
       <button
-        :class="{ 'is-active': editor.isActive({ textAlign: 'justify' }) }"
+        :class="[
+          'menu-btn',
+          { active: editor.isActive({ textAlign: 'justify' }) },
+        ]"
         @click="editor.chain().focus().setTextAlign('justify').run()"
       >
-        Justify
+        ☰
       </button>
     </div>
   </div>
