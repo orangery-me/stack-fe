@@ -1,13 +1,11 @@
 <script setup>
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useCanvasStore } from "@/modules/channels/stores/canvas.store";
 import MessageTabView from "@/modules/channels/components/messages/MessageTabView.vue";
 import CanvasTabView from "@/modules/channels/components/canvas/CanvasTabView.vue";
 
-const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
 const canvasStore = useCanvasStore();

@@ -351,7 +351,7 @@ onBeforeUnmount(() => {
 <style scoped lang="scss" src="./CanvasTabView.scss"></style> -->
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from "vue";
+import { watch, onBeforeUnmount } from "vue";
 import { storeToRefs } from "pinia";
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
@@ -362,11 +362,6 @@ import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store";
 import { useChannelStore } from "@/modules/channels/stores/channel.store";
 
 import { canvasToTiptap, tiptapToCanvas } from "@/helpers/canvas.helper";
-import { CanvasContent } from "../../types/canvas.types";
-
-const props = defineProps<{
-  canvasId?: string | null;
-}>();
 
 const canvasStore = useCanvasStore();
 const workspaceStore = useWorkspaceStore();
