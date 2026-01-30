@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+} from "vue";
 import { storeToRefs } from "pinia";
 import { useCanvasStore } from "@/modules/channels/stores/canvas.store";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
@@ -104,7 +111,7 @@ const contentForSave = computed<CanvasContent>(() => ({
 function loadBlocksFromCanvas(): void {
   // Lấy Canvas từ store
   const canvas = selectedCanvas.value;
-  // Lấy CanvasContent 
+  // Lấy CanvasContent
   const raw =
     (canvas as { content?: unknown; initialContent?: unknown })?.content ??
     (canvas as { initialContent?: unknown })?.initialContent;
@@ -132,10 +139,39 @@ function addBlockAfter(index: number): void {
 }
 
 /**
+ * Chia block tại index thành 2 block: block hiện tại giữ phần trước cursor, block mới chứa phần sau cursor
+ * @param index - index của block hiện tại
+ * @param before - content trước cursor
+ * @param after - content sau cursor
+ */
+function splitBlock(index: number, before: string, after: string): void {
+  const currentBlock = blocks.value[index];
+  if (!currentBlock) return;
+
+  // Cập nhật block hiện tại với content trước cursor
+  currentBlock.content = before;
+
+  // Tạo block mới với content sau cursor, cùng type với block hiện tại
+  const newBlock = ensureBlock({
+    type: currentBlock.type,
+    content: after,
+  });
+
+  // Chèn block mới sau block hiện tại
+  blocks.value.splice(index + 1, 0, newBlock);
+
+  // Focus vào block mới
+  focusNextIndex.value = index + 1;
+  setTimeout(() => focusBlockAt(focusNextIndex.value!), 0);
+
+  debouncedSave();
+}
+
+/**
  * Cập nhật nội dung của block
  * @param blockId - id của block cần cập nhật
  * @param content - nội dung mới của block
-*/
+ */
 function updateBlockContent(blockId: string, content: string): void {
   const block = blocks.value.find((b) => b.id === blockId);
   if (block) {
@@ -153,30 +189,86 @@ function deleteBlock(index: number): void {
   debouncedSave();
 }
 
+function mergeWithPrev(index: number): void {
+  console.log("mergeWithPrev: ", index);
+  const prevBlock = blocks.value[index - 1];
+  // Ghi nhớ độ dài của block trước
+  const prevLength = prevBlock.content.length;
+  const currentBlock = blocks.value[index];
+  if (!prevBlock || !currentBlock) return;
+  // nối block hiện tại vào block trước
+  prevBlock.content += currentBlock.content;
+
+  // xóa block hiện tại
+  blocks.value.splice(index, 1);
+  debouncedSave();
+
+  // focus + set cursor
+  nextTick(() => {
+    focusBlockAtWithOffset(index - 1, prevLength);
+  });
+}
+
 /**
  * Focus block trước đó
  * @param index - index của block hiện tại
  */
 function focusPrevFrom(index: number): void {
   if (index <= 0) return;
-  blocks.value.splice(index, 1);
+
   focusNextIndex.value = index - 1;
-  setTimeout(() => focusBlockAt(focusNextIndex.value!), 0);
+  setTimeout(() => focusBlockAt(focusNextIndex.value!, true), 0); // true = đặt cursor ở cuối
   debouncedSave();
 }
 
 /**
  * Focus block tại index
  * @param index - index của block cần focus
+ * @param atEnd - có đặt cursor ở cuối dòng không (mặc định false)
  */
-function focusBlockAt(index: number | null | undefined): void {
+function focusBlockAt(index: number | null | undefined, atEnd = false): void {
   const refs = blockRefs.value;
   if (!refs || index == null || index < 0) return;
   const el = refs[index];
-  if (el?.focusEl) el.focusEl();
+  if (atEnd && el?.focusElAtEnd) {
+    el.focusElAtEnd();
+  } else if (el?.focusEl) {
+    el.focusEl();
+  }
   focusNextIndex.value = null; // reset index của block hiện tại đang focus
 }
 
+/**
+ * Focus block tại index và đặt cursor ở cuối dòng
+ * @param index - index của block cần focus
+ */
+function focusBlockAtEnd(index: number): void {
+  const refs = blockRefs.value;
+  if (!refs || index == null || index < 0) return;
+  const el = refs[index];
+  if (el?.focusElAtEnd) {
+    el.focusElAtEnd();
+  }
+}
+
+/**
+ * Focus block tại index và đặt cursor ở vị trí offset
+ * @param index - index của block cần focus
+ * @param offset - vị trí offset cần đặt cursor
+ */
+function focusBlockAtWithOffset(index: number, offset: number): void {
+  const refs = blockRefs.value;
+  if (!refs || index < 0) return;
+
+  const el = refs[index];
+  if (!el?.focusElAtOffset) return;
+
+  el.focusElAtOffset(offset);
+}
+
+/**
+ * Lưu nội dung canvas với debounce
+ */
 function debouncedSave(): void {
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
@@ -202,7 +294,6 @@ function setBlockRef(el: CanvasBlockComponentRef | null, index: number): void {
   if (el) blockRefs.value[index] = el;
 }
 
-
 watch(
   () => selectedCanvas.value?.id,
   (id) => {
@@ -214,7 +305,7 @@ watch(
 
 onMounted(() => {
   loadBlocksFromCanvas();
-  console.log('Focus Next Index: ', focusNextIndex.value);
+  console.log("Focus Next Index: ", focusNextIndex.value);
 });
 
 onBeforeUnmount(() => {
@@ -239,6 +330,8 @@ onBeforeUnmount(() => {
           @add-after="addBlockAfter(index)"
           @focus-prev="focusPrevFrom(index)"
           @delete="deleteBlock(index)"
+          @merge-with-prev="mergeWithPrev(index)"
+          @split-block="(data: { before: string; after: string }) => splitBlock(index, data.before, data.after)"
         />
       </div>
     </div>

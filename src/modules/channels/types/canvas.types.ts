@@ -46,6 +46,8 @@ export interface RawCanvasContent {
  */
 export interface CanvasBlockComponentRef {
   focusEl: () => void;
+  focusElAtEnd: () => void;
+  focusElAtOffset: (offset: number) => void;
 }
 
 /**
@@ -55,7 +57,7 @@ export interface Canvas {
   id: string;
   title: string;
   description?: string;
-  content?: string | CanvasContent;  // thường API trả về string
+  content?: string | CanvasContent; // thường API trả về string
   initialContent?: CanvasContent | Record<string, unknown>;
   [key: string]: unknown;
 }
