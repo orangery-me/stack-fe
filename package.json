@@ -16,16 +16,26 @@
     "build": "npm run lint && vite build"
   },
   "dependencies": {
+    "@tiptap/extension-placeholder": "^3.18.0",
+    "@tiptap/starter-kit": "^3.18.0",
+    "@tiptap/vue-3": "^3.18.0",
     "axios": "^1.13.2",
     "bootstrap": "^5.3.8",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
+    "lucide-react": "^0.563.0",
     "pinia": "^3.0.4",
     "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@typescript-eslint/parser": "^8.0.0",
+    "typescript": "^5.0.0",
     "@tailwindcss/postcss": "^4.0.6",
     "@tailwindcss/vite": "^4.0.6",
     "@vitejs/plugin-vue": "^5.2.1",

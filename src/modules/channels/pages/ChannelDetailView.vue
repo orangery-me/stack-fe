@@ -1,17 +1,74 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
+import { useCanvasStore } from "@/modules/channels/stores/canvas.store";
 import MessageTabView from "@/modules/channels/components/messages/MessageTabView.vue";
 import CanvasTabView from "@/modules/channels/components/canvas/CanvasTabView.vue";
 
+const route = useRoute();
+const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
+const canvasStore = useCanvasStore();
+
 const selectedChannel = computed(() => channelStore.selectedChannel);
+const workspace = computed(() => workspaceStore.workspaceDetail);
 
 const activeTab = ref("messages");
+
+const canvases = computed(() => canvasStore.canvases);
+const selectedCanvas = computed(() => canvasStore.selectedCanvas);
 
 const setActiveTab = (tab) => {
   activeTab.value = tab;
 };
+
+const handleSelectCanvasTab = async (canvasId) => {
+  if (!workspace.value || !selectedChannel.value) return;
+  activeTab.value = canvasId;
+  await canvasStore.selectCanvas(
+    workspace.value.id,
+    selectedChannel.value.id,
+    canvasId
+  );
+};
+
+const handleAddCanvas = async () => {
+  if (!workspace.value || !selectedChannel.value) return;
+  const created = await canvasStore.createCanvas(
+    workspace.value.id,
+    selectedChannel.value.id,
+    {
+      title: "Untitled",
+      initialContent: {
+        version: 1,
+        blocks: [],
+      },
+    }
+  );
+  if (created?.id) {
+    activeTab.value = created.id;
+  }
+};
+
+watch(
+  () => selectedChannel.value?.id,
+  async (newChannelId, oldChannelId) => {
+    if (!workspace.value) return;
+
+    // Clear state when switching channels
+    if (newChannelId !== oldChannelId) {
+      canvasStore.clearCanvases();
+      activeTab.value = "messages";
+    }
+
+    if (newChannelId) {
+      await canvasStore.fetchCanvases(workspace.value.id, newChannelId);
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -63,21 +120,34 @@ const setActiveTab = (tab) => {
         >
           Messages
         </button>
+
+        <template v-for="canvas in canvases" :key="canvas.id">
+          <button
+            class="channel-tab"
+            :class="{ active: activeTab === canvas.id }"
+            @click="handleSelectCanvasTab(canvas.id)"
+          >
+            {{ canvas.title || "Untitled" }}
+          </button>
+        </template>
+
         <button
-          class="channel-tab"
-          :class="{ active: activeTab === 'canvas' }"
-          @click="setActiveTab('canvas')"
+          class="channel-tab channel-tab-add"
+          type="button"
+          @click="handleAddCanvas"
         >
-          Add canvas
+          +
         </button>
       </div>
     </div>
 
     <MessageTabView v-show="activeTab === 'messages'" />
 
-    <CanvasTabView v-show="activeTab === 'canvas'" />
-    <!-- <div v-show="activeTab === 'canvas'"> -->
-    <!-- </div> -->
+    <CanvasTabView
+      v-if="activeTab !== 'messages'"
+      :canvas-id="activeTab"
+      :selected-canvas="selectedCanvas"
+    />
   </div>
 </template>
 

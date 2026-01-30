@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import vue from "eslint-plugin-vue";
+import tsParser from "@typescript-eslint/parser";
 import globals from "globals";
 
 export default [
@@ -17,7 +18,7 @@ export default [
         },
     },
 
-    // Browser source code
+    // Browser source code (JS and Vue)
     {
         files: ["src/**/*.{js,vue}"],
         languageOptions: {
@@ -27,6 +28,17 @@ export default [
         },
         rules: {
             "vue/multi-word-component-names": "off",
+        },
+    },
+
+    // Vue files with TypeScript: delegate script parsing to TS parser
+    {
+        files: ["src/**/*.vue"],
+        languageOptions: {
+            parserOptions: {
+                parser: tsParser,
+                extraFileExtensions: [".vue"],
+            },
         },
     },
 ];

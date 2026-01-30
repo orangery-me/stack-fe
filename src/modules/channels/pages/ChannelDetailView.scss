@@ -101,6 +101,16 @@
         border-bottom-color: var(--primary-500);
         font-weight: 600;
       }
+
+      &.channel-tab-add {
+        font-size: 18px;
+        padding-inline: var(--space-8);
+        color: var(--ui-text-muted);
+
+        &:hover {
+          color: var(--ui-text);
+        }
+      }
     }
   }
 }
