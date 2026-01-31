@@ -1,0 +1,30 @@
+.loading-skeleton {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.loading-skeleton__line {
+  height: 1rem;
+  border-radius: 0.25rem;
+  width: var(--skeleton-width, 100%) !important;
+  margin-bottom: 0.75rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.skeleton-wave {
+  animation: skeleton-wave 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-wave {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}

@@ -149,11 +149,14 @@ export const useCanvasStore = defineStore("canvas", {
           payload
         )) as Canvas;
 
-        this.selectedCanvas = updated;
-
         const index = this.canvases.findIndex((c) => c.id === updated.id);
         if (index !== -1) {
           this.canvases.splice(index, 1, updated);
+        }
+
+        // chỉ update selectedCanvas nếu nó vẫn đang là canvas đó
+        if (this.selectedCanvas?.id === updated.id) {
+          this.selectedCanvas = updated;
         }
 
         return updated;
