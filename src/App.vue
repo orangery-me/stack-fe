@@ -8,12 +8,16 @@ import ToastContainer from "@/components/ToastContainer.vue";
 
 const route = useRoute();
 const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
+const isCanvasEdit = computed(() => route.name === "canvasEdit");
+const hideAppHeader = computed(
+  () => isWorkspaceDetail.value || isCanvasEdit.value
+);
 
-// Prevent body scroll when on workspace detail page
+// Prevent body scroll when on workspace detail or canvas edit page
 watch(
-  isWorkspaceDetail,
-  (isDetail) => {
-    if (isDetail) {
+  hideAppHeader,
+  (hide) => {
+    if (hide) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -24,13 +28,13 @@ watch(
 </script>
 
 <template>
-  <TheHeader v-if="!isWorkspaceDetail" />
+  <TheHeader v-if="!hideAppHeader" />
 
   <main>
     <router-view />
   </main>
 
-  <TheFooter v-if="!isWorkspaceDetail" />
+  <TheFooter v-if="!hideAppHeader" />
   <ToastContainer />
 </template>
 

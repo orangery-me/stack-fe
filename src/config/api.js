@@ -37,6 +37,8 @@ export const API_ENDPOINTS = {
       `/workspaces/${workspaceId}/channels/${channelId}/canvases`,
     GET_BY_ID: (workspaceId, channelId, canvasId) =>
       `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}`,
+    UPDATE: (workspaceId, channelId, canvasId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}`,
     SAVE_CONTENT: (workspaceId, channelId, canvasId) =>
       `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}/content`,
   },

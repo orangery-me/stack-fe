@@ -84,12 +84,15 @@ watch(
           <span class="channel-title">
             # {{ selectedChannel?.name || "Select a channel" }}
           </span>
-          <span v-if="selectedChannel" class="channel-star">
+          <span
+            v-if="selectedChannel"
+            class="channel-star"
+          >
             <img
               src="/icons/star.svg"
               alt="Star channel"
               class="channel-star-icon"
-            />
+            >
           </span>
         </div>
         <div class="channel-header-right">
@@ -100,7 +103,10 @@ watch(
           >
             Invite teammates
           </button>
-          <button class="header-button" title="More options">
+          <button
+            class="header-button"
+            title="More options"
+          >
             <svg
               width="20"
               height="20"
@@ -108,15 +114,33 @@ watch(
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <circle cx="12" cy="12" r="1" fill="currentColor" />
-              <circle cx="19" cy="12" r="1" fill="currentColor" />
-              <circle cx="5" cy="12" r="1" fill="currentColor" />
+              <circle
+                cx="12"
+                cy="12"
+                r="1"
+                fill="currentColor"
+              />
+              <circle
+                cx="19"
+                cy="12"
+                r="1"
+                fill="currentColor"
+              />
+              <circle
+                cx="5"
+                cy="12"
+                r="1"
+                fill="currentColor"
+              />
             </svg>
           </button>
         </div>
       </div>
       <!-- list of tabs -->
-      <div v-if="selectedChannel" class="channel-tabs">
+      <div
+        v-if="selectedChannel"
+        class="channel-tabs"
+      >
         <button
           class="channel-tab"
           :class="{ active: activeTab === 'messages' }"
@@ -125,7 +149,10 @@ watch(
           Messages
         </button>
 
-        <template v-for="canvas in canvases" :key="canvas.id">
+        <template
+          v-for="canvas in canvases"
+          :key="canvas.id"
+        >
           <button
             class="channel-tab"
             :class="{ active: activeTab === canvas.id }"

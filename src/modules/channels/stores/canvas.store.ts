@@ -129,6 +129,35 @@ export const useCanvasStore = defineStore("canvas", {
       }
     },
 
+    async updateCanvasTitle(
+      workspaceId: string,
+      channelId: string,
+      canvasId: string,
+      title: string
+    ): Promise<Canvas | null> {
+      if (!workspaceId || !channelId || !canvasId) return null;
+
+      try {
+        const updated = (await canvasService.updateCanvas(
+          workspaceId,
+          channelId,
+          canvasId,
+          { title: title.trim() || "New page" }
+        )) as Canvas;
+
+        const index = this.canvases.findIndex((c) => c.id === updated.id);
+        if (index !== -1) {
+          this.canvases.splice(index, 1, updated);
+        }
+        if (this.selectedCanvas?.id === updated.id) {
+          this.selectedCanvas = updated;
+        }
+        return updated;
+      } catch (error) {
+        throw error;
+      }
+    },
+
     async saveCanvasContent(
       workspaceId: string,
       channelId: string,

@@ -8,6 +8,7 @@ import CreateWorkspaceView from '@/modules/workspaces/pages/CreateWorkspaceView.
 import InviteMemberView from '@/modules/workspaces/pages/InviteMemberView.vue';
 import WorkspaceDetailView from '@/modules/workspaces/pages/WorkspaceDetailView.vue';
 import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
+import CanvasEditView from '@/modules/channels/pages/CanvasEditView.vue';
 
 export default [
 	{
@@ -39,6 +40,12 @@ export default [
 		name: 'workspaceDetail',
 		component: WorkspaceDetailView,
 		meta: { title: 'Workspace', requiresAuth: true },
+	},
+	{
+		path: '/workspaces/:workspaceId/channels/:channelId/canvas/:canvasId/edit',
+		name: 'canvasEdit',
+		component: CanvasEditView,
+		meta: { title: 'Edit Canvas', requiresAuth: true },
 	},
 	{
 		path: '/login',

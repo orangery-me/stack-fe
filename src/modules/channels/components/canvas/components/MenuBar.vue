@@ -12,7 +12,10 @@ export default {
 };
 </script>
 <template>
-  <div v-if="editor" class="menu-bar">
+  <div
+    v-if="editor"
+    class="menu-bar"
+  >
     <div class="menu-group">
       <!-- Headings -->
       <button

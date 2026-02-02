@@ -51,6 +51,22 @@ class CanvasService {
   }
 
   /**
+   * Update canvas (title only; không lưu chung với content)
+   * @param {string} workspaceId
+   * @param {string} channelId
+   * @param {string} canvasId
+   * @param {{ title?: string }} data
+   * @returns {Promise<Object>}
+   */
+  async updateCanvas(workspaceId, channelId, canvasId, data) {
+    const response = await apiHelper.patch(
+      API_ENDPOINTS.CANVAS.UPDATE(workspaceId, channelId, canvasId),
+      data,
+    );
+    return response.data.data;
+  }
+
+  /**
    * Save canvas content (auto-save)
    * @param {string} workspaceId
    * @param {string} channelId
