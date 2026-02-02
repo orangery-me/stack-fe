@@ -30,5 +30,17 @@ export const API_ENDPOINTS = {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
     SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
   },
+  CANVAS: {
+    CREATE: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/canvases`,
+    GET_ALL: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/canvases`,
+    GET_BY_ID: (workspaceId, channelId, canvasId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}`,
+    UPDATE: (workspaceId, channelId, canvasId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}`,
+    SAVE_CONTENT: (workspaceId, channelId, canvasId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}/content`,
+  },
 };
 

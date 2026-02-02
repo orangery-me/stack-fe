@@ -1,4 +1,4 @@
-import apiHelper from '@/helpers/apiHelper.js';
+import apiHelper from '@/helpers/api.helper.js';
 import { API_ENDPOINTS } from '@/config/api.js';
 class ChatService {
   constructor() { 

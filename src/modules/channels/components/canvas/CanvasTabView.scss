@@ -1,0 +1,31 @@
+:deep(.ProseMirror) {
+  outline: none;
+  border: none;
+}
+
+:deep(.ProseMirror-focused) {
+  outline: none;
+}
+
+:deep(.ProseMirror p.is-empty::before),
+:deep(.ProseMirror h1.is-empty::before),
+:deep(.ProseMirror h2.is-empty::before),
+:deep(.ProseMirror h3.is-empty::before) {
+  content: attr(data-placeholder);
+  color: #9ca3af; /* gray-400 */
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+:deep(.ProseMirror) {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px 32px;
+}
+
+.canvas-tab-root__skeleton {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 50px 32px;
+}

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import chatService from "../../../services/chat.service";
-import socketHelper from "../../../helpers/socketHelper";
+import socketHelper from "../../../helpers/socket.helper";
 import { CHAT_EVENTS, CHAT_NAMESPACE } from "../constants";
 import { useAuthStore } from "../../auth/stores/auth.store";
 import type {
