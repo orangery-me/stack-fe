@@ -94,7 +94,10 @@ function setTextAlign(align: "left" | "center" | "right" | "justify") {
 </script>
 
 <template>
-  <div class="rte" :class="{ 'rte--readonly': readOnly }">
+  <div
+    class="rte"
+    :class="{ 'rte--readonly': readOnly }"
+  >
     <div
       v-if="editor"
       class="toolbar-wrap"

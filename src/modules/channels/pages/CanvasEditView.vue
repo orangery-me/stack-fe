@@ -1,21 +1,26 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
-import { storeToRefs } from "pinia";
+import { watch, onBeforeUnmount, onMounted, ref, computed } from "vue";
 import { useEditor } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-
-import { useCanvasStore } from "@/modules/channels/stores/canvas.store";
-
 import { canvasToTiptap, tiptapToCanvas } from "@/helpers/canvas.helper";
 import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import { requestCanvas } from "../queries/canvas.queries";
+import { useCanvasStore } from "../stores/canvas.store";
+import { useRoute } from "vue-router";
 
-const route = useRoute();
 const canvasStore = useCanvasStore();
+const route = useRoute();
+const canvasId = computed(() => route.params.canvasId as string);
+// const props = defineProps<{
+//   canvasId: string;
+// }>();
 
-const { selectedCanvas, selectedCanvasLoading } = storeToRefs(canvasStore);
+const { data: selectedCanvas, isLoading } = requestCanvas({
+  canvasId: computed(() => canvasId.value),
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
 
 const loading = ref(true);
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -36,13 +41,8 @@ function onTitleUpdate(value: string) {
   displayTitle.value = value;
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
   titleSaveTimer = setTimeout(() => {
-    if (!workspaceId || !channelId || !selectedCanvas.value?.id) return;
-    canvasStore.updateCanvasTitle(
-      workspaceId,
-      channelId,
-      selectedCanvas.value.id,
-      value
-    );
+    if (!selectedCanvas.value?.id) return;
+    canvasStore.updateCanvasTitle(selectedCanvas.value.id, value);
     titleSaveTimer = undefined;
   }, 500);
 }
@@ -67,16 +67,9 @@ const editor = useEditor({
   },
 });
 
-const workspaceId = route.params.workspaceId as string;
-const channelId = route.params.channelId as string;
-const canvasId = route.params.canvasId as string;
-
 onMounted(async () => {
   try {
-    await Promise.all([
-      // channelStore.fetchChannelById(workspaceId, channelId),
-      canvasStore.selectCanvas(workspaceId, channelId, canvasId),
-    ]);
+    await Promise.all([canvasStore.selectCanvas(canvasId.value)]);
   } finally {
     loading.value = false;
   }
@@ -110,16 +103,11 @@ function debouncedSave(doc: any) {
 }
 
 async function saveContent(doc: any) {
-  if (!workspaceId || !channelId || !selectedCanvas.value?.id) return;
+  if (!selectedCanvas.value?.id) return;
 
   const canvasContent = tiptapToCanvas(doc);
 
-  await canvasStore.saveCanvasContent(
-    workspaceId,
-    channelId,
-    selectedCanvas.value.id,
-    canvasContent
-  );
+  await canvasStore.saveCanvasContent(selectedCanvas.value.id, canvasContent);
 }
 
 function handleDownload() {
@@ -140,12 +128,15 @@ onBeforeUnmount(() => {
 <template>
   <div class="canvas-edit-view">
     <div
-      v-if="loading || selectedCanvasLoading"
+      v-if="loading || isLoading"
       class="canvas-edit-view__skeleton"
     >
       <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
     </div>
-    <div v-else class="canvas-edit-view__editor">
+    <div
+      v-else
+      class="canvas-edit-view__editor"
+    >
       <RichEditor
         :editor="editor"
         :read-only="false"

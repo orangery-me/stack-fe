@@ -68,7 +68,7 @@ watch(
     }
 
     if (newChannelId) {
-      await canvasStore.fetchCanvases(workspace.value.id, newChannelId);
+      await canvasStore.fetchCanvases(newChannelId);
     }
   },
   { immediate: true }
@@ -176,7 +176,9 @@ watch(
 
     <CanvasTabView
       v-if="activeTab !== 'messages'"
+      :key="activeTab"
       :canvas-id="activeTab"
+      :channel-id="selectedChannel?.id"
       :selected-canvas="selectedCanvas"
     />
   </div>

@@ -31,16 +31,19 @@ export const API_ENDPOINTS = {
     SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
   },
   CANVAS: {
-    CREATE: (workspaceId, channelId) =>
-      `/workspaces/${workspaceId}/channels/${channelId}/canvases`,
-    GET_ALL: (workspaceId, channelId) =>
-      `/workspaces/${workspaceId}/channels/${channelId}/canvases`,
-    GET_BY_ID: (workspaceId, channelId, canvasId) =>
-      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}`,
-    UPDATE: (workspaceId, channelId, canvasId) =>
-      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}`,
-    SAVE_CONTENT: (workspaceId, channelId, canvasId) =>
-      `/workspaces/${workspaceId}/channels/${channelId}/canvases/${canvasId}/content`,
+    // List & create (query channelId)
+    GET_ALL: (channelId) => `/canvases?channelId=${channelId}`,
+    CREATE: (channelId) => `/canvases?channelId=${channelId}`,
+    // By canvasId only
+    GET_BY_ID: (canvasId) => `/canvases/${canvasId}`,
+    UPDATE: (canvasId) => `/canvases/${canvasId}`,
+    SAVE_CONTENT: (canvasId) => `/canvases/${canvasId}/content`,
+    // Versions
+    GET_VERSIONS: (canvasId) => `/canvases/${canvasId}/versions`,
+    GET_VERSION: (canvasId, version) => `/canvases/${canvasId}/versions/${version}`,
+    CREATE_VERSION: (canvasId) => `/canvases/${canvasId}/versions`,
+    REVERT_VERSION: (canvasId, version) =>
+      `/canvases/${canvasId}/versions/${version}/revert`,
   },
 };
 

@@ -51,6 +51,17 @@ export interface CanvasBlockComponentRef {
 }
 
 /**
+ * Canvas version snapshot (from API)
+ */
+export interface CanvasVersion {
+  version: number;
+  title?: string | null;
+  savedById?: string | null;
+  savedAt: string;
+  content?: unknown;
+}
+
+/**
  * Canvas entity (from API)
  */
 export interface Canvas {

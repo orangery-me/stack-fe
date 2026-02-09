@@ -9,13 +9,10 @@ import type {
 export type { Canvas, CreateCanvasPayload } from "@/modules/channels/types";
 
 export interface CanvasState {
-  canvases: Canvas[];
+  canvases: Canvas[] | null;
   canvasesLoading: boolean;
   canvasesError: Error | null;
-
-  selectedCanvas: Canvas | null;
-  selectedCanvasLoading: boolean;
-  selectedCanvasError: Error | null;
+  selectedCanvasId: string | null;
 
   createCanvasLoading: boolean;
   createCanvasError: Error | null;
@@ -28,13 +25,10 @@ export interface CanvasState {
 
 export const useCanvasStore = defineStore("canvas", {
   state: (): CanvasState => ({
-    canvases: [],
+    canvases: null,
     canvasesLoading: false,
     canvasesError: null,
-
-    selectedCanvas: null,
-    selectedCanvasLoading: false,
-    selectedCanvasError: null,
+    selectedCanvasId: null,
 
     createCanvasLoading: false,
     createCanvasError: null,
@@ -46,19 +40,13 @@ export const useCanvasStore = defineStore("canvas", {
   }),
 
   actions: {
-    async fetchCanvases(
-      workspaceId: string,
-      channelId: string
-    ): Promise<Canvas[] | undefined> {
-      if (!workspaceId || !channelId) return;
+    async fetchCanvases(channelId: string): Promise<Canvas[] | undefined> {
+      if (!channelId) return;
 
       this.canvasesLoading = true;
       this.canvasesError = null;
       try {
-        const list = (await canvasService.getCanvases(
-          workspaceId,
-          channelId
-        )) as Canvas[];
+        const list = (await canvasService.getCanvases(channelId)) as Canvas[];
         this.canvases = list;
         return list;
       } catch (error) {
@@ -70,11 +58,10 @@ export const useCanvasStore = defineStore("canvas", {
     },
 
     async createCanvas(
-      workspaceId: string,
       channelId: string,
       data?: CreateCanvasPayload
     ): Promise<Canvas | null> {
-      if (!workspaceId || !channelId) return null;
+      if (!channelId) return null;
 
       this.createCanvasLoading = true;
       this.createCanvasError = null;
@@ -86,12 +73,11 @@ export const useCanvasStore = defineStore("canvas", {
         };
 
         const created = (await canvasService.createCanvas(
-          workspaceId,
           channelId,
           payload
         )) as Canvas;
         this.canvases.push(created);
-        this.selectedCanvas = created;
+        this.selectedCanvasId = created.id;
         return created;
       } catch (error) {
         this.createCanvasError = error as Error;
@@ -101,56 +87,32 @@ export const useCanvasStore = defineStore("canvas", {
       }
     },
 
-    async selectCanvas(
-      workspaceId: string,
-      channelId: string,
-      canvasId: string
-    ): Promise<Canvas | null> {
-      if (!workspaceId || !channelId || !canvasId) {
-        this.selectedCanvas = null;
+    async selectCanvas(canvasId: string): Promise<string | null> {
+      if (!canvasId) {
+        this.selectedCanvasId = null;
         return null;
       }
 
-      this.selectedCanvasLoading = true;
-      this.selectedCanvasError = null;
-      try {
-        const detail = (await canvasService.getCanvas(
-          workspaceId,
-          channelId,
-          canvasId
-        )) as Canvas;
-        this.selectedCanvas = detail;
-        return detail;
-      } catch (error) {
-        this.selectedCanvasError = error as Error;
-        throw error;
-      } finally {
-        this.selectedCanvasLoading = false;
-      }
+      // Không còn fetch nội dung canvas ở store.
+      // Chỉ lưu lại id, phần nội dung để TanStack Query xử lý.
+      this.selectedCanvasId = canvasId;
+      return canvasId;
     },
 
     async updateCanvasTitle(
-      workspaceId: string,
-      channelId: string,
       canvasId: string,
       title: string
     ): Promise<Canvas | null> {
-      if (!workspaceId || !channelId || !canvasId) return null;
+      if (!canvasId) return null;
 
       try {
-        const updated = (await canvasService.updateCanvas(
-          workspaceId,
-          channelId,
-          canvasId,
-          { title: title.trim() || "New page" }
-        )) as Canvas;
+        const updated = (await canvasService.updateCanvas(canvasId, {
+          title: title.trim() || "New page",
+        })) as Canvas;
 
         const index = this.canvases.findIndex((c) => c.id === updated.id);
         if (index !== -1) {
           this.canvases.splice(index, 1, updated);
-        }
-        if (this.selectedCanvas?.id === updated.id) {
-          this.selectedCanvas = updated;
         }
         return updated;
       } catch (error) {
@@ -159,12 +121,10 @@ export const useCanvasStore = defineStore("canvas", {
     },
 
     async saveCanvasContent(
-      workspaceId: string,
-      channelId: string,
       canvasId: string,
       content: string | CanvasContent
     ): Promise<Canvas | null> {
-      if (!workspaceId || !channelId || !canvasId) return null;
+      if (!canvasId) return null;
 
       this.saveContentLoading = true;
       this.saveContentError = null;
@@ -172,8 +132,6 @@ export const useCanvasStore = defineStore("canvas", {
         const payload =
           typeof content === "string" ? content : JSON.stringify(content);
         const updated = (await canvasService.saveCanvasContent(
-          workspaceId,
-          channelId,
           canvasId,
           payload
         )) as Canvas;
@@ -182,12 +140,6 @@ export const useCanvasStore = defineStore("canvas", {
         if (index !== -1) {
           this.canvases.splice(index, 1, updated);
         }
-
-        // chỉ update selectedCanvas nếu nó vẫn đang là canvas đó
-        if (this.selectedCanvas?.id === updated.id) {
-          this.selectedCanvas = updated;
-        }
-
         return updated;
       } catch (error) {
         this.saveContentError = error as Error;
@@ -198,8 +150,6 @@ export const useCanvasStore = defineStore("canvas", {
     },
 
     scheduleAutoSave(
-      workspaceId: string,
-      channelId: string,
       canvasId: string,
       content: string | CanvasContent,
       delay = 3000
@@ -209,7 +159,7 @@ export const useCanvasStore = defineStore("canvas", {
       }
 
       this.autoSaveTimeoutId = setTimeout(() => {
-        this.saveCanvasContent(workspaceId, channelId, canvasId, content)
+        this.saveCanvasContent(canvasId, content)
           .catch(() => {
             // errors stored in saveContentError, UI can react
           })
@@ -221,9 +171,8 @@ export const useCanvasStore = defineStore("canvas", {
 
     clearCanvases(): void {
       this.canvases = [];
-      this.selectedCanvas = null;
+      this.selectedCanvasId = null;
       this.canvasesError = null;
-      this.selectedCanvasError = null;
     },
   },
 });

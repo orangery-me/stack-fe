@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import router from "@/router/index.js";
 import App from './App.vue';
 import { useAuthStore } from '@/modules/auth/stores/auth.store.js';
@@ -12,6 +13,7 @@ const pinia = createPinia();
 
 app.use(pinia);
 app.use(router);
+app.use(VueQueryPlugin);
 
 // Initialize auth state on app start
 const authStore = useAuthStore();
