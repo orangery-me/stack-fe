@@ -43,15 +43,12 @@ const goToRegister = () => router.push("/register");
   <nav class="app-header">
     <div class="container-center">
       <div class="app-header__row">
-        <router-link
-          :to="{ name: 'home' }"
-          class="app-header__brand"
-        >
+        <router-link :to="{ name: 'home' }" class="app-header__brand">
           <img
             class="app-header__logo"
             src="/logos/stack-logo.jpg"
             alt="Stack"
-          >
+          />
           <span class="app-header__name">Stack</span>
         </router-link>
 
@@ -106,10 +103,7 @@ const goToRegister = () => router.push("/register");
                 </svg>
               </button>
 
-              <div
-                v-if="userMenuOpen"
-                class="app-header__userDropdown"
-              >
+              <div v-if="userMenuOpen" class="app-header__userDropdown">
                 <button
                   type="button"
                   class="app-header__userItem app-header__userItem--danger"
@@ -121,18 +115,10 @@ const goToRegister = () => router.push("/register");
             </div>
           </template>
           <template v-else>
-            <CalmButton
-              variant="ghost"
-              size="sm"
-              @click="goToRegister"
-            >
+            <CalmButton variant="ghost" size="sm" @click="goToRegister">
               Create account
             </CalmButton>
-            <CalmButton
-              variant="primary"
-              size="sm"
-              @click="goToLogin"
-            >
+            <CalmButton variant="primary" size="sm" @click="goToLogin">
               Sign in
             </CalmButton>
           </template>
@@ -161,10 +147,7 @@ const goToRegister = () => router.push("/register");
         </button>
       </div>
 
-      <div
-        ref="mobileMenu"
-        class="app-header__mobileMenu"
-      >
+      <div ref="mobileMenu" class="app-header__mobileMenu">
         <router-link
           :to="{ name: 'home' }"
           class="app-header__mobileLink"
@@ -433,4 +416,3 @@ const goToRegister = () => router.push("/register");
   color: var(--ui-text-muted);
 }
 </style>
-

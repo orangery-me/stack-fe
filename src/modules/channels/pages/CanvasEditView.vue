@@ -9,13 +9,13 @@ import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
 import { useRoute } from "vue-router";
+import { useQueryClient } from "@tanstack/vue-query";
+import socketHelper from "@/helpers/socket.helper";
 
 const canvasStore = useCanvasStore();
 const route = useRoute();
+const queryClient = useQueryClient();
 const canvasId = computed(() => route.params.canvasId as string);
-// const props = defineProps<{
-//   canvasId: string;
-// }>();
 
 const { data: selectedCanvas, isLoading } = requestCanvas({
   canvasId: computed(() => canvasId.value),
@@ -28,6 +28,9 @@ let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
 let isProgrammaticUpdate = false;
 
 const displayTitle = ref("");
+const onlineUsers = ref<
+  Array<{ userId: string; name: string; avatar: string | null }>
+>([]);
 
 watch(
   () => selectedCanvas.value?.title,
@@ -70,6 +73,19 @@ const editor = useEditor({
 onMounted(async () => {
   try {
     await Promise.all([canvasStore.selectCanvas(canvasId.value)]);
+
+    // Connect to canvas namespace
+    await socketHelper.connect("/canvas", { enableLogging: true });
+
+    // Join canvas room
+    await socketHelper.emit("join_canvas_edit_page", {
+      canvasId: canvasId.value,
+    });
+
+    // Setup event listeners
+    setupSocketListeners();
+  } catch (error) {
+    console.error("[CanvasEditView] Failed to setup WebSocket:", error);
   } finally {
     loading.value = false;
   }
@@ -94,6 +110,50 @@ watch(() => selectedCanvas.value?.id, loadContentIntoEditor, {
 });
 watch(editor, loadContentIntoEditor, { immediate: true });
 
+// WebSocket event handlers
+function handleCanvasDataUpdate({ canvas }: { canvas: any }) {
+  if (!editor.value || canvas.id !== canvasId.value) return;
+
+  const raw = canvas.content ?? canvas.initialContent;
+  if (!raw) return;
+
+  try {
+    const canvasContent = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+    // Update query cache
+    queryClient.setQueryData(["canvas", canvasId.value], canvas);
+
+    // Update editor with isProgrammaticUpdate flag to avoid triggering onUpdate
+    isProgrammaticUpdate = true;
+    editor.value.commands.setContent(canvasToTiptap(canvasContent));
+    isProgrammaticUpdate = false;
+  } catch (error) {
+    console.error(
+      "[CanvasEditView] Failed to update editor from socket:",
+      error
+    );
+  }
+}
+
+function handleUsersUpdate({
+  users,
+}: {
+  users: Array<{ userId: string; name: string; avatar: string | null }>;
+}) {
+  onlineUsers.value = users;
+}
+
+function handleSocketError({ message }: { message: string }) {
+  console.error("[CanvasEditView] WebSocket error:", message);
+  // TODO: Could show notification to user
+}
+
+function setupSocketListeners() {
+  socketHelper.on("canvas_data", handleCanvasDataUpdate);
+  socketHelper.on("canvas_edit_page_users", handleUsersUpdate);
+  socketHelper.on("error", handleSocketError);
+}
+
 function debouncedSave(doc: any) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -107,7 +167,20 @@ async function saveContent(doc: any) {
 
   const canvasContent = tiptapToCanvas(doc);
 
-  await canvasStore.saveCanvasContent(selectedCanvas.value.id, canvasContent);
+  try {
+    // Emit qua WebSocket thay vì REST API
+    await socketHelper.emit("edit_canvas", {
+      canvasId: selectedCanvas.value.id,
+      content: canvasContent,
+    });
+
+    // Backend sẽ broadcast canvas_data về cho tất cả clients
+    // Handler canvas_data sẽ update editor và cache
+  } catch (error) {
+    console.error("[CanvasEditView] Failed to save via WebSocket:", error);
+    // Fallback: có thể fallback về REST API nếu cần
+    // await canvasStore.saveCanvasContent(selectedCanvas.value.id, canvasContent);
+  }
 }
 
 function handleDownload() {
@@ -119,6 +192,21 @@ function handleMoveToTrash() {
 }
 
 onBeforeUnmount(() => {
+  // Remove socket listeners
+  socketHelper.off("canvas_data", handleCanvasDataUpdate);
+  socketHelper.off("canvas_edit_page_users", handleUsersUpdate);
+  socketHelper.off("error", handleSocketError);
+
+  // Leave canvas room
+  if (canvasId.value) {
+    socketHelper
+      .emit("leave_canvas_edit_page", {
+        canvasId: canvasId.value,
+      })
+      .catch(console.error);
+  }
+
+  // Cleanup timers
   if (saveTimer) clearTimeout(saveTimer);
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
   editor.value?.destroy();
@@ -127,16 +215,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="canvas-edit-view">
-    <div
-      v-if="loading || isLoading"
-      class="canvas-edit-view__skeleton"
-    >
+    <div v-if="loading || isLoading" class="canvas-edit-view__skeleton">
       <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
     </div>
-    <div
-      v-else
-      class="canvas-edit-view__editor"
-    >
+    <div v-else class="canvas-edit-view__editor">
       <RichEditor
         :editor="editor"
         :read-only="false"
