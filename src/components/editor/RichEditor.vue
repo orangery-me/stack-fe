@@ -195,8 +195,7 @@ const remainingViewersCount = computed(() => {
           </div>
         </div>
         <div class="spacer" />
-        {{ viewers }}
-        <!-- Viewers list (Google Docs style) -->
+        <!-- Viewers list -->
         <div
           v-if="viewers && viewers.length > 0"
           class="rte-viewers"
