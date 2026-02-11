@@ -16,6 +16,7 @@
     "build": "npm run lint && vite build"
   },
   "dependencies": {
+    "@tanstack/vue-query": "^5.92.9",
     "@tiptap/core": "^3.18.0",
     "@tiptap/extension-image": "^3.18.0",
     "@tiptap/extension-link": "^3.18.0",

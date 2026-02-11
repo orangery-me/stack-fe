@@ -42,7 +42,7 @@ export default [
 		meta: { title: 'Workspace', requiresAuth: true },
 	},
 	{
-		path: '/workspaces/:workspaceId/channels/:channelId/canvas/:canvasId/edit',
+		path: '/canvas/:canvasId/edit',
 		name: 'canvasEdit',
 		component: CanvasEditView,
 		meta: { title: 'Edit Canvas', requiresAuth: true },

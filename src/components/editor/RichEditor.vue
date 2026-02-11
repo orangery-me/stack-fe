@@ -7,8 +7,9 @@ const props = withDefaults(
     editor: Editor;
     readOnly?: boolean;
     title?: string;
+    viewers?: Array<{ userId: string; name: string; avatar: string | null }>;
   }>(),
-  { readOnly: false, title: undefined }
+  { readOnly: false, title: undefined, viewers: undefined }
 );
 
 const emit = defineEmits<{
@@ -91,10 +92,33 @@ function setTextAlign(align: "left" | "center" | "right" | "justify") {
   if (!editor.value) return;
   (editor.value.chain().focus() as any).setTextAlign(align).run();
 }
+
+function getUserInitials(name: string): string {
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.charAt(0).toUpperCase();
+}
+
+const visibleViewers = computed(() => {
+  if (!props.viewers || props.viewers.length === 0) return [];
+  // Show max 5 avatars, rest will be shown as "+N"
+  return props.viewers.slice(0, 5);
+});
+
+const remainingViewersCount = computed(() => {
+  if (!props.viewers) return 0;
+  return Math.max(0, props.viewers.length - 5);
+});
 </script>
 
 <template>
-  <div class="rte" :class="{ 'rte--readonly': readOnly }">
+  <div
+    class="rte"
+    :class="{ 'rte--readonly': readOnly }"
+  >
     <div
       v-if="editor"
       class="toolbar-wrap"
@@ -171,6 +195,33 @@ function setTextAlign(align: "left" | "center" | "right" | "justify") {
           </div>
         </div>
         <div class="spacer" />
+        <!-- Viewers list -->
+        <div
+          v-if="viewers && viewers.length > 0"
+          class="rte-viewers"
+        >
+          <div
+            v-for="viewer in visibleViewers"
+            :key="viewer.userId"
+            class="rte-viewer-avatar"
+            :title="viewer.name"
+          >
+            <img
+              v-if="viewer.avatar"
+              :src="viewer.avatar"
+              :alt="viewer.name"
+              class="rte-viewer-avatar-img"
+            >
+            <span v-else>{{ getUserInitials(viewer.name) }}</span>
+          </div>
+          <div
+            v-if="remainingViewersCount > 0"
+            class="rte-viewer-avatar rte-viewer-avatar--more"
+            :title="`${remainingViewersCount} more viewer${remainingViewersCount > 1 ? 's' : ''}`"
+          >
+            +{{ remainingViewersCount }}
+          </div>
+        </div>
         <div
           v-if="readOnly"
           class="group group-actions"
@@ -754,5 +805,54 @@ function setTextAlign(align: "left" | "center" | "right" | "justify") {
 .icon-img {
   width: 16px;
   height: 16px;
+}
+
+/* Viewers list (Google Docs style) */
+.rte-viewers {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-right: 8px;
+}
+
+.rte-viewer-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 11px;
+  color: #374151;
+  margin-left: -6px;
+  flex-shrink: 0;
+  cursor: default;
+  position: relative;
+  z-index: 1;
+}
+
+.rte-viewer-avatar:first-child {
+  margin-left: 0;
+}
+
+.rte-viewer-avatar:hover {
+  z-index: 2;
+}
+
+.rte-viewer-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rte-viewer-avatar--more {
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 10px;
+  border-color: white;
 }
 </style>

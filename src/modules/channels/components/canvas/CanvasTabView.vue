@@ -1,27 +1,34 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, ref } from "vue";
+import { watch, onBeforeUnmount, ref, computed } from "vue";
 import { useRouter } from "vue-router";
-import { storeToRefs } from "pinia";
 import { useEditor } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 
-import { useCanvasStore } from "@/modules/channels/stores/canvas.store";
-import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store";
-import { useChannelStore } from "@/modules/channels/stores/channel.store";
+import { useCanvasStore } from "@/modules/channels/stores/canvas.store.js";
 
 import { canvasToTiptap } from "@/helpers/canvas.helper";
 import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import { requestCanvas } from "@/modules/channels/queries/canvas.queries";
+import { useQueryClient } from "@tanstack/vue-query";
 
 const router = useRouter();
 const canvasStore = useCanvasStore();
-const workspaceStore = useWorkspaceStore();
-const channelStore = useChannelStore();
+const queryClient = useQueryClient();
 
-const { selectedCanvas, selectedCanvasLoading } = storeToRefs(canvasStore);
-const { workspaceDetail: workspace } = storeToRefs(workspaceStore);
-const { selectedChannel: channel } = storeToRefs(channelStore);
+const props = defineProps<{
+  canvasId: string;
+  channelId: string;
+}>();
+
+const {
+  data: selectedCanvas,
+  isLoading,
+} = requestCanvas({
+  canvasId: computed(() => props.canvasId),
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -40,11 +47,9 @@ function onTitleUpdate(value: string) {
   displayTitle.value = value;
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
   titleSaveTimer = setTimeout(() => {
-    const wId = workspace.value?.id;
-    const cId = channel.value?.id;
     const canvasId = selectedCanvas.value?.id;
-    if (!wId || !cId || !canvasId) return;
-    canvasStore.updateCanvasTitle(wId, cId, canvasId, value);
+    if (!canvasId) return;
+    canvasStore.updateCanvasTitle(canvasId, value);
     titleSaveTimer = undefined;
   }, 500);
 }
@@ -68,49 +73,44 @@ const editor = useEditor({
 /**
  * Load canvas content vào editor.
  */
+
 watch(
-  () => ({
-    id: selectedCanvas.value?.id,
-    content:
-      selectedCanvas.value?.content ?? selectedCanvas.value?.initialContent,
-  }),
-  () => {
-    const raw =
-      selectedCanvas.value?.content ?? selectedCanvas.value?.initialContent;
+  // update khi editor hoặc canvas thay đổi
+  [() => editor.value, () => selectedCanvas.value],
+  ([editorInstance, canvas]) => {
+    if (!editorInstance || !canvas) return;
 
-    if (!raw || !editor.value) return;
+    const raw = canvas.content ?? canvas.initialContent;
+    if (!raw) return;
 
-    try {
-      const canvasContent = typeof raw === "string" ? JSON.parse(raw) : raw;
-      editor.value.commands.setContent(canvasToTiptap(canvasContent));
-    } catch {
-      editor.value.commands.clearContent();
-    }
+    editorInstance.commands.setContent(
+      canvasToTiptap(typeof raw === 'string' ? JSON.parse(raw) : raw),
+      false
+    );
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 );
 
+
 function openEditInNewTab() {
-  const wId = workspace.value?.id;
-  const cId = channel.value?.id;
   const canvasId = selectedCanvas.value?.id;
-  if (!wId || !cId || !canvasId) return;
+  if (!canvasId) return;
   const resolved = router.resolve({
     name: "canvasEdit",
-    params: { workspaceId: wId, channelId: cId, canvasId },
+    params: { canvasId },
   });
   const url = `${window.location.origin}${resolved.href}`;
   window.open(url, "_blank");
 }
 
 async function handleReload() {
-  if (!workspace.value?.id || !channel.value?.id || !selectedCanvas.value?.id)
+  if (!selectedCanvas.value?.id)
     return;
-  await canvasStore.selectCanvas(
-    workspace.value.id,
-    channel.value.id,
-    selectedCanvas.value.id
-  );
+
+  queryClient.invalidateQueries({
+    queryKey: ["canvas", props.canvasId],
+  });
+
 }
 
 function handleDownload() {
@@ -130,11 +130,18 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="canvas-tab-root">
-    <div v-if="selectedCanvasLoading" class="canvas-tab-root__skeleton">
+    <div
+      v-if="isLoading"
+      class="canvas-tab-root__skeleton"
+    >
       <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
     </div>
-    <div v-else class="canvas-editor">
+    <div
+      v-else
+      class="canvas-editor"
+    >
       <RichEditor
+        v-if="editor"
         :editor="editor"
         :read-only="true"
         :title="displayTitle"
