@@ -236,6 +236,7 @@ onBeforeUnmount(() => {
         :editor="editor"
         :read-only="false"
         :title="displayTitle"
+        :viewers="onlineUsers"
         @update:title="onTitleUpdate"
         @download="handleDownload"
         @move-to-trash="handleMoveToTrash"
