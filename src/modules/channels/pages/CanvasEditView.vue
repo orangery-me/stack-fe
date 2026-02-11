@@ -31,6 +31,7 @@ const displayTitle = ref("");
 const onlineUsers = ref<
   Array<{ userId: string; name: string; avatar: string | null }>
 >([]);
+const lastLocalContentSignature = ref<string | null>(null);
 
 watch(
   () => selectedCanvas.value?.title,
@@ -119,9 +120,19 @@ function handleCanvasDataUpdate({ canvas }: { canvas: any }) {
 
   try {
     const canvasContent = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const incomingSignature = JSON.stringify(canvasContent);
 
     // Update query cache
     queryClient.setQueryData(["canvas", canvasId.value], canvas);
+
+    // If server echoed our own latest edit, avoid resetting cursor/selection by skipping setContent.
+    if (
+      lastLocalContentSignature.value &&
+      lastLocalContentSignature.value === incomingSignature
+    ) {
+      lastLocalContentSignature.value = null;
+      return;
+    }
 
     // Update editor with isProgrammaticUpdate flag to avoid triggering onUpdate
     isProgrammaticUpdate = true;
@@ -166,6 +177,8 @@ async function saveContent(doc: any) {
   if (!selectedCanvas.value?.id) return;
 
   const canvasContent = tiptapToCanvas(doc);
+  // Track signature so we can ignore the server echo and keep cursor position.
+  lastLocalContentSignature.value = JSON.stringify(canvasContent);
 
   try {
     // Emit qua WebSocket thay vì REST API
