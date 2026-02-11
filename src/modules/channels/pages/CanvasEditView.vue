@@ -228,10 +228,16 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="canvas-edit-view">
-    <div v-if="loading || isLoading" class="canvas-edit-view__skeleton">
+    <div
+      v-if="loading || isLoading"
+      class="canvas-edit-view__skeleton"
+    >
       <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
     </div>
-    <div v-else class="canvas-edit-view__editor">
+    <div
+      v-else
+      class="canvas-edit-view__editor"
+    >
       <RichEditor
         :editor="editor"
         :read-only="false"

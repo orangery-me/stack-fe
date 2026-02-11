@@ -25,7 +25,6 @@ const props = defineProps<{
 const {
   data: selectedCanvas,
   isLoading,
-  dataUpdatedAt,
 } = requestCanvas({
   canvasId: computed(() => props.canvasId),
   staleTime: 5 * 60 * 1000, // 5 minutes
