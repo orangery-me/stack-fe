@@ -182,7 +182,7 @@ function debouncedSave(doc: any) {
   saveTimer = setTimeout(() => {
     saveContent(doc);
     saveTimer = undefined;
-  }, 800);
+  }, 500);
 }
 
 async function saveContent(doc: any) {
@@ -193,17 +193,13 @@ async function saveContent(doc: any) {
   lastLocalContentSignature.value = JSON.stringify(canvasContent);
 
   try {
-    // Emit qua WebSocket thay vì REST API
     await socketHelper.emit("edit_canvas", {
       canvasId: selectedCanvas.value.id,
       content: canvasContent,
     });
 
-    // Backend sẽ broadcast canvas_data về cho tất cả clients
-    // Handler canvas_data sẽ update editor và cache
   } catch (error) {
     console.error("[CanvasEditView] Failed to save via WebSocket:", error);
-    // Fallback: có thể fallback về REST API nếu cần
     // await canvasStore.saveCanvasContent(selectedCanvas.value.id, canvasContent);
   }
 }
