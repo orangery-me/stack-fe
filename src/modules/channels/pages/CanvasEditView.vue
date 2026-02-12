@@ -94,7 +94,6 @@ onMounted(async () => {
     // Đăng ký listener trước khi join để nhận ngay canvas_edit_page_users khi reload
     setupSocketListeners();
 
-    // Join canvas room (server sẽ broadcast danh sách user về, cần đã listen trước)
     await socketHelper.emit("join_canvas_edit_page", {
       canvasId: canvasId.value,
     });
