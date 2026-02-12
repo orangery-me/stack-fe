@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
+
+export type ViewerUser = {
+  userId: string;
+  name: string;
+  avatar: string | null;
+  email?: string;
+};
 
 const props = withDefaults(
   defineProps<{
     editor: Editor;
     readOnly?: boolean;
     title?: string;
-    viewers?: Array<{ userId: string; name: string; avatar: string | null }>;
+    viewers?: Array<ViewerUser>;
+    currentUser?: { userId: string; name: string; avatar: string | null; email?: string } | null;
   }>(),
-  { readOnly: false, title: undefined, viewers: undefined }
+  { readOnly: false, title: undefined, viewers: undefined, currentUser: null }
 );
 
 const emit = defineEmits<{
@@ -102,15 +110,91 @@ function getUserInitials(name: string): string {
   return name.charAt(0).toUpperCase();
 }
 
-const visibleViewers = computed(() => {
+const viewersExcludingSelf = computed(() => {
   if (!props.viewers || props.viewers.length === 0) return [];
-  // Show max 5 avatars, rest will be shown as "+N"
-  return props.viewers.slice(0, 5);
+  const currentId = props.currentUser?.userId;
+  console.log('currentId', currentId);
+  console.log('viewers', props.viewers);
+  if (!currentId) return props.viewers;
+  console.log('viewersExcludingSelf', props.viewers.filter((v) => v.userId !== currentId));
+  return props.viewers.filter((v) => v.userId !== currentId);
+});
+
+const visibleViewers = computed(() => {
+  return viewersExcludingSelf.value.slice(0, 5);
 });
 
 const remainingViewersCount = computed(() => {
-  if (!props.viewers) return 0;
-  return Math.max(0, props.viewers.length - 5);
+  return Math.max(0, viewersExcludingSelf.value.length - 5);
+});
+
+const selectedViewer = ref<ViewerUser | null>(null);
+const viewerPopupRef = ref<HTMLElement | null>(null);
+const viewerTriggerRef = ref<HTMLElement | null>(null);
+
+function openViewerPopup(viewer: ViewerUser) {
+  selectedViewer.value = selectedViewer.value?.userId === viewer.userId ? null : viewer;
+}
+
+function closeViewerPopup() {
+  selectedViewer.value = null;
+}
+
+function handleClickOutside(e: MouseEvent) {
+  const target = e.target as Node;
+  if (
+    selectedViewer.value &&
+    viewerPopupRef.value &&
+    !viewerPopupRef.value.contains(target) &&
+    viewerTriggerRef.value &&
+    !viewerTriggerRef.value.contains(target)
+  ) {
+    closeViewerPopup();
+  }
+}
+
+const viewerPopupStyle = computed((): Record<string, string | number> => {
+  if (!selectedViewer.value || !viewerTriggerRef.value) return {}
+
+  const rect = viewerTriggerRef.value.getBoundingClientRect()
+  const popupWidth = 300
+  const margin = 12
+
+  let left
+
+  // Quyết định mở trái / phải
+  if (rect.left > window.innerWidth / 2) {
+    // mở về bên trái
+    left = rect.right - popupWidth
+  } else {
+    // mở về bên phải
+    left = rect.left
+  }
+
+  // Clamp lại để không tràn viewport
+  if (left + popupWidth > window.innerWidth - margin) {
+    left = window.innerWidth - popupWidth - margin
+  }
+
+  if (left < margin) {
+    left = margin
+  }
+
+  return {
+    position: 'fixed',
+    top: `${rect.bottom + 8}px`,
+    left: `${left}px`,
+    zIndex: 9999,
+  }
+})
+
+
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside, true);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside, true);
 });
 </script>
 
@@ -195,16 +279,19 @@ const remainingViewersCount = computed(() => {
           </div>
         </div>
         <div class="spacer" />
-        <!-- Viewers list -->
+        <!-- Viewers list (không hiển thị user đang login) -->
         <div
-          v-if="viewers && viewers.length > 0"
+          v-if="viewersExcludingSelf.length > 0"
+          ref="viewerTriggerRef"
           class="rte-viewers"
         >
           <div
             v-for="viewer in visibleViewers"
             :key="viewer.userId"
             class="rte-viewer-avatar"
+            :class="{ 'rte-viewer-avatar--selected': selectedViewer?.userId === viewer.userId }"
             :title="viewer.name"
+            @click.stop="openViewerPopup(viewer)"
           >
             <img
               v-if="viewer.avatar"
@@ -220,6 +307,231 @@ const remainingViewersCount = computed(() => {
             :title="`${remainingViewersCount} more viewer${remainingViewersCount > 1 ? 's' : ''}`"
           >
             +{{ remainingViewersCount }}
+          </div>
+          <!-- Viewer info popup -->
+          <Teleport to="body">
+            <div
+              v-if="selectedViewer"
+              ref="viewerPopupRef"
+              class="rte-viewer-popup"
+              :style="viewerPopupStyle"
+            >
+              <div class="rte-viewer-popup__card">
+                <div class="rte-viewer-popup__main">
+                  <div class="rte-viewer-popup__avatar-wrap">
+                    <img
+                      v-if="selectedViewer.avatar"
+                      :src="selectedViewer.avatar"
+                      :alt="selectedViewer.name"
+                      class="rte-viewer-popup__avatar"
+                    >
+                    <span
+                      v-else
+                      class="rte-viewer-popup__avatar rte-viewer-popup__avatar-initials"
+                    >{{ getUserInitials(selectedViewer.name) }}</span>
+                  </div>
+                  <div class="rte-viewer-popup__info">
+                    <div class="rte-viewer-popup__name-row">
+                      <span class="rte-viewer-popup__name">{{ selectedViewer.name }}</span>
+                      <button
+                        type="button"
+                        class="rte-viewer-popup__add-person"
+                        title="Thêm người"
+                        aria-label="Thêm người"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                          <circle
+                            cx="9"
+                            cy="7"
+                            r="4"
+                          />
+                          <line
+                            x1="19"
+                            y1="8"
+                            x2="19"
+                            y2="14"
+                          />
+                          <line
+                            x1="22"
+                            y1="11"
+                            x2="16"
+                            y2="11"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <p class="rte-viewer-popup__email">
+                      {{ selectedViewer.email || '—' }}
+                    </p>
+                    <button
+                      type="button"
+                      class="rte-viewer-popup__btn-mail"
+                    >
+                      <img
+                        src="/icons/mail.svg"
+                        alt=""
+                        class="rte-viewer-popup__btn-icon"
+                      >
+                      Gửi thư
+                    </button>
+                    <div class="rte-viewer-popup__actions">
+                      <button
+                        type="button"
+                        class="rte-viewer-popup__action-btn"
+                        title="Nhắn tin"
+                        aria-label="Nhắn tin"
+                      >
+                        <img
+                          src="/icons/message-circle-dot.svg"
+                          alt=""
+                          width="18"
+                          height="18"
+                        >
+                      </button>
+                      <button
+                        type="button"
+                        class="rte-viewer-popup__action-btn"
+                        title="Gọi video"
+                        aria-label="Gọi video"
+                      >
+                        <img
+                          src="/icons/meeting.svg"
+                          alt=""
+                          width="18"
+                          height="18"
+                        >
+                      </button>
+                      <button
+                        type="button"
+                        class="rte-viewer-popup__action-btn"
+                        title="Lịch"
+                        aria-label="Lịch"
+                      >
+                        <img
+                          src="/icons/calendar.svg"
+                          alt=""
+                          width="18"
+                          height="18"
+                        >
+                      </button>
+                    </div>
+                    <a
+                      href="#"
+                      class="rte-viewer-popup__detail-link"
+                      @click.prevent
+                    >
+                      Mở chế độ xem chi tiết
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line
+                          x1="10"
+                          y1="14"
+                          x2="21"
+                          y2="3"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Teleport>
+        </div>
+        <!-- Header actions: History, Comment, Share, Sparkle (between viewers and current user) -->
+        <div class="rte-header-actions">
+          <button
+            type="button"
+            class="rte-header-action-btn"
+            title="Lịch sử"
+            aria-label="Lịch sử"
+          >
+            <img
+              src="/icons/history.svg"
+              alt=""
+              class="rte-header-action-icon"
+            >
+          </button>
+          <button
+            type="button"
+            class="rte-header-action-btn"
+            title="Bình luận"
+            aria-label="Bình luận"
+          >
+            <img
+              src="/icons/comment.svg"
+              alt=""
+              class="rte-header-action-icon rte-header-action-icon--comment"
+            >
+          </button>
+          <details class="rte-share-wrap">
+            <summary class="rte-share-btn">
+              <img
+                src="/icons/share.svg"
+                alt=""
+                class="rte-share-btn-icon"
+              >
+              <span class="rte-share-btn-text">Share</span>
+              <span class="rte-share-btn-sep" />
+              <img
+                src="/icons/arrow-down.svg"
+                alt=""
+                class="rte-share-btn-caret"
+              >
+            </summary>
+            <div class="rte-share-menu">
+              <button type="button">
+                Chia sẻ với mọi người
+              </button>
+              <button type="button">
+                Sao chép link
+              </button>
+            </div>
+          </details>
+          <button
+            type="button"
+            class="rte-header-action-btn"
+            title="Sparkle"
+            aria-label="Sparkle"
+          >
+            <img
+              src="/icons/star.svg"
+              alt=""
+              class="rte-header-action-icon"
+            >
+          </button>
+        </div>
+        <!-- Current user avatar (top-right) -->
+        <div
+          v-if="currentUser"
+          class="rte-current-user"
+        >
+          <div
+            class="rte-viewer-avatar rte-viewer-avatar--current"
+            :title="currentUser.name"
+          >
+            <img
+              v-if="currentUser.avatar"
+              :src="currentUser.avatar"
+              :alt="currentUser.name"
+              class="rte-viewer-avatar-img"
+            >
+            <span v-else>{{ getUserInitials(currentUser.name) }}</span>
           </div>
         </div>
         <div
@@ -813,25 +1125,27 @@ const remainingViewersCount = computed(() => {
   align-items: center;
   gap: 0;
   margin-right: 8px;
+  position: relative;
 }
 
 .rte-viewer-avatar {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid #e5e7eb;
   background: #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
   color: #374151;
-  margin-left: -6px;
+  margin-left: -8px;
   flex-shrink: 0;
-  cursor: default;
+  cursor: pointer;
   position: relative;
   z-index: 1;
+  transition: border-color 0.15s, z-index 0.15s;
 }
 
 .rte-viewer-avatar:first-child {
@@ -840,6 +1154,13 @@ const remainingViewersCount = computed(() => {
 
 .rte-viewer-avatar:hover {
   z-index: 2;
+  border-color: #d1d5db;
+}
+
+.rte-viewer-avatar--selected {
+  z-index: 3;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 1px #a855f7;
 }
 
 .rte-viewer-avatar-img {
@@ -852,7 +1173,302 @@ const remainingViewersCount = computed(() => {
 .rte-viewer-avatar--more {
   background: #f3f4f6;
   color: #6b7280;
-  font-size: 10px;
-  border-color: white;
+  font-size: 11px;
+  border-color: #e5e7eb;
+  cursor: default;
+}
+
+.rte-viewer-avatar--current {
+  margin-left: 0;
+  cursor: default;
+  border-color: #e5e7eb;
+}
+
+/* Header actions: History, Comment, Share, Sparkle */
+.rte-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.rte-header-action-btn {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  cursor: pointer;
+}
+
+.rte-header-action-btn:hover {
+  background: #f3f4f6;
+}
+
+.rte-header-action-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  /* Chuẩn hóa màu/độ đậm giữa các SVG khác nhau */
+  filter: brightness(0) saturate(100%);
+  opacity: 0.72;
+}
+
+/* Comment icon SVG mỏng hơn → scale nhẹ + đậm hơn để đồng bộ với History/Star */
+.rte-header-action-icon--comment {
+  transform: scale(1.18);
+  opacity: 0.82;
+}
+
+.rte-share-wrap {
+  position: relative;
+}
+
+.rte-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px 0 14px;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  border: 0;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rte-share-btn::-webkit-details-marker {
+  display: none;
+}
+
+.rte-share-btn:hover {
+  background: #bae6fd;
+  color: #075985;
+}
+
+.rte-share-btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  background: transparent;
+}
+
+.rte-share-btn-text {
+  margin-right: 2px;
+  font-weight: 500;
+}
+
+.rte-share-btn-sep {
+  width: 1px;
+  height: 20px;
+  background: #38bdf8;
+  margin: 0 4px;
+  opacity: 0.7;
+}
+
+.rte-share-btn-caret {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  filter: brightness(0) saturate(100%) invert(22%) sepia(35%) saturate(1200%) hue-rotate(185deg);
+  opacity: 0.92;
+}
+
+.rte-share-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  z-index: 20;
+}
+
+.rte-share-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.rte-share-menu button:hover {
+  background: #f3f4f6;
+}
+
+/* Current user (top-right) */
+.rte-current-user {
+  margin-left: auto;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* Viewer info popup */
+.rte-viewer-popup {
+  position: fixed;
+  z-index: 9999;
+}
+
+.rte-viewer-popup__card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e5e7eb;
+  width: 300px;
+  padding: 12px;
+}
+
+.rte-viewer-popup__main {
+  display: flex;
+  gap: 10px;
+}
+
+.rte-viewer-popup__avatar-wrap {
+  flex-shrink: 0;
+}
+
+.rte-viewer-popup__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.rte-viewer-popup__avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  color: #374151;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.rte-viewer-popup__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rte-viewer-popup__name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.rte-viewer-popup__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.rte-viewer-popup__add-person {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rte-viewer-popup__add-person:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.rte-viewer-popup__email {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rte-viewer-popup__btn-mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.rte-viewer-popup__btn-mail:hover {
+  background: #2563eb;
+}
+
+.rte-viewer-popup__btn-icon {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1);
+}
+
+.rte-viewer-popup__actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rte-viewer-popup__action-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+}
+
+.rte-viewer-popup__action-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.rte-viewer-popup__detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.rte-viewer-popup__detail-link:hover {
+  text-decoration: underline;
 }
 </style>

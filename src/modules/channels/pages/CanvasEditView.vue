@@ -8,11 +8,13 @@ import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
+import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
 import socketHelper from "@/helpers/socket.helper";
 
 const canvasStore = useCanvasStore();
+const authStore = useAuthStore();
 const route = useRoute();
 const queryClient = useQueryClient();
 const canvasId = computed(() => route.params.canvasId as string);
@@ -32,6 +34,17 @@ const onlineUsers = ref<
   Array<{ userId: string; name: string; avatar: string | null }>
 >([]);
 const lastLocalContentSignature = ref<string | null>(null);
+
+const currentUser = computed(() => {
+  if (!authStore.isLoggedIn) return null;
+  const u = authStore.user as { id?: string; name?: string; email?: string; avatar?: string | null } | null;
+  return {
+    userId: u?.id ?? "",
+    name: u?.name ?? authStore.userName ?? "",
+    avatar: u?.avatar ?? null,
+    email: u?.email ?? authStore.userEmail ?? undefined,
+  };
+});
 
 watch(
   () => selectedCanvas.value?.title,
@@ -78,13 +91,13 @@ onMounted(async () => {
     // Connect to canvas namespace
     await socketHelper.connect("/canvas", { enableLogging: true });
 
-    // Join canvas room
+    // Đăng ký listener trước khi join để nhận ngay canvas_edit_page_users khi reload
+    setupSocketListeners();
+
+    // Join canvas room (server sẽ broadcast danh sách user về, cần đã listen trước)
     await socketHelper.emit("join_canvas_edit_page", {
       canvasId: canvasId.value,
     });
-
-    // Setup event listeners
-    setupSocketListeners();
   } catch (error) {
     console.error("[CanvasEditView] Failed to setup WebSocket:", error);
   } finally {
@@ -243,6 +256,7 @@ onBeforeUnmount(() => {
         :read-only="false"
         :title="displayTitle"
         :viewers="onlineUsers"
+        :current-user="currentUser"
         @update:title="onTitleUpdate"
         @download="handleDownload"
         @move-to-trash="handleMoveToTrash"
