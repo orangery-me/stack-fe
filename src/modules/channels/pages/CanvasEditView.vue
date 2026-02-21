@@ -26,8 +26,15 @@ const { data: selectedCanvas, isLoading } = requestCanvas({
 
 const loading = ref(true);
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let syncThrottleTimer: ReturnType<typeof setTimeout> | undefined;
 let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
+let titleSyncThrottleTimer: ReturnType<typeof setTimeout> | undefined;
 let isProgrammaticUpdate = false;
+let lastPendingDoc: any = null;
+const SYNC_THROTTLE_MS = 100;
+const SAVE_DEBOUNCE_MS = 2500;
+const TITLE_SYNC_THROTTLE_MS = 100;
+const TITLE_SAVE_DEBOUNCE_MS = 1000;
 
 const displayTitle = ref("");
 const onlineUsers = ref<
@@ -37,7 +44,12 @@ const lastLocalContentSignature = ref<string | null>(null);
 
 const currentUser = computed(() => {
   if (!authStore.isLoggedIn) return null;
-  const u = authStore.user as { id?: string; name?: string; email?: string; avatar?: string | null } | null;
+  const u = authStore.user as {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  } | null;
   return {
     userId: u?.id ?? "",
     name: u?.name ?? authStore.userName ?? "",
@@ -46,22 +58,62 @@ const currentUser = computed(() => {
   };
 });
 
+// Title: TanStack Query (selectedCanvas) is source of truth; fallback to store for fast load when opening from list
 watch(
-  () => selectedCanvas.value?.title,
-  (t) => {
-    displayTitle.value = t ?? "New page";
+  () => [
+    selectedCanvas.value?.title,
+    canvasId.value,
+    canvasStore.canvases,
+  ],
+  () => {
+    const fromQuery = selectedCanvas.value?.title;
+    if (fromQuery !== undefined && fromQuery !== null) {
+      displayTitle.value = fromQuery ?? "";
+      return;
+    }
+    const list = canvasStore.canvases;
+    const id = canvasId.value;
+    if (id && list?.length) {
+      const c = list.find((x) => x.id === id);
+      if (c?.title != null) displayTitle.value = c.title ?? "";
+    }
   },
   { immediate: true }
 );
 
+/** Sync title as-is so others see exactly what is being typed (including empty or spaces). */
+function syncTitle(value: string) {
+  if (!selectedCanvas.value?.id) return;
+  socketHelper.emit("sync_canvas_title", {
+    canvasId: selectedCanvas.value.id,
+    title: value,
+  });
+}
+
 function onTitleUpdate(value: string) {
   displayTitle.value = value;
+  if (titleSyncThrottleTimer) return;
+  titleSyncThrottleTimer = setTimeout(() => {
+    titleSyncThrottleTimer = undefined;
+    syncTitle(displayTitle.value);
+  }, TITLE_SYNC_THROTTLE_MS);
+  // Persist after 1s idle
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
-  titleSaveTimer = setTimeout(() => {
+  titleSaveTimer = setTimeout(async () => {
     if (!selectedCanvas.value?.id) return;
-    canvasStore.updateCanvasTitle(selectedCanvas.value.id, value);
     titleSaveTimer = undefined;
-  }, 500);
+    const canvasId = selectedCanvas.value.id;
+    const title = displayTitle.value.trim() || "New page";
+    try {
+      await socketHelper.emit("edit_canvas_title", { canvasId, title });
+    } catch (error) {
+      console.error(
+        "[CanvasEditView] Failed to update title via WebSocket, fallback to REST:",
+        error
+      );
+      canvasStore.updateCanvasTitle(canvasId, title).catch(console.error);
+    }
+  }, TITLE_SAVE_DEBOUNCE_MS);
 }
 
 const editor = useEditor({
@@ -80,7 +132,10 @@ const editor = useEditor({
   content: null,
   onUpdate({ editor }) {
     if (isProgrammaticUpdate) return;
-    debouncedSave(editor.getJSON());
+    const doc = editor.getJSON();
+    lastPendingDoc = doc;
+    throttledSync(doc);
+    debouncedSave(doc);
   },
 });
 
@@ -171,10 +226,46 @@ function handleSocketError({ message }: { message: string }) {
   // TODO: Could show notification to user
 }
 
+function handleCanvasTitleUpdate({
+  canvasId: id,
+  title,
+}: {
+  canvasId: string;
+  title: string;
+}) {
+  queryClient.setQueryData(["canvas", id], (old: any) =>
+    old ? { ...old, title } : old
+  );
+  canvasStore.applyCanvasTitleFromSocket(id, title);
+  if (id === canvasId.value) {
+    displayTitle.value = title;
+  }
+}
+
 function setupSocketListeners() {
   socketHelper.on("canvas_data", handleCanvasDataUpdate);
+  socketHelper.on("canvas_title", handleCanvasTitleUpdate);
   socketHelper.on("canvas_edit_page_users", handleUsersUpdate);
   socketHelper.on("error", handleSocketError);
+}
+
+function throttledSync(doc: any) {
+  if (syncThrottleTimer) return;
+  syncThrottleTimer = setTimeout(() => {
+    syncThrottleTimer = undefined;
+    const latestDoc = editor.value?.getJSON() ?? lastPendingDoc ?? doc;
+    syncContent(latestDoc);
+  }, SYNC_THROTTLE_MS);
+}
+
+function syncContent(doc: any) {
+  if (!selectedCanvas.value?.id) return;
+  const canvasContent = tiptapToCanvas(doc);
+  lastLocalContentSignature.value = JSON.stringify(canvasContent);
+  socketHelper.emit("sync_canvas", {
+    canvasId: selectedCanvas.value.id,
+    content: canvasContent,
+  });
 }
 
 function debouncedSave(doc: any) {
@@ -182,7 +273,7 @@ function debouncedSave(doc: any) {
   saveTimer = setTimeout(() => {
     saveContent(doc);
     saveTimer = undefined;
-  }, 500);
+  }, SAVE_DEBOUNCE_MS);
 }
 
 async function saveContent(doc: any) {
@@ -197,7 +288,6 @@ async function saveContent(doc: any) {
       canvasId: selectedCanvas.value.id,
       content: canvasContent,
     });
-
   } catch (error) {
     console.error("[CanvasEditView] Failed to save via WebSocket:", error);
     // await canvasStore.saveCanvasContent(selectedCanvas.value.id, canvasContent);
@@ -215,6 +305,7 @@ function handleMoveToTrash() {
 onBeforeUnmount(() => {
   // Remove socket listeners
   socketHelper.off("canvas_data", handleCanvasDataUpdate);
+  socketHelper.off("canvas_title", handleCanvasTitleUpdate);
   socketHelper.off("canvas_edit_page_users", handleUsersUpdate);
   socketHelper.off("error", handleSocketError);
 
@@ -227,25 +318,27 @@ onBeforeUnmount(() => {
       .catch(console.error);
   }
 
-  // Cleanup timers
-  if (saveTimer) clearTimeout(saveTimer);
+  // Flush pending save so we don't lose unsaved content
+  if (saveTimer !== undefined) {
+    clearTimeout(saveTimer);
+    saveTimer = undefined;
+    if (lastPendingDoc != null && selectedCanvas.value?.id) {
+      saveContent(lastPendingDoc);
+    }
+  }
+  if (syncThrottleTimer) clearTimeout(syncThrottleTimer);
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
+  if (titleSyncThrottleTimer) clearTimeout(titleSyncThrottleTimer);
   editor.value?.destroy();
 });
 </script>
 
 <template>
   <div class="canvas-edit-view">
-    <div
-      v-if="loading || isLoading"
-      class="canvas-edit-view__skeleton"
-    >
+    <div v-if="isLoading" class="canvas-edit-view__skeleton">
       <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
     </div>
-    <div
-      v-else
-      class="canvas-edit-view__editor"
-    >
+    <div v-else class="canvas-edit-view__editor">
       <RichEditor
         :editor="editor"
         :read-only="false"

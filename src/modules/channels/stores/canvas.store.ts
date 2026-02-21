@@ -106,7 +106,7 @@ export const useCanvasStore = defineStore("canvas", {
       if (!canvasId) return null;
 
       try {
-        const updated = (await canvasService.updateCanvas(canvasId, {
+        const updated = (await canvasService.updateCanvasTitle(canvasId, {
           title: title.trim() || "New page",
         })) as Canvas;
 
@@ -118,6 +118,15 @@ export const useCanvasStore = defineStore("canvas", {
       } catch (error) {
         throw error;
       }
+    },
+
+    /** Apply title from WebSocket broadcast (no API call). */
+    applyCanvasTitleFromSocket(canvasId: string, title: string): void {
+      if (!this.canvases) return;
+      const index = this.canvases.findIndex((c) => c.id === canvasId);
+      if (index === -1) return;
+      const canvas = this.canvases[index];
+      this.canvases.splice(index, 1, { ...canvas, title });
     },
 
     async saveCanvasContent(

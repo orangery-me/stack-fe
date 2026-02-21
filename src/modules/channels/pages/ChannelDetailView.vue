@@ -36,7 +36,6 @@ const handleAddCanvas = async () => {
   if (!workspace.value || !selectedChannel.value) return;
   const title = "New page";
   const created = await canvasStore.createCanvas(
-    workspace.value.id,
     selectedChannel.value.id,
     {
       title,
