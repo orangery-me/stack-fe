@@ -3,6 +3,9 @@ import { watch, onBeforeUnmount, onMounted, ref, computed } from "vue";
 import { useEditor } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import TextAlign from "@tiptap/extension-text-align";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import { canvasToTiptap, tiptapToCanvas } from "@/helpers/canvas.helper";
 import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
@@ -134,6 +137,11 @@ const editor = useEditor({
         return "Type something…";
       },
     }),
+    TextAlign.configure({
+      types: ["heading", "paragraph"],
+    }),
+    Subscript,
+    Superscript,
   ],
   autofocus: false,
   editable: false,

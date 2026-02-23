@@ -1004,7 +1004,7 @@ onBeforeUnmount(() => {
 }
 .btn-pill {
   border: 1px solid #e5e7eb;
-  border-radius: 999px;
+  border-radius: 60px;
   padding: 6px 12px;
   background: #fff;
   display: inline-flex;
@@ -1130,6 +1130,17 @@ onBeforeUnmount(() => {
   padding-left: 14px;
   margin: 18px 0;
   color: #374151;
+}
+.content :deep(ul),
+.content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 1.5rem;
+}
+.content :deep(ul) {
+  list-style-type: disc;
+}
+.content :deep(ol) {
+  list-style-type: decimal;
 }
 .icon-img {
   width: 16px;
