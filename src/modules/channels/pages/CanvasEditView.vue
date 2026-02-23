@@ -13,11 +13,18 @@ import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
 import socketHelper from "@/helpers/socket.helper";
 
+const SYNC_THROTTLE_MS = 100;
+const SAVE_DEBOUNCE_MS = 2500;
+const TITLE_SYNC_THROTTLE_MS = 100;
+const TITLE_SAVE_DEBOUNCE_MS = 1000;
+
 const canvasStore = useCanvasStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const queryClient = useQueryClient();
 const canvasId = computed(() => route.params.canvasId as string);
+
+const isEditorReady = ref(false);
 
 const { data: selectedCanvas, isLoading } = requestCanvas({
   canvasId: computed(() => canvasId.value),
@@ -31,10 +38,6 @@ let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
 let titleSyncThrottleTimer: ReturnType<typeof setTimeout> | undefined;
 let isProgrammaticUpdate = false;
 let lastPendingDoc: any = null;
-const SYNC_THROTTLE_MS = 100;
-const SAVE_DEBOUNCE_MS = 2500;
-const TITLE_SYNC_THROTTLE_MS = 100;
-const TITLE_SAVE_DEBOUNCE_MS = 1000;
 
 const displayTitle = ref("");
 const onlineUsers = ref<
@@ -58,13 +61,17 @@ const currentUser = computed(() => {
   };
 });
 
+watch(
+  () => canvasId.value,
+  () => {
+    isEditorReady.value = false;
+    editor.value?.setEditable(false); // Không cho edit khi canvasId thay đổi, chờ load xong mới cho edit
+  }
+);
+
 // Title: TanStack Query (selectedCanvas) is source of truth; fallback to store for fast load when opening from list
 watch(
-  () => [
-    selectedCanvas.value?.title,
-    canvasId.value,
-    canvasStore.canvases,
-  ],
+  () => [selectedCanvas.value?.title, canvasId.value, canvasStore.canvases],
   () => {
     const fromQuery = selectedCanvas.value?.title;
     if (fromQuery !== undefined && fromQuery !== null) {
@@ -128,10 +135,12 @@ const editor = useEditor({
       },
     }),
   ],
-  autofocus: true,
+  autofocus: false,
+  editable: false,
   content: null,
   onUpdate({ editor }) {
     if (isProgrammaticUpdate) return;
+    if (!isEditorReady.value) return; // Chỉ sync khi đã load content
     const doc = editor.getJSON();
     lastPendingDoc = doc;
     throttledSync(doc);
@@ -160,27 +169,44 @@ onMounted(async () => {
 });
 
 function loadContentIntoEditor() {
+  console.log("📦 LOAD CONTENT INTO EDITOR");
   const raw =
     selectedCanvas.value?.content ?? selectedCanvas.value?.initialContent;
   if (!raw || !editor.value) return;
+  if (isEditorReady.value) return; // Nếu đã load content rồi thì không load lại
   try {
     const canvasContent = typeof raw === "string" ? JSON.parse(raw) : raw;
     isProgrammaticUpdate = true;
-    editor.value.commands.setContent(canvasToTiptap(canvasContent));
+    // editor.value.commands.setContent(canvasToTiptap(canvasContent));
+    editor.value.commands.setContent(
+      canvasToTiptap(canvasContent),
+      { emitUpdate: false } // không trigger update
+    );
     isProgrammaticUpdate = false;
   } catch {
     editor.value.commands.clearContent();
+  } finally {
+    isEditorReady.value = true;
+    editor.value?.setEditable(true); // Cho edit khi load content xong
   }
 }
 
-watch(() => selectedCanvas.value?.id, loadContentIntoEditor, {
-  immediate: true,
-});
-watch(editor, loadContentIntoEditor, { immediate: true });
+watch(
+  () => [selectedCanvas.value?.id, editor.value],
+  ([canvasId, editor]) => {
+    if (!canvasId || !editor) return;
+    loadContentIntoEditor();
+  },
+  { immediate: true }
+);
 
 // WebSocket event handlers
 function handleCanvasDataUpdate({ canvas }: { canvas: any }) {
+  console.log("⚡ SOCKET UPDATE TRIGGERED");
   if (!editor.value || canvas.id !== canvasId.value) return;
+
+  // Nếu chưa load content thì không cập nhật editor
+  if (!isEditorReady.value) return;
 
   const raw = canvas.content ?? canvas.initialContent;
   if (!raw) return;
@@ -203,7 +229,11 @@ function handleCanvasDataUpdate({ canvas }: { canvas: any }) {
 
     // Update editor with isProgrammaticUpdate flag to avoid triggering onUpdate
     isProgrammaticUpdate = true;
-    editor.value.commands.setContent(canvasToTiptap(canvasContent));
+    // editor.value.commands.setContent(canvasToTiptap(canvasContent));
+    editor.value.commands.setContent(
+      canvasToTiptap(canvasContent),
+      { emitUpdate: false } // không trigger update
+    );
     isProgrammaticUpdate = false;
   } catch (error) {
     console.error(
@@ -339,6 +369,7 @@ onBeforeUnmount(() => {
       <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
     </div>
     <div v-else class="canvas-edit-view__editor">
+      <div v-if="!isEditorReady" class="canvas-edit-view__blocker" />
       <RichEditor
         :editor="editor"
         :read-only="false"
@@ -366,8 +397,17 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 
+.canvas-edit-view__blocker {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: wait; 
+  pointer-events: all; // chặn click vào editor
+}
+
 .canvas-edit-view__editor {
   flex: 1;
+  position: relative;
   overflow: auto;
   display: flex;
   flex-direction: column;

@@ -132,6 +132,9 @@ const selectedViewer = ref<ViewerUser | null>(null);
 const viewerPopupRef = ref<HTMLElement | null>(null);
 const viewerTriggerRef = ref<HTMLElement | null>(null);
 
+const headingDetailsRef = ref<HTMLDetailsElement | null>(null);
+const headingMenuOpen = ref(false);
+
 function openViewerPopup(viewer: ViewerUser) {
   selectedViewer.value = selectedViewer.value?.userId === viewer.userId ? null : viewer;
 }
@@ -150,6 +153,13 @@ function handleClickOutside(e: MouseEvent) {
     !viewerTriggerRef.value.contains(target)
   ) {
     closeViewerPopup();
+  }
+  if (
+    headingMenuOpen.value &&
+    headingDetailsRef.value &&
+    !headingDetailsRef.value.contains(target)
+  ) {
+    headingMenuOpen.value = false;
   }
 }
 
@@ -462,7 +472,7 @@ onBeforeUnmount(() => {
             aria-label="Lịch sử"
           >
             <img
-              src="/icons/history.svg"
+              src="/icons/toolbar2/history.svg"
               alt=""
               class="rte-header-action-icon"
             >
@@ -474,7 +484,7 @@ onBeforeUnmount(() => {
             aria-label="Bình luận"
           >
             <img
-              src="/icons/comment.svg"
+              src="/icons/toolbar2/comment.svg"
               alt=""
               class="rte-header-action-icon rte-header-action-icon--comment"
             >
@@ -482,7 +492,7 @@ onBeforeUnmount(() => {
           <details class="rte-share-wrap">
             <summary class="rte-share-btn">
               <img
-                src="/icons/share.svg"
+                src="/icons/toolbar2/share.svg"
                 alt=""
                 class="rte-share-btn-icon"
               >
@@ -503,7 +513,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </details>
-          <button
+          <!-- <button
             type="button"
             class="rte-header-action-btn"
             title="Sparkle"
@@ -514,7 +524,7 @@ onBeforeUnmount(() => {
               alt=""
               class="rte-header-action-icon"
             >
-          </button>
+          </button> -->
         </div>
         <!-- Current user avatar (top-right) -->
         <div
@@ -575,7 +585,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().undo().run()"
           >
             <img
-              src="/icons/toolbar/back.svg"
+              src="/icons/toolbar2/undo.svg"
               class="icon-img"
               alt="Undo"
             >
@@ -587,7 +597,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().redo().run()"
           >
             <img
-              src="/icons/toolbar/forward.svg"
+              src="/icons/toolbar2/redo.svg"
               class="icon-img"
               alt="Redo"
             >
@@ -598,9 +608,12 @@ onBeforeUnmount(() => {
 
         <!-- Heading dropdown -->
         <details
+          ref="headingDetailsRef"
           class="dd"
           :class="{ 'dd-disabled': readOnly }"
           :aria-disabled="readOnly ? 'true' : 'false'"
+          :open="headingMenuOpen"
+          @toggle="headingMenuOpen = (($event.target as HTMLDetailsElement).open)"
         >
           <summary class="dd-btn">
             {{ currentHeadingLabel }}
@@ -608,25 +621,25 @@ onBeforeUnmount(() => {
           <div class="dd-menu">
             <button
               :disabled="readOnly"
-              @click="setHeading()"
+              @click="setHeading(); headingMenuOpen = false"
             >
               Paragraph
             </button>
             <button
               :disabled="readOnly"
-              @click="setHeading(1)"
+              @click="setHeading(1); headingMenuOpen = false"
             >
               Heading 1
             </button>
             <button
               :disabled="readOnly"
-              @click="setHeading(2)"
+              @click="setHeading(2); headingMenuOpen = false"
             >
               Heading 2
             </button>
             <button
               :disabled="readOnly"
-              @click="setHeading(3)"
+              @click="setHeading(3); headingMenuOpen = false"
             >
               Heading 3
             </button>
@@ -644,7 +657,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleBulletList().run()"
           >
             <img
-              src="/icons/toolbar/bullet-list.svg"
+              src="/icons/toolbar2/bullet-list.svg"
               class="icon-img"
               alt="Bullet list"
             >
@@ -657,7 +670,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleOrderedList().run()"
           >
             <img
-              src="/icons/toolbar/number-list.svg"
+              src="/icons/toolbar2/numbered-list.svg"
               class="icon-img"
               alt="Numbered list"
             >
@@ -670,7 +683,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleBlockquote().run()"
           >
             <img
-              src="/icons/toolbar/quote.svg"
+              src="/icons/toolbar2/quote-block.svg"
               class="icon-img"
               alt="Quote"
             >
@@ -688,7 +701,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleBold().run()"
           >
             <img
-              src="/icons/toolbar/bold.svg"
+              src="/icons/toolbar2/bold.svg"
               class="icon-img"
               alt="Bold"
             >
@@ -701,7 +714,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleItalic().run()"
           >
             <img
-              src="/icons/toolbar/italic.svg"
+              src="/icons/toolbar2/italic.svg"
               class="icon-img"
               alt="Italic"
             >
@@ -714,7 +727,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleStrike().run()"
           >
             <img
-              src="/icons/toolbar/strikethrough.svg"
+              src="/icons/toolbar2/strike.svg"
               class="icon-img"
               alt="Strikethrough"
             >
@@ -727,7 +740,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleCode().run()"
           >
             <img
-              src="/icons/toolbar/code.svg"
+              src="/icons/toolbar2/code.svg"
               class="icon-img"
               alt="Code"
             >
@@ -740,7 +753,7 @@ onBeforeUnmount(() => {
             @click="editor.chain().focus().toggleUnderline().run()"
           >
             <img
-              src="/icons/toolbar/underline.svg"
+              src="/icons/toolbar2/underline.svg"
               class="icon-img"
               alt="Underline"
             >
@@ -758,7 +771,7 @@ onBeforeUnmount(() => {
             @click="setLink"
           >
             <img
-              src="/icons/toolbar/link.svg"
+              src="/icons/toolbar2/link.svg"
               class="icon-img"
               alt="Link"
             >
@@ -771,7 +784,7 @@ onBeforeUnmount(() => {
             @click="toggleSubscript"
           >
             <img
-              src="/icons/toolbar/subscript.svg"
+              src="/icons/toolbar2/subscript.svg"
               class="icon-img"
               alt="Subscript"
             >
@@ -784,7 +797,7 @@ onBeforeUnmount(() => {
             @click="toggleSuperscript"
           >
             <img
-              src="/icons/toolbar/superscript.svg"
+              src="/icons/toolbar2/superscript.svg"
               class="icon-img"
               alt="Superscript"
             >
@@ -802,7 +815,7 @@ onBeforeUnmount(() => {
             @click="setTextAlign('left')"
           >
             <img
-              src="/icons/toolbar/align-left.svg"
+              src="/icons/toolbar2/align-left.svg"
               class="icon-img"
               alt="Align left"
             >
@@ -815,7 +828,7 @@ onBeforeUnmount(() => {
             @click="setTextAlign('center')"
           >
             <img
-              src="/icons/toolbar/align-center.svg"
+              src="/icons/toolbar2/align-center.svg"
               class="icon-img"
               alt="Align center"
             >
@@ -828,7 +841,7 @@ onBeforeUnmount(() => {
             @click="setTextAlign('right')"
           >
             <img
-              src="/icons/toolbar/align-right.svg"
+              src="/icons/toolbar2/align-right.svg"
               class="icon-img"
               alt="Align right"
             >
@@ -841,7 +854,7 @@ onBeforeUnmount(() => {
             @click="setTextAlign('justify')"
           >
             <img
-              src="/icons/toolbar/align-justify.svg"
+              src="/icons/toolbar2/align-justify.svg"
               class="icon-img"
               alt="Justify"
             >
@@ -891,7 +904,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
   border-top: 1.5px solid #e5e7eb;
 }
 
@@ -933,8 +945,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  margin: 4px 20px;
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .group {
@@ -1041,7 +1055,7 @@ onBeforeUnmount(() => {
 }
 .dd-btn {
   border-radius: 10px;
-  padding: 6px 10px;
+  padding: 2px 10px;
   cursor: pointer;
 }
 .dd[open] .dd-btn {
@@ -1092,11 +1106,14 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 28px 60px;
+  padding: 28px clamp(16px, 5vw, 60px);
 }
 .content :deep(.ProseMirror) {
   outline: none;
   min-height: 240px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .content :deep(h1) {
   font-size: 34px;
@@ -1233,12 +1250,12 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 12px 0 14px;
+  height: 32px;
+  padding: 0 10px 0 12px;
   background: #e0f2fe;
   color: #0c4a6e;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1317,7 +1334,11 @@ onBeforeUnmount(() => {
 .rte-current-user {
   margin-left: auto;
   margin-right: 8px;
+  padding: 2px;
   flex-shrink: 0;
+  border-radius: 999px;
+  border: 2px solid #3b82f6;
+  background: #ffffff;
 }
 
 /* Viewer info popup */

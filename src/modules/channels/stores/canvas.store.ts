@@ -120,7 +120,6 @@ export const useCanvasStore = defineStore("canvas", {
       }
     },
 
-    /** Apply title from WebSocket broadcast (no API call). */
     applyCanvasTitleFromSocket(canvasId: string, title: string): void {
       if (!this.canvases) return;
       const index = this.canvases.findIndex((c) => c.id === canvasId);
