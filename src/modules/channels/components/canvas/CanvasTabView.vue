@@ -4,6 +4,9 @@ import { useRouter } from "vue-router";
 import { useEditor } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import TextAlign from "@tiptap/extension-text-align";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 
 import { useCanvasStore } from "@/modules/channels/stores/canvas.store.js";
 
@@ -65,6 +68,11 @@ const editor = useEditor({
         return "Type something…";
       },
     }),
+    TextAlign.configure({
+      types: ["heading", "paragraph"],
+    }),
+    Subscript,
+    Superscript,
   ],
   autofocus: true,
   content: null,
