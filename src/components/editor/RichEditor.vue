@@ -11,13 +11,20 @@ export type ViewerUser = {
 
 const props = withDefaults(
   defineProps<{
-    editor: Editor;
+    editor: Editor | null;
     readOnly?: boolean;
     title?: string;
     viewers?: Array<ViewerUser>;
     currentUser?: { userId: string; name: string; avatar: string | null; email?: string } | null;
+    saveStatus?: "saved" | "saving";
   }>(),
-  { readOnly: false, title: undefined, viewers: undefined, currentUser: null }
+  {
+    readOnly: false,
+    title: undefined,
+    viewers: undefined,
+    currentUser: null,
+    saveStatus: "saved",
+  }
 );
 
 const emit = defineEmits<{
@@ -34,6 +41,10 @@ function onTitleInput(e: Event) {
 }
 
 const editor = computed(() => props.editor);
+
+const displaySaveStatus = computed<"saved" | "saving">(
+  () => props.saveStatus ?? "saved"
+);
 
 watch(
   () => [props.editor, props.readOnly] as const,
@@ -113,10 +124,7 @@ function getUserInitials(name: string): string {
 const viewersExcludingSelf = computed(() => {
   if (!props.viewers || props.viewers.length === 0) return [];
   const currentId = props.currentUser?.userId;
-  console.log('currentId', currentId);
-  console.log('viewers', props.viewers);
   if (!currentId) return props.viewers;
-  console.log('viewersExcludingSelf', props.viewers.filter((v) => v.userId !== currentId));
   return props.viewers.filter((v) => v.userId !== currentId);
 });
 
@@ -225,15 +233,43 @@ onBeforeUnmount(() => {
           alt="Stack"
         >
         <div class="rte-header-title">
-          <input
-            v-if="title !== undefined"
-            type="text"
-            class="rte-title-input"
-            :value="title"
-            placeholder="New page"
-            @input="onTitleInput"
-          >
-          <!-- Dãy function: File, Insert -->
+          <div class="rte-header-title-row">
+            <input
+              v-if="title !== undefined"
+              type="text"
+              class="rte-title-input"
+              :value="title"
+              placeholder="New page"
+              @input="onTitleInput"
+            >
+            <div
+              class="rte-save-status"
+              :data-save-status="displaySaveStatus"
+            >
+              <span
+                v-if="displaySaveStatus === 'saving'"
+                class="rte-save-status__spinner"
+                aria-hidden="true"
+              />
+              <svg
+                v-else
+                class="rte-save-status__check"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span class="rte-save-status__text">{{ displaySaveStatus === "saving" ? "Saving" : "Saved" }}</span>
+            </div>
+          </div>
+          <!-- Dãy function: File, Insert (hàng dưới) -->
           <div class="toolbar-row toolbar-row--menu">
             <details class="dd dd-menu-item">
               <summary class="dd-btn dd-btn--menu">
@@ -907,7 +943,18 @@ onBeforeUnmount(() => {
   border-top: 1.5px solid #e5e7eb;
 }
 
-.toolbar-row--header .rte-title-input {
+.rte-header-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.rte-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rte-header-title-row .rte-title-input {
   flex: 1;
   min-width: 0;
 }
@@ -917,6 +964,43 @@ onBeforeUnmount(() => {
   height: 32px;
   object-fit: contain;
   flex-shrink: 0;
+}
+
+.rte-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f3f4f6;
+}
+
+.rte-save-status__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: rte-save-spin 0.7s linear infinite;
+}
+
+.rte-save-status__check {
+  flex-shrink: 0;
+  color: #22c55e;
+}
+
+.rte-save-status__text {
+  font-weight: 500;
+}
+
+@keyframes rte-save-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .toolbar-row--menu {
