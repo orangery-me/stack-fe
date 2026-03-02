@@ -246,11 +246,13 @@ onBeforeUnmount(() => {
               class="rte-save-status"
               :data-save-status="displaySaveStatus"
             >
-              <span
+              <img
                 v-if="displaySaveStatus === 'saving'"
-                class="rte-save-status__spinner"
+                src="/icons/toolbar2/sync.svg"
+                alt=""
+                class="rte-save-status__sync"
                 aria-hidden="true"
-              />
+              >
               <svg
                 v-else
                 class="rte-save-status__check"
@@ -266,7 +268,7 @@ onBeforeUnmount(() => {
               >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <span class="rte-save-status__text">{{ displaySaveStatus === "saving" ? "Saving" : "Saved" }}</span>
+              <span class="rte-save-status__text">{{ displaySaveStatus === "saving" ? "Saving..." : "Saved" }}</span>
             </div>
           </div>
           <!-- Dãy function: File, Insert (hàng dưới) -->
@@ -979,13 +981,10 @@ onBeforeUnmount(() => {
   background: #f3f4f6;
 }
 
-.rte-save-status__spinner {
+.rte-save-status__sync {
   width: 14px;
   height: 14px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: rte-save-spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 .rte-save-status__check {

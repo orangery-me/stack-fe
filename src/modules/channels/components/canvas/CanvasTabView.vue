@@ -1,23 +1,28 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, ref, computed } from "vue";
+import { watch, onBeforeUnmount, ref, computed, shallowRef } from "vue";
 import { useRouter } from "vue-router";
-import { useEditor } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
+import * as Y from "yjs";
+import Collaboration from "@tiptap/extension-collaboration";
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import { Editor } from "@tiptap/vue-3";
 
 import { useCanvasStore } from "@/modules/channels/stores/canvas.store.js";
-
-import { canvasToTiptap } from "@/helpers/canvas.helper";
+import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "@/modules/channels/queries/canvas.queries";
 import { useQueryClient } from "@tanstack/vue-query";
 
+const SYNC_READY_TIMEOUT_MS = 10_000;
+
 const router = useRouter();
 const canvasStore = useCanvasStore();
+const authStore = useAuthStore();
 const queryClient = useQueryClient();
 
 const props = defineProps<{
@@ -33,7 +38,6 @@ const {
   staleTime: 5 * 60 * 1000, // 5 minutes
 });
 
-let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
 
 const displayTitle = ref("");
@@ -57,48 +61,178 @@ function onTitleUpdate(value: string) {
   }, 500);
 }
 
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    Placeholder.configure({
-      placeholder: ({ node }) => {
-        if (node.type.name === "heading") {
-          return "Title or start writing…";
-        }
-        return "Type something…";
-      },
-    }),
-    TextAlign.configure({
-      types: ["heading", "paragraph"],
-    }),
-    Subscript,
-    Superscript,
-  ],
-  autofocus: true,
-  content: null,
+// ======== Current user (for awareness) =========
+
+const currentUser = computed(() => {
+  if (!authStore.isLoggedIn) return null;
+  const u = authStore.user as {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  } | null;
+  return {
+    userId: u?.id ?? "",
+    name: u?.name ?? authStore.userName ?? "",
+    avatar: u?.avatar ?? null,
+    email: u?.email ?? authStore.userEmail ?? undefined,
+  };
 });
 
-/**
- * Load canvas content vào editor.
- */
+const jwtToken = computed(() => authStore.accessToken);
+
+// ======== Yjs (read-only) =========
+
+const ydoc = shallowRef<Y.Doc | null>(null);
+const provider = shallowRef<HocuspocusProvider | null>(null);
+const editor = shallowRef<Editor | null>(null);
+
+const isEditorReady = ref(false);
+const syncStatus = ref<"connecting" | "synced" | "offline">("connecting");
+let syncReadyTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+const onlineUsers = ref<
+  Array<{ userId: string; name: string; avatar: string | null }>
+>([]);
+
+function refreshOnlineUsers() {
+  const p = provider.value;
+  if (!p) {
+    onlineUsers.value = [];
+    return;
+  }
+  const states = Array.from(p.awareness.getStates().values()) as any[];
+  onlineUsers.value = states
+    .map((state) => state.user)
+    .filter(Boolean)
+    .map((user) => ({
+      userId: user.userId,
+      name: user.name,
+      avatar: user.avatar,
+      email: user.email,
+    }));
+}
+
+function destroyCollabResources() {
+  if (syncReadyTimeoutId) {
+    clearTimeout(syncReadyTimeoutId);
+    syncReadyTimeoutId = undefined;
+  }
+  isEditorReady.value = false;
+  syncStatus.value = "connecting";
+
+  try {
+    editor.value?.destroy();
+  } catch {
+    console.error("[CanvasTabView] Failed to destroy editor:");
+  }
+  editor.value = null;
+
+  try {
+    provider.value?.destroy();
+  } catch {
+    console.error("[CanvasTabView] Failed to destroy provider:");
+  }
+  provider.value = null;
+
+  try {
+    ydoc.value?.destroy();
+  } catch {
+    console.error("[CanvasTabView] Failed to destroy ydoc:");
+  }
+  ydoc.value = null;
+  onlineUsers.value = [];
+}
+
+function setupForCanvas(id: string) {
+  const doc = new Y.Doc();
+  const p = new HocuspocusProvider({
+    url: "ws://localhost:1234",
+    name: id,
+    document: doc,
+    token: jwtToken.value,
+  });
+
+  ydoc.value = doc;
+  provider.value = p;
+
+  p.on("disconnect", () => {
+    syncStatus.value = "offline";
+  });
+
+  const me = currentUser.value;
+  p.awareness.setLocalStateField("user", {
+    userId: me?.userId ?? "",
+    name: me?.name ?? "",
+    avatar: me?.avatar ?? null,
+    email: me?.email ?? "",
+  });
+  p.awareness.on("change", refreshOnlineUsers);
+  refreshOnlineUsers();
+
+  isEditorReady.value = false;
+  syncStatus.value = "connecting";
+
+  function setEditorReady() {
+    if (syncReadyTimeoutId) {
+      clearTimeout(syncReadyTimeoutId);
+      syncReadyTimeoutId = undefined;
+    }
+    isEditorReady.value = true;
+  }
+
+  p.on("synced", () => {
+    syncStatus.value = "synced";
+    setEditorReady();
+  });
+
+  syncReadyTimeoutId = setTimeout(() => {
+    syncReadyTimeoutId = undefined;
+    if (isEditorReady.value) return;
+    syncStatus.value = "offline";
+    setEditorReady();
+  }, SYNC_READY_TIMEOUT_MS);
+
+  const e = new Editor({
+    extensions: [
+      StarterKit,
+      Collaboration.configure({ document: doc }),
+      Placeholder.configure({
+        placeholder: ({ node }) => {
+          if (node.type.name === "heading") {
+            return "Title or start writing…";
+          }
+          return "Type something…";
+        },
+      }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Subscript,
+      Superscript,
+    ],
+    autofocus: false,
+    editable: false,
+  });
+
+  editor.value = e;
+}
 
 watch(
-  // update khi editor hoặc canvas thay đổi
-  [() => editor.value, () => selectedCanvas.value],
-  ([editorInstance, canvas]) => {
-    if (!editorInstance || !canvas) return;
+  () => [props.canvasId, jwtToken.value],
+  async ([id, token]) => {
+    if (!id || !token) return;
 
-    const raw = canvas.content ?? canvas.initialContent;
-    if (!raw) return;
+    destroyCollabResources();
 
-    editorInstance.commands.setContent(
-      canvasToTiptap(typeof raw === 'string' ? JSON.parse(raw) : raw),
-      false
-    );
+    try {
+      await canvasStore.selectCanvas(id);
+    } catch (error) {
+      console.error("[CanvasTabView] Failed to select canvas:", error);
+    }
+
+    setupForCanvas(id);
   },
   { immediate: true }
 );
-
 
 function openEditInNewTab() {
   const canvasId = selectedCanvas.value?.id;
@@ -112,13 +246,10 @@ function openEditInNewTab() {
 }
 
 async function handleReload() {
-  if (!selectedCanvas.value?.id)
-    return;
-
+  if (!selectedCanvas.value?.id) return;
   queryClient.invalidateQueries({
     queryKey: ["canvas", props.canvasId],
   });
-
 }
 
 function handleDownload() {
@@ -130,9 +261,8 @@ function handleMoveToTrash() {
 }
 
 onBeforeUnmount(() => {
-  if (saveTimer) clearTimeout(saveTimer);
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
-  editor.value?.destroy();
+  destroyCollabResources();
 });
 </script>
 
@@ -148,11 +278,24 @@ onBeforeUnmount(() => {
       v-else
       class="canvas-editor"
     >
+      <div
+        v-if="!isEditorReady"
+        class="canvas-tab-root__blocker"
+      />
+      <div
+        v-if="syncStatus === 'offline' && isEditorReady"
+        class="canvas-tab-root__offline-banner"
+      >
+        Đang xem offline – máy chủ đồng bộ chưa kết nối.
+      </div>
       <RichEditor
         v-if="editor"
         :editor="editor"
         :read-only="true"
         :title="displayTitle"
+        :viewers="onlineUsers"
+        :current-user="currentUser"
+        :save-status="'saved'"
         @update:title="onTitleUpdate"
         @edit="openEditInNewTab"
         @reload="handleReload"
