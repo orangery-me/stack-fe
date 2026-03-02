@@ -67,11 +67,13 @@
 }
 
 .icon-menu-item {
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 4px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--ui-text-muted);
@@ -90,15 +92,24 @@
   }
 
   &:hover {
-    background: var(--gray-100);
+    background: rgba(15, 23, 42, 0.04);
     border-color: var(--ui-divider);
     color: var(--ui-text);
   }
 
+  &.active {
+    background: #ffffff;
+    border-color: transparent;
+    color: var(--ui-text);
+    box-shadow:
+      0 0 0 1px rgba(15, 23, 42, 0.08),
+      0 8px 18px rgba(15, 23, 42, 0.12);
+  }
+
   .notification-badge {
     position: absolute;
-    top: -2px;
-    right: -2px;
+    top: 2px;
+    right: 2px;
     width: 16px;
     height: 16px;
     background: var(--error);
@@ -111,6 +122,12 @@
     color: #ffffff;
     border: 2px solid #ffffff;
   }
+}
+
+.icon-menu-label {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--ui-text-muted);
 }
 
 .icon-menu-footer {

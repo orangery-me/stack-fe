@@ -8,9 +8,11 @@ import ToastContainer from "@/components/ToastContainer.vue";
 
 const route = useRoute();
 const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
+const isWorkspaceFiles = computed(() => route.name === "workspaceFiles");
 const isCanvasEdit = computed(() => route.name === "canvasEdit");
 const hideAppHeader = computed(
-  () => isWorkspaceDetail.value || isCanvasEdit.value
+  () =>
+    isWorkspaceDetail.value || isWorkspaceFiles.value || isCanvasEdit.value
 );
 
 // Prevent body scroll when on workspace detail or canvas edit page
