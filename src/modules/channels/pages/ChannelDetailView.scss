@@ -15,8 +15,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-16) var(--space-24);
-    border-bottom: 1px solid var(--ui-divider);
+    padding: var(--space-12) var(--space-24);
 
     .channel-header-left {
       display: flex;
@@ -51,12 +50,12 @@
         display: inline-flex;
         align-items: center;
         padding: 0 var(--space-12);
-        height: 36px;
+        height: 28px;
         background: #ffffff;
         border: 1px solid var(--ui-divider);
         border-radius: var(--ui-radius-button);
         color: var(--ui-text-muted);
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 400;
         cursor: pointer;
         transition: background var(--ui-duration) var(--ui-ease),
@@ -74,42 +73,42 @@
 
   .channel-tabs {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     padding: 0 var(--space-24);
-    // border-bottom: 1px solid var(--ui-divider);
+    gap: var(--space-8);
+    background: var(--ui-bg-page);
 
     .channel-tab {
-      padding: var(--space-12) var(--space-16);
+      min-width: 140px;
+      max-width: 220px;
+      padding: 6px 14px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
       background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--ui-text-hint);
-      font-size: 14px;
-      font-weight: 400;
+      color: var(--ui-text-muted);
+      font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
-      transition: color var(--ui-duration) var(--ui-ease),
-        border-color var(--ui-duration) var(--ui-ease);
-      position: relative;
-      top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background var(--ui-duration) var(--ui-ease),
+        border-color var(--ui-duration) var(--ui-ease),
+        color var(--ui-duration) var(--ui-ease),
+        box-shadow var(--ui-duration) var(--ui-ease);
 
       &:hover {
+        background: rgba(15, 23, 42, 0.04);
         color: var(--ui-text);
       }
 
       &.active {
+        background: #e0f2fe;
+        border-color: #bae6fd;
         color: var(--ui-text);
-        border-bottom-color: var(--primary-500);
-        font-weight: 600;
-      }
 
-      &.channel-tab-add {
-        font-size: 18px;
-        padding-inline: var(--space-8);
-        color: var(--ui-text-muted);
-
-        &:hover {
-          color: var(--ui-text);
-        }
       }
     }
   }
