@@ -115,12 +115,12 @@ const handleRegister = async () => {
     const successMessage =
       result.message ||
       "Registration successful. Please check your email to verify your account.";
-    showSuccessToast(successMessage);
+    showSuccessToast(successMessage, 6000);
 
-    // Redirect to login after 2 seconds
+    // Redirect to login after 3 seconds so user can read the toast
     setTimeout(() => {
       router.push("/login");
-    }, 2000);
+    }, 3000);
   } catch (err) {
     const errorMessage =
       err.message || "Registration failed. Please try again.";

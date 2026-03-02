@@ -1,6 +1,21 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api.js';
 
+/**
+ * Normalize error message from API error object (NestJS style).
+ * Handles string message, array message (ValidationPipe), or missing message.
+ * @param {unknown} error - Error object (usually error.response.data)
+ * @param {string} fallback - Fallback message when none found
+ * @returns {string}
+ */
+export function getMessageFromApiError(error, fallback = 'Something went wrong') {
+  if (!error || typeof error !== 'object') return fallback;
+  const msg = error.message;
+  if (typeof msg === 'string' && msg.trim()) return msg.trim();
+  if (Array.isArray(msg)) return msg.map((m) => (typeof m === 'string' ? m : String(m))).join(', ') || fallback;
+  return fallback;
+}
+
 // Create axios instance
 const apiHelper = axios.create({
   baseURL: API_BASE_URL,

@@ -40,7 +40,8 @@ const handleLogin = async () => {
     const redirect = route.query.redirect || "/";
     router.push(redirect);
   } catch (err) {
-    const errorMessage = err.message || "Sign in failed. Please try again.";
+    const errorMessage = err.message;
+    console.error('Login error nek:', errorMessage);
     showErrorToast(errorMessage);
   } finally {
     loading.value = false;
