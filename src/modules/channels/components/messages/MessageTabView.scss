@@ -128,14 +128,14 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 
-  &::before,
-  &::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--ui-divider);
-    margin: 0 var(--space-12);
-  }
+  // &::before,
+  // &::after {
+  //   content: "";
+  //   flex: 1;
+  //   height: 1px;
+  //   background: var(--ui-divider);
+  //   margin: 0 var(--space-12);
+  // }
 
   span {
     background: #ffffff;

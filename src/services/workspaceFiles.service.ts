@@ -1,61 +1,47 @@
-export interface WorkspaceDocument {
+import apiHelper from "@/helpers/api.helper.js";
+import { API_ENDPOINTS } from "@/config/api.js";
+
+export interface CanvasListItem {
   id: string;
   title: string;
-  ownerName: string;
-  workspaceId: string | number;
+  ownerId: string;
+  workspaceId: string;
   visibility: "private" | "shared" | "public-workspace";
+  status: string;
+  createdAt: string;
   updatedAt: string;
-  location: string;
+  canEdit?: boolean;
+  isShared?: boolean;
 }
 
 class WorkspaceFilesService {
-  /**
-   * Tạm thời trả về mock data cho trang Files/Canvas của workspace.
-   * Sau này chỉ cần thay thế bằng gọi API thật.
-   */
-  async fetchWorkspaceDocuments(
-    workspaceId: string | number
-  ): Promise<WorkspaceDocument[]> {
-    const now = new Date();
+  async createCanvas(workspaceId: string, payload: { title: string; description?: string }) {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS_WORKSPACE.CREATE(workspaceId),
+      payload,
+    );
+    return response.data.data as CanvasListItem;
+  }
 
-    const formatDate = (d: Date) =>
-      d.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+  async getMyCanvases(workspaceId: string): Promise<CanvasListItem[]> {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CANVAS_WORKSPACE.MY(workspaceId),
+    );
+    return response.data.data as CanvasListItem[];
+  }
 
-    return [
-      {
-        id: "canvas-1",
-        title: "Getting Started with Canvas",
-        ownerName: "Docs Assistant",
-        workspaceId,
-        visibility: "shared",
-        updatedAt: formatDate(new Date(now.getTime() - 1000 * 60 * 60 * 24)),
-        location: "Shared With Me",
-      },
-      {
-        id: "canvas-2",
-        title: "Weekly Planning",
-        ownerName: "You",
-        workspaceId,
-        visibility: "private",
-        updatedAt: formatDate(new Date(now.getTime() - 1000 * 60 * 45)),
-        location: "My Canvas",
-      },
-      {
-        id: "canvas-3",
-        title: "Product Discovery Notes",
-        ownerName: "Workspace Team",
-        workspaceId,
-        visibility: "public-workspace",
-        updatedAt: formatDate(new Date(now.getTime() - 1000 * 60 * 5)),
-        location: "Workspace",
-      },
-    ];
+  async getRecentCanvases(workspaceId: string): Promise<CanvasListItem[]> {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CANVAS_WORKSPACE.RECENT(workspaceId),
+    );
+    return response.data.data as CanvasListItem[];
+  }
+
+  async getSharedWithMeCanvases(workspaceId: string): Promise<CanvasListItem[]> {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CANVAS_WORKSPACE.SHARED_WITH_ME(workspaceId),
+    );
+    return response.data.data as CanvasListItem[];
   }
 }
 

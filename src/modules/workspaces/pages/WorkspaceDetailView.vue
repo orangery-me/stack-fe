@@ -131,38 +131,26 @@ onMounted(async () => {
           title="Home"
           type="button"
         >
-          <img
-            src="/icons/home.svg"
-            alt="Home"
-            class="icon-menu-svg"
-          >
+          <img src="/icons/home.svg" alt="Home" class="icon-menu-svg" />
           <span class="icon-menu-label">Home</span>
         </button>
 
-        <button
-          class="icon-menu-item"
-          title="DMs"
-          type="button"
-        >
+        <button class="icon-menu-item" title="DMs" type="button">
           <img
             src="/icons/message-circle-dot.svg"
             alt="DMs"
             class="icon-menu-svg"
-          >
+          />
           <span class="notification-badge">1</span>
           <span class="icon-menu-label">DMs</span>
         </button>
 
-        <button
-          class="icon-menu-item"
-          title="Activity"
-          type="button"
-        >
+        <button class="icon-menu-item" title="Activity" type="button">
           <img
             src="/icons/notification.svg"
             alt="Activity"
             class="icon-menu-svg"
-          >
+          />
           <span class="icon-menu-label">Activity</span>
         </button>
 
@@ -173,37 +161,21 @@ onMounted(async () => {
           type="button"
           @click="goToWorkspaceFiles"
         >
-          <img
-            src="/icons/file.svg"
-            alt="Files"
-            class="icon-menu-svg"
-          >
+          <img src="/icons/file.svg" alt="Files" class="icon-menu-svg" />
           <span class="icon-menu-label">Files</span>
         </button>
 
-        <button
-          class="icon-menu-item"
-          title="More"
-          type="button"
-        >
+        <button class="icon-menu-item" title="More" type="button">
           <img
             src="/icons/more-horizontal.svg"
             alt="More"
             class="icon-menu-svg"
-          >
+          />
           <span class="icon-menu-label">More</span>
         </button>
 
-        <button
-          class="icon-menu-item"
-          title="Admin"
-          type="button"
-        >
-          <img
-            src="/icons/setting.svg"
-            alt="Admin"
-            class="icon-menu-svg"
-          >
+        <button class="icon-menu-item" title="Admin" type="button">
+          <img src="/icons/setting.svg" alt="Admin" class="icon-menu-svg" />
           <span class="icon-menu-label">Admin</span>
         </button>
       </div>
@@ -224,7 +196,7 @@ onMounted(async () => {
             src="/icons/arrow-down.svg"
             alt="Toggle workspace menu"
             class="workspace-arrow-icon"
-          >
+          />
         </div>
       </div>
 
@@ -240,13 +212,10 @@ onMounted(async () => {
           v-else-if="workspaceStore.workspaceDetailError"
           class="sidebar-loading"
         >
-          <span>Error: {{ workspaceStore.workspaceDetailError }}</span>
+          <span>Error: Failed to load workspace details</span>
         </div>
 
-        <div
-          v-else-if="!workspace"
-          class="sidebar-loading"
-        >
+        <div v-else-if="!workspace" class="sidebar-loading">
           <span>Workspace not found</span>
         </div>
 
@@ -258,7 +227,7 @@ onMounted(async () => {
                 src="/icons/paperplane.svg"
                 alt="Drafts & sent"
                 class="sidebar-icon"
-              >
+              />
               <span>Drafts & sent</span>
             </button>
           </div>
@@ -270,33 +239,24 @@ onMounted(async () => {
                 src="/icons/directory.svg"
                 alt="Directories"
                 class="sidebar-icon"
-              >
+              />
               <span>Directories</span>
             </button>
           </div>
 
           <!-- Channels -->
           <div class="sidebar-section">
-            <button
-              class="sidebar-section-header"
-              @click="toggleChannels"
-            >
+            <button class="sidebar-section-header" @click="toggleChannels">
               <img
                 src="/icons/arrow-down.svg"
                 alt="Toggle channels"
                 class="sidebar-arrow-icon"
-              >
+              />
               <span>Channels</span>
             </button>
 
-            <div
-              v-if="channelsExpanded"
-              class="sidebar-section-content"
-            >
-              <div
-                v-if="channelStore.channelsLoading"
-                class="sidebar-loading"
-              >
+            <div v-if="channelsExpanded" class="sidebar-section-content">
+              <div v-if="channelStore.channelsLoading" class="sidebar-loading">
                 <span>Loading channels...</span>
               </div>
               <template v-else-if="channels && channels.length > 0">
@@ -313,16 +273,10 @@ onMounted(async () => {
                   }}</span>
                 </button>
               </template>
-              <div
-                v-else
-                class="sidebar-loading"
-              >
+              <div v-else class="sidebar-loading">
                 <span>No channels yet</span>
               </div>
-              <button
-                class="sidebar-add-item"
-                @click="openCreateChannelModal"
-              >
+              <button class="sidebar-add-item" @click="openCreateChannelModal">
                 <span>+ Add channels</span>
               </button>
             </div>
@@ -338,14 +292,11 @@ onMounted(async () => {
                 src="/icons/arrow-down.svg"
                 alt="Toggle direct messages"
                 class="sidebar-arrow-icon"
-              >
+              />
               <span>Direct messages</span>
             </button>
 
-            <div
-              v-if="directMessagesExpanded"
-              class="sidebar-section-content"
-            >
+            <div v-if="directMessagesExpanded" class="sidebar-section-content">
               <div
                 v-if="workspaceStore.workspaceMembersLoading"
                 class="sidebar-loading"
@@ -365,16 +316,14 @@ onMounted(async () => {
                   <span
                     v-if="member.userId === currentUser?.id"
                     class="user-badge"
-                  >you</span>
+                    >you</span
+                  >
                 </button>
                 <button class="sidebar-add-item">
                   <span>+ Invite people</span>
                 </button>
               </template>
-              <div
-                v-else
-                class="sidebar-loading"
-              >
+              <div v-else class="sidebar-loading">
                 <span>No members found</span>
               </div>
             </div>
@@ -385,22 +334,16 @@ onMounted(async () => {
 
     <!-- Main Content Area -->
     <div class="workspace-main-content">
-      <div
-        v-if="workspaceStore.workspaceDetailLoading"
-        class="sidebar-loading"
-      >
+      <div v-if="workspaceStore.workspaceDetailLoading" class="sidebar-loading">
         <span>Loading workspace details...</span>
       </div>
       <div
         v-else-if="workspaceStore.workspaceDetailError"
         class="sidebar-loading"
       >
-        <span>Error: {{ workspaceStore.workspaceDetailError }}</span>
+        <span>Error: Failed to load workspace details</span>
       </div>
-      <div
-        v-else-if="!workspace"
-        class="sidebar-loading"
-      >
+      <div v-else-if="!workspace" class="sidebar-loading">
         <span>Workspace not found</span>
       </div>
       <ChannelDetailView v-else />

@@ -14,10 +14,12 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
 // Files page state
-const documents = ref([]);
-const isLoadingDocuments = ref(false);
-const documentsError = ref("");
-const activeSection = ref("home");
+const myCanvases = ref([]);
+const recentCanvases = ref([]);
+const sharedWithMeCanvases = ref([]);
+const isLoading = ref(false);
+const loadError = ref("");
+const activeSection = ref("recent");
 
 const workspaceInitials = computed(() => "W");
 
@@ -50,19 +52,43 @@ const goToWorkspaceFiles = () => {
   }
 };
 
-const loadDocuments = async () => {
+const documents = computed(() => {
+  if (activeSection.value === "recent") return recentCanvases.value;
+  if (activeSection.value === "owned") return myCanvases.value;
+  if (activeSection.value === "shared") return sharedWithMeCanvases.value;
+  return [];
+});
+
+const loadCanvasesForTab = async () => {
   try {
-    isLoadingDocuments.value = true;
-    documentsError.value = "";
-    documents.value = await workspaceFilesService.fetchWorkspaceDocuments(
-      workspaceId
-    );
+    isLoading.value = true;
+    loadError.value = "";
+
+    if (activeSection.value === "home") {
+      const [my, recent, shared] = await Promise.all([
+        workspaceFilesService.getMyCanvases(workspaceId),
+        workspaceFilesService.getRecentCanvases(workspaceId),
+        workspaceFilesService.getSharedWithMeCanvases(workspaceId),
+      ]);
+      myCanvases.value = my;
+      recentCanvases.value = recent;
+      sharedWithMeCanvases.value = shared;
+    } else if (activeSection.value === "recent") {
+      const recent = await workspaceFilesService.getRecentCanvases(workspaceId);
+      recentCanvases.value = recent;
+    } else if (activeSection.value === "owned") {
+      const my = await workspaceFilesService.getMyCanvases(workspaceId);
+      myCanvases.value = my;
+    } else if (activeSection.value === "shared") {
+      const shared = await workspaceFilesService.getSharedWithMeCanvases(workspaceId);
+      sharedWithMeCanvases.value = shared;
+    }
   } catch (err) {
-    console.error("Failed to load workspace documents", err);
-    documentsError.value = "Failed to load documents.";
-    error("Failed to load documents");
+    console.error("Failed to load workspace canvases", err);
+    loadError.value = "Failed to load canvases.";
+    error("Failed to load canvases");
   } finally {
-    isLoadingDocuments.value = false;
+    isLoading.value = false;
   }
 };
 
@@ -74,8 +100,34 @@ const handleOpenDocument = (document) => {
   });
 };
 
+const openCanvasInNewTab = (canvasId) => {
+  if (!canvasId) return;
+  const resolved = router.resolve({
+    name: "canvasEdit",
+    params: { canvasId },
+  });
+  const url = `${window.location.origin}${resolved.href}`;
+  window.open(url, "_blank");
+};
+
+const handleCreateNewCanvas = async () => {
+  try {
+    isLoading.value = true;
+    const created = await workspaceFilesService.createCanvas(workspaceId, {
+      title: "Untitled",
+    });
+    openCanvasInNewTab(created.id);
+    await loadCanvasesForTab();
+  } catch (err) {
+    console.error("Failed to create canvas", err);
+    error("Failed to create canvas");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 onMounted(async () => {
-  await loadDocuments();
+  await loadCanvasesForTab();
 });
 </script>
 
@@ -230,6 +282,7 @@ onMounted(async () => {
           <button
             class="files-nav-item primary"
             type="button"
+            @click="handleCreateNewCanvas"
           >
             Create New
           </button>
@@ -245,6 +298,7 @@ onMounted(async () => {
             <button
               class="files-btn files-btn-primary"
               type="button"
+              @click="handleCreateNewCanvas"
             >
               New
             </button>
@@ -266,20 +320,26 @@ onMounted(async () => {
         <div class="files-filters">
           <div class="files-tabs">
             <button
-              class="files-tab active"
+              class="files-tab"
+              :class="{ active: activeSection === 'recent' }"
               type="button"
+              @click="() => { setActiveSection('recent'); loadCanvasesForTab(); }"
             >
               Recent
             </button>
             <button
               class="files-tab"
+              :class="{ active: activeSection === 'owned' }"
               type="button"
+              @click="() => { setActiveSection('owned'); loadCanvasesForTab(); }"
             >
               Owned by Me
             </button>
             <button
               class="files-tab"
+              :class="{ active: activeSection === 'shared' }"
               type="button"
+              @click="() => { setActiveSection('shared'); loadCanvasesForTab(); }"
             >
               Shared With Me
             </button>
@@ -309,42 +369,92 @@ onMounted(async () => {
           </div>
 
           <div
-            v-if="isLoadingDocuments"
+            v-if="isLoading"
             class="files-table-body files-table-empty"
           >
             <span>Loading documents...</span>
           </div>
           <div
-            v-else-if="documentsError"
+            v-else-if="loadError"
             class="files-table-body files-table-empty"
           >
-            <span>{{ documentsError }}</span>
+            <span>{{ loadError }}</span>
           </div>
           <div
             v-else
             class="files-table-body"
           >
-            <button
-              v-for="doc in documents"
-              :key="doc.id"
-              class="files-row"
-              type="button"
-              @click="handleOpenDocument(doc)"
-            >
-              <div class="col-name">
-                <span class="file-icon">📄</span>
-                <span class="file-title">{{ doc.title }}</span>
-              </div>
-              <div class="col-location">
-                {{ doc.location }}
-              </div>
-              <div class="col-owner">
-                {{ doc.ownerName }}
-              </div>
-              <div class="col-updated">
-                {{ doc.updatedAt }}
-              </div>
-            </button>
+            <template v-if="activeSection === 'recent'">
+              <button
+                v-for="doc in recentCanvases"
+                :key="doc.id"
+                class="files-row"
+                type="button"
+                @click="handleOpenDocument(doc)"
+              >
+                <div class="col-name">
+                  <span class="file-icon">📄</span>
+                  <span class="file-title">{{ doc.title }}</span>
+                </div>
+                <div class="col-location">
+                  Recent
+                </div>
+                <div class="col-owner">
+                  {{ doc.ownerId }}
+                </div>
+                <div class="col-updated">
+                  {{ new Date(doc.updatedAt).toLocaleString() }}
+                </div>
+              </button>
+            </template>
+
+            <template v-else-if="activeSection === 'owned'">
+              <button
+                v-for="doc in myCanvases"
+                :key="doc.id"
+                class="files-row"
+                type="button"
+                @click="handleOpenDocument(doc)"
+              >
+                <div class="col-name">
+                  <span class="file-icon">📄</span>
+                  <span class="file-title">{{ doc.title }}</span>
+                </div>
+                <div class="col-location">
+                  Owned by me
+                </div>
+                <div class="col-owner">
+                  You
+                </div>
+                <div class="col-updated">
+                  {{ new Date(doc.updatedAt).toLocaleString() }}
+                </div>
+              </button>
+            </template>
+
+            <template v-else-if="activeSection === 'shared'">
+              <button
+                v-for="doc in sharedWithMeCanvases"
+                :key="doc.id"
+                class="files-row"
+                type="button"
+                @click="handleOpenDocument(doc)"
+              >
+                <div class="col-name">
+                  <span class="file-icon">📄</span>
+                  <span class="file-title">{{ doc.title }}</span>
+                </div>
+                <div class="col-location">
+                  Shared with me
+                </div>
+                <div class="col-owner">
+                  {{ doc.ownerId }}
+                </div>
+                <div class="col-updated">
+                  {{ new Date(doc.updatedAt).toLocaleString() }}
+                </div>
+              </button>
+            </template>
 
             <div
               v-if="!documents || documents.length === 0"

@@ -45,5 +45,11 @@ export const API_ENDPOINTS = {
     REVERT_VERSION: (canvasId, version) =>
       `/canvases/${canvasId}/versions/${version}/revert`,
   },
+  CANVAS_WORKSPACE: {
+    CREATE: (workspaceId) => `/workspaces/${workspaceId}/canvases`,
+    MY: (workspaceId) => `/workspaces/${workspaceId}/canvases/my`,
+    RECENT: (workspaceId) => `/workspaces/${workspaceId}/canvases/recent`,
+    SHARED_WITH_ME: (workspaceId) => `/workspaces/${workspaceId}/canvases/shared-with-me`,
+  },
 };
 
