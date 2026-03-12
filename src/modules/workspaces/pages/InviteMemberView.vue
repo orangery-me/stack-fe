@@ -8,6 +8,7 @@ import CalmInput from "@/components/calm/CalmInput.vue";
 import CalmSelect from "@/components/calm/CalmSelect.vue";
 import { useToast } from "@/composables/useToast.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
+import AppLoading from "@/components/loading/AppLoading.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -126,9 +127,12 @@ onMounted(() => {
         v-if="loadingData"
         class="loading-state"
       >
-        <p class="ui-muted">
-          Loading...
-        </p>
+        <AppLoading
+          :active="true"
+          variant="inline"
+          label="Loading…"
+          min-height="200px"
+        />
       </div>
 
       <div

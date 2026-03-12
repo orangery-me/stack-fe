@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useToast } from "@/composables/useToast.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import workspaceFilesService from "@/services/workspaceFiles.service";
+import AppLoading from "@/components/loading/AppLoading.vue";
 
 const { error } = useToast();
 const route = useRoute();
@@ -80,7 +81,9 @@ const loadCanvasesForTab = async () => {
       const my = await workspaceFilesService.getMyCanvases(workspaceId);
       myCanvases.value = my;
     } else if (activeSection.value === "shared") {
-      const shared = await workspaceFilesService.getSharedWithMeCanvases(workspaceId);
+      const shared = await workspaceFilesService.getSharedWithMeCanvases(
+        workspaceId
+      );
       sharedWithMeCanvases.value = shared;
     }
   } catch (err) {
@@ -323,7 +326,12 @@ onMounted(async () => {
               class="files-tab"
               :class="{ active: activeSection === 'recent' }"
               type="button"
-              @click="() => { setActiveSection('recent'); loadCanvasesForTab(); }"
+              @click="
+                () => {
+                  setActiveSection('recent');
+                  loadCanvasesForTab();
+                }
+              "
             >
               Recent
             </button>
@@ -331,7 +339,12 @@ onMounted(async () => {
               class="files-tab"
               :class="{ active: activeSection === 'owned' }"
               type="button"
-              @click="() => { setActiveSection('owned'); loadCanvasesForTab(); }"
+              @click="
+                () => {
+                  setActiveSection('owned');
+                  loadCanvasesForTab();
+                }
+              "
             >
               Owned by Me
             </button>
@@ -339,7 +352,12 @@ onMounted(async () => {
               class="files-tab"
               :class="{ active: activeSection === 'shared' }"
               type="button"
-              @click="() => { setActiveSection('shared'); loadCanvasesForTab(); }"
+              @click="
+                () => {
+                  setActiveSection('shared');
+                  loadCanvasesForTab();
+                }
+              "
             >
               Shared With Me
             </button>
@@ -372,7 +390,11 @@ onMounted(async () => {
             v-if="isLoading"
             class="files-table-body files-table-empty"
           >
-            <span>Loading documents...</span>
+            <AppLoading
+              :active="true"
+              variant="inline"
+              min-height="240px"
+            />
           </div>
           <div
             v-else-if="loadError"
@@ -470,4 +492,3 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss" src="./WorkspaceFilesView.scss"></style>
-

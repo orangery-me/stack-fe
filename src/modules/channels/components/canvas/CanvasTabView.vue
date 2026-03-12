@@ -13,7 +13,7 @@ import { Editor } from "@tiptap/vue-3";
 
 import { useCanvasStore } from "@/modules/channels/stores/canvas.store.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
-import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
+import AppLoading from "@/components/loading/AppLoading.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "@/modules/channels/queries/canvas.queries";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -272,7 +272,12 @@ onBeforeUnmount(() => {
       v-if="isLoading"
       class="canvas-tab-root__skeleton"
     >
-      <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
+      <AppLoading
+        :active="true"
+        variant="inline"
+        label="Loading…"
+        min-height="160px"
+      />
     </div>
     <div
       v-else

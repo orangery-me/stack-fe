@@ -3,6 +3,7 @@ import { computed, ref, nextTick, watch, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useChatStore } from "@/modules/channels/stores/chat.store";
+import AppLoading from "@/components/loading/AppLoading.vue";
 
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
@@ -239,12 +240,11 @@ onUnmounted(() => {
           class="d-flex justify-content-center align-items-center"
           style="height: 100vh"
         >
-          <div
-            class="spinner-border"
-            role="status"
-          >
-            <span class="visually-hidden">Loading...</span>
-          </div>
+          <AppLoading
+            :active="true"
+            variant="inline"
+            min-height="220px"
+          />
         </div>
         <div v-else>
           <div
@@ -296,12 +296,12 @@ onUnmounted(() => {
                 v-if="isLoadingOlder"
                 class="d-flex justify-content-center"
               >
-                <div
-                  class="spinner-border"
-                  role="status"
-                >
-                  <span class="visually-hidden">Loading...</span>
-                </div>
+                <AppLoading
+                  :active="true"
+                  variant="inline"
+                  size="sm"
+                  min-height="64px"
+                />
               </div>
             </div>
             <div

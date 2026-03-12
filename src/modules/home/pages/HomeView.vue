@@ -8,6 +8,7 @@ import CalmCard from "@/components/calm/CalmCard.vue";
 import CalmHeading from "@/components/calm/CalmHeading.vue";
 import CreateWorkspaceModal from "@/modules/home/components/CreateWorkspaceModal.vue";
 import * as HomeConstants from "@/constants/home.constants.js";
+import AppLoading from "@/components/loading/AppLoading.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -117,7 +118,12 @@ onActivated(() => {
             v-if="loading"
             class="home-auth__state ui-muted"
           >
-            <p>Loading...</p>
+            <AppLoading
+              :active="true"
+              variant="inline"
+              label="Loading workspaces…"
+              min-height="140px"
+            />
           </div>
 
           <div

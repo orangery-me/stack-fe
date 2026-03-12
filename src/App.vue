@@ -5,6 +5,7 @@ import { RouterView } from "vue-router";
 import TheFooter from "@/components/TheFooter.vue";
 import TheHeader from "@/components/TheHeader.vue";
 import ToastContainer from "@/components/ToastContainer.vue";
+import LoadingOverlayHost from "@/components/loading/LoadingOverlayHost.vue";
 
 const route = useRoute();
 const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
@@ -38,6 +39,7 @@ watch(
 
   <TheFooter v-if="!hideAppHeader" />
   <ToastContainer />
+  <LoadingOverlayHost />
 </template>
 
 <style scoped lang="scss">

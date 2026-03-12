@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onBeforeUnmount, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "@/composables/useToast.js";
+import { useLoading } from "@/composables/useLoading.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
@@ -14,6 +15,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
+const { showFullscreen, hideFullscreen } = useLoading();
 
 const currentUser = computed(() => authStore.user);
 const workspaceId = route.params.id;
@@ -23,6 +25,34 @@ const workspace = computed(() => workspaceStore.workspaceDetail);
 const members = computed(() => workspaceStore.members);
 const channels = computed(() => channelStore.channels);
 const selectedChannel = computed(() => channelStore.selectedChannel);
+
+const shouldFullscreenLoading = computed(() => {
+  return (
+    workspaceStore.workspaceDetailLoading ||
+    channelStore.channelsLoading ||
+    workspaceStore.membersLoading
+  );
+});
+
+const fullscreenLabel = computed(() => {
+  return "";
+});
+
+watch(
+  shouldFullscreenLoading,
+  (active) => {
+    if (active) {
+      showFullscreen({ label: fullscreenLabel.value });
+      return;
+    }
+    hideFullscreen();
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  hideFullscreen();
+});
 
 const channelsExpanded = ref(true);
 const directMessagesExpanded = ref(true);
@@ -205,7 +235,7 @@ onMounted(async () => {
           v-if="workspaceStore.workspaceDetailLoading"
           class="sidebar-loading"
         >
-          <span>Loading workspace details...</span>
+          <!-- fullscreen loading -->
         </div>
 
         <div
@@ -257,7 +287,7 @@ onMounted(async () => {
 
             <div v-if="channelsExpanded" class="sidebar-section-content">
               <div v-if="channelStore.channelsLoading" class="sidebar-loading">
-                <span>Loading channels...</span>
+                <!-- fullscreen loading -->
               </div>
               <template v-else-if="channels && channels.length > 0">
                 <button
@@ -297,11 +327,8 @@ onMounted(async () => {
             </button>
 
             <div v-if="directMessagesExpanded" class="sidebar-section-content">
-              <div
-                v-if="workspaceStore.workspaceMembersLoading"
-                class="sidebar-loading"
-              >
-                <span>Loading...</span>
+              <div v-if="workspaceStore.membersLoading" class="sidebar-loading">
+                <!-- fullscreen loading -->
               </div>
               <template v-else-if="members && members.length > 0">
                 <button
@@ -335,7 +362,7 @@ onMounted(async () => {
     <!-- Main Content Area -->
     <div class="workspace-main-content">
       <div v-if="workspaceStore.workspaceDetailLoading" class="sidebar-loading">
-        <span>Loading workspace details...</span>
+        <!-- fullscreen loading -->
       </div>
       <div
         v-else-if="workspaceStore.workspaceDetailError"

@@ -5,7 +5,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
-import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
+import AppLoading from "@/components/loading/AppLoading.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
@@ -318,7 +318,12 @@ function handleMoveToTrash() {
       v-if="isLoading"
       class="canvas-edit-view__skeleton"
     >
-      <LoadingSkeleton :line-widths="['85%', '55%', '70%']" />
+      <AppLoading
+        :active="true"
+        variant="inline"
+        label="Loading…"
+        min-height="200px"
+      />
     </div>
     <div
       v-else
