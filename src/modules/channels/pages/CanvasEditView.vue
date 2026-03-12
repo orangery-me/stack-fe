@@ -6,16 +6,17 @@ import TextAlign from "@tiptap/extension-text-align";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
-import * as Y from "yjs";
-import Collaboration from "@tiptap/extension-collaboration";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Editor } from "@tiptap/vue-3";
 import { useLoading } from "@/composables/useLoading.js";
+import * as Y from "yjs";
 
 const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
@@ -114,7 +115,7 @@ const syncStatus = ref<"connecting" | "synced" | "offline">("connecting");
 let syncReadyTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 const onlineUsers = ref<
-  Array<{ userId: string; name: string; avatar: string | null }>
+  Array<{ userId: string; name: string; avatar: string | null; color: string }>
 >([]);
 
 const saveStatus = ref<"saved" | "saving">("saved");
@@ -147,6 +148,7 @@ function refreshOnlineUsers() {
       name: user.name,
       avatar: user.avatar,
       email: user.email,
+      color: user.color,
     }));
 }
 
@@ -233,12 +235,13 @@ function setupForCanvas(id: string) {
     name: me?.name ?? "",
     avatar: me?.avatar ?? null,
     email: me?.email ?? "",
+    color: generateColorFromName(me?.name ?? ""),
   });
 
   p.awareness.on("change", refreshOnlineUsers);
   refreshOnlineUsers();
 
-  // 3. sync state: cho edit khi synced HOẶC sau timeout (server không chạy / MongoDB lỗi)
+  // 3. sync state: cho edit khi synced HOẶC sau timeout
   isEditorReady.value = false;
   syncStatus.value = "connecting";
 
@@ -275,6 +278,13 @@ function setupForCanvas(id: string) {
       Collaboration.configure({
         document: doc,
       }),
+      CollaborationCaret.configure({
+        provider: p,
+        user: {
+          name: currentUser.value?.name ?? "Anonymous",
+          color: generateColorFromName(currentUser.value?.name ?? ""),
+        },
+      }),
       Placeholder.configure({
         placeholder: ({ node }) => {
           if (node.type.name === "heading") {
@@ -295,7 +305,7 @@ function setupForCanvas(id: string) {
 }
 
 watch(
-  () => [canvasId.value, jwtToken.value, currentUser.value?.userId],
+  () => [canvasId.value, jwtToken.value],
   async ([id, token]) => {
     // Chỉ khởi tạo collab khi đã có canvasId và accessToken
     if (!id || !token) return;
@@ -318,6 +328,14 @@ onBeforeUnmount(() => {
   destroyCollabResources();
 });
 
+function generateColorFromName(name: string) {
+  return `#${name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    .toString(16)
+    .padStart(6, "0")}`;
+}
+
 function handleDownload() {
   // TODO: implement download canvas
 }
@@ -330,10 +348,7 @@ function handleMoveToTrash() {
 <template>
   <div class="canvas-edit-view">
     <div class="canvas-edit-view__editor">
-      <div
-        v-if="!isEditorReady"
-        class="canvas-edit-view__blocker"
-      />
+      <div v-if="!isEditorReady" class="canvas-edit-view__blocker" />
       <div
         v-if="syncStatus === 'offline' && isEditorReady"
         class="canvas-edit-view__offline-banner"
@@ -341,6 +356,7 @@ function handleMoveToTrash() {
         Đang chỉnh sửa offline – máy chủ đồng bộ chưa kết nối.
       </div>
       <RichEditor
+        v-if="editor"
         :editor="editor"
         :read-only="!isEditorReady"
         :title="displayTitle"

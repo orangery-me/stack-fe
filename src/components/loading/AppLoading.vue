@@ -35,8 +35,8 @@ const inlineWidth = computed(() => {
   return 120;
 });
 
-const fullscreenWidth = computed(() => 300);
-const fullscreenHeight = computed(() => 160);
+const fullscreenWidth = computed(() => 220);
+const fullscreenHeight = computed(() => 150);
 
 const wrapperStyle = computed(() => {
   if (isFullscreen.value) return undefined;

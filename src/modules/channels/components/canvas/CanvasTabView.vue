@@ -92,8 +92,17 @@ const syncStatus = ref<"connecting" | "synced" | "offline">("connecting");
 let syncReadyTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 const onlineUsers = ref<
-  Array<{ userId: string; name: string; avatar: string | null }>
+  Array<{ userId: string; name: string; avatar: string | null; color: string }>
 >([]);
+
+function generateColorFromName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 72% 50%)`;
+}
 
 function refreshOnlineUsers() {
   const p = provider.value;
@@ -110,6 +119,7 @@ function refreshOnlineUsers() {
       name: user.name,
       avatar: user.avatar,
       email: user.email,
+      color: user.color ?? generateColorFromName(user.name ?? ""),
     }));
 }
 
@@ -166,6 +176,7 @@ function setupForCanvas(id: string) {
     name: me?.name ?? "",
     avatar: me?.avatar ?? null,
     email: me?.email ?? "",
+    color: generateColorFromName(me?.name ?? ""),
   });
   p.awareness.on("change", refreshOnlineUsers);
   refreshOnlineUsers();

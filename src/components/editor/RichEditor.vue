@@ -7,6 +7,7 @@ export type ViewerUser = {
   name: string;
   avatar: string | null;
   email?: string;
+  color: string;
 };
 
 const props = withDefaults(
@@ -15,7 +16,12 @@ const props = withDefaults(
     readOnly?: boolean;
     title?: string;
     viewers?: Array<ViewerUser>;
-    currentUser?: { userId: string; name: string; avatar: string | null; email?: string } | null;
+    currentUser?: {
+      userId: string;
+      name: string;
+      avatar: string | null;
+      email?: string;
+    } | null;
     saveStatus?: "saved" | "saving";
   }>(),
   {
@@ -53,7 +59,6 @@ watch(
   },
   { immediate: true }
 );
-
 
 const currentHeadingLabel = computed(() => {
   if (!editor.value) return "H";
@@ -122,10 +127,7 @@ function getUserInitials(name: string): string {
 }
 
 const viewersExcludingSelf = computed(() => {
-  if (!props.viewers || props.viewers.length === 0) return [];
-  const currentId = props.currentUser?.userId;
-  if (!currentId) return props.viewers;
-  return props.viewers.filter((v) => v.userId !== currentId);
+  return props.viewers ?? [];
 });
 
 const visibleViewers = computed(() => {
@@ -144,7 +146,8 @@ const headingDetailsRef = ref<HTMLDetailsElement | null>(null);
 const headingMenuOpen = ref(false);
 
 function openViewerPopup(viewer: ViewerUser) {
-  selectedViewer.value = selectedViewer.value?.userId === viewer.userId ? null : viewer;
+  selectedViewer.value =
+    selectedViewer.value?.userId === viewer.userId ? null : viewer;
 }
 
 function closeViewerPopup() {
@@ -172,41 +175,39 @@ function handleClickOutside(e: MouseEvent) {
 }
 
 const viewerPopupStyle = computed((): Record<string, string | number> => {
-  if (!selectedViewer.value || !viewerTriggerRef.value) return {}
+  if (!selectedViewer.value || !viewerTriggerRef.value) return {};
 
-  const rect = viewerTriggerRef.value.getBoundingClientRect()
-  const popupWidth = 300
-  const margin = 12
+  const rect = viewerTriggerRef.value.getBoundingClientRect();
+  const popupWidth = 300;
+  const margin = 12;
 
-  let left
+  let left;
 
   // Quyết định mở trái / phải
   if (rect.left > window.innerWidth / 2) {
     // mở về bên trái
-    left = rect.right - popupWidth
+    left = rect.right - popupWidth;
   } else {
     // mở về bên phải
-    left = rect.left
+    left = rect.left;
   }
 
   // Clamp lại để không tràn viewport
   if (left + popupWidth > window.innerWidth - margin) {
-    left = window.innerWidth - popupWidth - margin
+    left = window.innerWidth - popupWidth - margin;
   }
 
   if (left < margin) {
-    left = margin
+    left = margin;
   }
 
   return {
-    position: 'fixed',
+    position: "fixed",
     top: `${rect.bottom + 8}px`,
     left: `${left}px`,
     zIndex: 9999,
-  }
-})
-
-
+  };
+});
 
 onMounted(() => {
   document.addEventListener("click", handleClickOutside, true);
@@ -217,21 +218,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    class="rte"
-    :class="{ 'rte--readonly': readOnly }"
-  >
-    <div
-      v-if="editor"
-      class="toolbar-wrap"
-    >
+  <div class="rte" :class="{ 'rte--readonly': readOnly }">
+    <div v-if="editor" class="toolbar-wrap">
       <div class="toolbar-row toolbar-row--header">
         <img
           v-if="title !== undefined"
           src="/logos/stack-logo.jpg"
           class="rte-header-logo"
           alt="Stack"
-        >
+        />
         <div class="rte-header-title">
           <div class="rte-header-title-row">
             <input
@@ -241,18 +236,15 @@ onBeforeUnmount(() => {
               :value="title"
               placeholder="New page"
               @input="onTitleInput"
-            >
-            <div
-              class="rte-save-status"
-              :data-save-status="displaySaveStatus"
-            >
+            />
+            <div class="rte-save-status" :data-save-status="displaySaveStatus">
               <img
                 v-if="displaySaveStatus === 'saving'"
                 src="/icons/toolbar2/sync.svg"
                 alt=""
                 class="rte-save-status__sync"
                 aria-hidden="true"
-              >
+              />
               <svg
                 v-else
                 class="rte-save-status__check"
@@ -268,26 +260,20 @@ onBeforeUnmount(() => {
               >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <span class="rte-save-status__text">{{ displaySaveStatus === "saving" ? "Saving..." : "Saved" }}</span>
+              <span class="rte-save-status__text">{{
+                displaySaveStatus === "saving" ? "Saving..." : "Saved"
+              }}</span>
             </div>
           </div>
           <!-- Dãy function: File, Insert (hàng dưới) -->
           <div class="toolbar-row toolbar-row--menu">
             <details class="dd dd-menu-item">
-              <summary class="dd-btn dd-btn--menu">
-                File
-              </summary>
+              <summary class="dd-btn dd-btn--menu">File</summary>
               <div class="dd-menu">
-                <button
-                  type="button"
-                  @click="emit('download')"
-                >
+                <button type="button" @click="emit('download')">
                   Download
                 </button>
-                <button
-                  type="button"
-                  @click="emit('moveToTrash')"
-                >
+                <button type="button" @click="emit('moveToTrash')">
                   Move to trash
                 </button>
               </div>
@@ -297,9 +283,7 @@ onBeforeUnmount(() => {
               :class="{ 'dd-disabled': readOnly }"
               :aria-disabled="readOnly ? 'true' : 'false'"
             >
-              <summary class="dd-btn dd-btn--menu">
-                Insert
-              </summary>
+              <summary class="dd-btn dd-btn--menu">Insert</summary>
               <div class="dd-menu">
                 <button
                   type="button"
@@ -327,7 +311,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="spacer" />
-        <!-- Viewers list (không hiển thị user đang login) -->
+        <!-- Viewers list -->
         <div
           v-if="viewersExcludingSelf.length > 0"
           ref="viewerTriggerRef"
@@ -337,8 +321,12 @@ onBeforeUnmount(() => {
             v-for="viewer in visibleViewers"
             :key="viewer.userId"
             class="rte-viewer-avatar"
-            :class="{ 'rte-viewer-avatar--selected': selectedViewer?.userId === viewer.userId }"
+            :class="{
+              'rte-viewer-avatar--selected':
+                selectedViewer?.userId === viewer.userId,
+            }"
             :title="viewer.name"
+            :style="{ '--viewer-color': viewer.color || 'var(--primary-500)' }"
             @click.stop="openViewerPopup(viewer)"
           >
             <img
@@ -346,13 +334,15 @@ onBeforeUnmount(() => {
               :src="viewer.avatar"
               :alt="viewer.name"
               class="rte-viewer-avatar-img"
-            >
+            />
             <span v-else>{{ getUserInitials(viewer.name) }}</span>
           </div>
           <div
             v-if="remainingViewersCount > 0"
             class="rte-viewer-avatar rte-viewer-avatar--more"
-            :title="`${remainingViewersCount} more viewer${remainingViewersCount > 1 ? 's' : ''}`"
+            :title="`${remainingViewersCount} more viewer${
+              remainingViewersCount > 1 ? 's' : ''
+            }`"
           >
             +{{ remainingViewersCount }}
           </div>
@@ -372,15 +362,18 @@ onBeforeUnmount(() => {
                       :src="selectedViewer.avatar"
                       :alt="selectedViewer.name"
                       class="rte-viewer-popup__avatar"
-                    >
+                    />
                     <span
                       v-else
                       class="rte-viewer-popup__avatar rte-viewer-popup__avatar-initials"
-                    >{{ getUserInitials(selectedViewer.name) }}</span>
+                      >{{ getUserInitials(selectedViewer.name) }}</span
+                    >
                   </div>
                   <div class="rte-viewer-popup__info">
                     <div class="rte-viewer-popup__name-row">
-                      <span class="rte-viewer-popup__name">{{ selectedViewer.name }}</span>
+                      <span class="rte-viewer-popup__name">{{
+                        selectedViewer.name
+                      }}</span>
                       <button
                         type="button"
                         class="rte-viewer-popup__add-person"
@@ -396,38 +389,21 @@ onBeforeUnmount(() => {
                           stroke-width="2"
                         >
                           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                          <circle
-                            cx="9"
-                            cy="7"
-                            r="4"
-                          />
-                          <line
-                            x1="19"
-                            y1="8"
-                            x2="19"
-                            y2="14"
-                          />
-                          <line
-                            x1="22"
-                            y1="11"
-                            x2="16"
-                            y2="11"
-                          />
+                          <circle cx="9" cy="7" r="4" />
+                          <line x1="19" y1="8" x2="19" y2="14" />
+                          <line x1="22" y1="11" x2="16" y2="11" />
                         </svg>
                       </button>
                     </div>
                     <p class="rte-viewer-popup__email">
-                      {{ selectedViewer.email || '—' }}
+                      {{ selectedViewer.email || "—" }}
                     </p>
-                    <button
-                      type="button"
-                      class="rte-viewer-popup__btn-mail"
-                    >
+                    <button type="button" class="rte-viewer-popup__btn-mail">
                       <img
                         src="/icons/mail.svg"
                         alt=""
                         class="rte-viewer-popup__btn-icon"
-                      >
+                      />
                       Gửi thư
                     </button>
                     <div class="rte-viewer-popup__actions">
@@ -442,7 +418,7 @@ onBeforeUnmount(() => {
                           alt=""
                           width="18"
                           height="18"
-                        >
+                        />
                       </button>
                       <button
                         type="button"
@@ -455,7 +431,7 @@ onBeforeUnmount(() => {
                           alt=""
                           width="18"
                           height="18"
-                        >
+                        />
                       </button>
                       <button
                         type="button"
@@ -468,7 +444,7 @@ onBeforeUnmount(() => {
                           alt=""
                           width="18"
                           height="18"
-                        >
+                        />
                       </button>
                     </div>
                     <a
@@ -485,14 +461,11 @@ onBeforeUnmount(() => {
                         stroke="currentColor"
                         stroke-width="2"
                       >
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                        <polyline points="15 3 21 3 21 9" />
-                        <line
-                          x1="10"
-                          y1="14"
-                          x2="21"
-                          y2="3"
+                        <path
+                          d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
                         />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
                       </svg>
                     </a>
                   </div>
@@ -513,7 +486,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/history.svg"
               alt=""
               class="rte-header-action-icon"
-            >
+            />
           </button>
           <button
             type="button"
@@ -525,7 +498,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/comment.svg"
               alt=""
               class="rte-header-action-icon rte-header-action-icon--comment"
-            >
+            />
           </button>
           <details class="rte-share-wrap">
             <summary class="rte-share-btn">
@@ -533,22 +506,18 @@ onBeforeUnmount(() => {
                 src="/icons/toolbar2/share.svg"
                 alt=""
                 class="rte-share-btn-icon"
-              >
+              />
               <span class="rte-share-btn-text">Share</span>
               <span class="rte-share-btn-sep" />
               <img
                 src="/icons/arrow-down.svg"
                 alt=""
                 class="rte-share-btn-caret"
-              >
+              />
             </summary>
             <div class="rte-share-menu">
-              <button type="button">
-                Chia sẻ với mọi người
-              </button>
-              <button type="button">
-                Sao chép link
-              </button>
+              <button type="button">Chia sẻ với mọi người</button>
+              <button type="button">Sao chép link</button>
             </div>
           </details>
           <!-- <button
@@ -565,10 +534,7 @@ onBeforeUnmount(() => {
           </button> -->
         </div>
         <!-- Current user avatar (top-right) -->
-        <div
-          v-if="currentUser"
-          class="rte-current-user"
-        >
+        <div v-if="currentUser" class="rte-current-user">
           <div
             class="rte-viewer-avatar rte-viewer-avatar--current"
             :title="currentUser.name"
@@ -578,36 +544,25 @@ onBeforeUnmount(() => {
               :src="currentUser.avatar"
               :alt="currentUser.name"
               class="rte-viewer-avatar-img"
-            >
+            />
             <span v-else>{{ getUserInitials(currentUser.name) }}</span>
           </div>
         </div>
-        <div
-          v-if="readOnly"
-          class="group group-actions"
-        >
-          <button
-            class="icon btn-pill"
-            type="button"
-            @click="emit('edit')"
-          >
+        <div v-if="readOnly" class="group group-actions">
+          <button class="icon btn-pill" type="button" @click="emit('edit')">
             <img
               src="../../../public/icons/edit.svg"
               class="icon-img"
               alt="Edit"
-            >
+            />
             Edit
           </button>
-          <button
-            class="icon btn-pill"
-            type="button"
-            @click="emit('reload')"
-          >
+          <button class="icon btn-pill" type="button" @click="emit('reload')">
             <img
               src="../../../public/icons/reload.svg"
               class="icon-img"
               alt="Reload"
-            >
+            />
             Reload
           </button>
         </div>
@@ -622,11 +577,7 @@ onBeforeUnmount(() => {
             title="Undo"
             @click="editor.chain().focus().undo().run()"
           >
-            <img
-              src="/icons/toolbar2/undo.svg"
-              class="icon-img"
-              alt="Undo"
-            >
+            <img src="/icons/toolbar2/undo.svg" class="icon-img" alt="Undo" />
           </button>
           <button
             class="icon icon-btn"
@@ -634,11 +585,7 @@ onBeforeUnmount(() => {
             title="Redo"
             @click="editor.chain().focus().redo().run()"
           >
-            <img
-              src="/icons/toolbar2/redo.svg"
-              class="icon-img"
-              alt="Redo"
-            >
+            <img src="/icons/toolbar2/redo.svg" class="icon-img" alt="Redo" />
           </button>
         </div>
 
@@ -651,7 +598,7 @@ onBeforeUnmount(() => {
           :class="{ 'dd-disabled': readOnly }"
           :aria-disabled="readOnly ? 'true' : 'false'"
           :open="headingMenuOpen"
-          @toggle="headingMenuOpen = (($event.target as HTMLDetailsElement).open)"
+          @toggle="headingMenuOpen = ($event.target as HTMLDetailsElement).open"
         >
           <summary class="dd-btn">
             {{ currentHeadingLabel }}
@@ -659,25 +606,37 @@ onBeforeUnmount(() => {
           <div class="dd-menu">
             <button
               :disabled="readOnly"
-              @click="setHeading(); headingMenuOpen = false"
+              @click="
+                setHeading();
+                headingMenuOpen = false;
+              "
             >
               Paragraph
             </button>
             <button
               :disabled="readOnly"
-              @click="setHeading(1); headingMenuOpen = false"
+              @click="
+                setHeading(1);
+                headingMenuOpen = false;
+              "
             >
               Heading 1
             </button>
             <button
               :disabled="readOnly"
-              @click="setHeading(2); headingMenuOpen = false"
+              @click="
+                setHeading(2);
+                headingMenuOpen = false;
+              "
             >
               Heading 2
             </button>
             <button
               :disabled="readOnly"
-              @click="setHeading(3); headingMenuOpen = false"
+              @click="
+                setHeading(3);
+                headingMenuOpen = false;
+              "
             >
               Heading 3
             </button>
@@ -698,7 +657,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/bullet-list.svg"
               class="icon-img"
               alt="Bullet list"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -711,7 +670,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/numbered-list.svg"
               class="icon-img"
               alt="Numbered list"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -724,7 +683,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/quote-block.svg"
               class="icon-img"
               alt="Quote"
-            >
+            />
           </button>
         </div>
 
@@ -738,11 +697,7 @@ onBeforeUnmount(() => {
             title="Bold"
             @click="editor.chain().focus().toggleBold().run()"
           >
-            <img
-              src="/icons/toolbar2/bold.svg"
-              class="icon-img"
-              alt="Bold"
-            >
+            <img src="/icons/toolbar2/bold.svg" class="icon-img" alt="Bold" />
           </button>
           <button
             class="icon icon-btn"
@@ -755,7 +710,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/italic.svg"
               class="icon-img"
               alt="Italic"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -768,7 +723,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/strike.svg"
               class="icon-img"
               alt="Strikethrough"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -777,11 +732,7 @@ onBeforeUnmount(() => {
             title="Code"
             @click="editor.chain().focus().toggleCode().run()"
           >
-            <img
-              src="/icons/toolbar2/code.svg"
-              class="icon-img"
-              alt="Code"
-            >
+            <img src="/icons/toolbar2/code.svg" class="icon-img" alt="Code" />
           </button>
           <button
             class="icon icon-btn"
@@ -794,7 +745,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/underline.svg"
               class="icon-img"
               alt="Underline"
-            >
+            />
           </button>
         </div>
 
@@ -808,11 +759,7 @@ onBeforeUnmount(() => {
             title="Link"
             @click="setLink"
           >
-            <img
-              src="/icons/toolbar2/link.svg"
-              class="icon-img"
-              alt="Link"
-            >
+            <img src="/icons/toolbar2/link.svg" class="icon-img" alt="Link" />
           </button>
           <button
             class="icon icon-btn"
@@ -825,7 +772,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/subscript.svg"
               class="icon-img"
               alt="Subscript"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -838,7 +785,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/superscript.svg"
               class="icon-img"
               alt="Superscript"
-            >
+            />
           </button>
         </div>
 
@@ -856,7 +803,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-left.svg"
               class="icon-img"
               alt="Align left"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -869,7 +816,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-center.svg"
               class="icon-img"
               alt="Align center"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -882,7 +829,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-right.svg"
               class="icon-img"
               alt="Align right"
-            >
+            />
           </button>
           <button
             class="icon icon-btn"
@@ -895,7 +842,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-justify.svg"
               class="icon-img"
               alt="Justify"
-            >
+            />
           </button>
         </div>
 
@@ -904,10 +851,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Editor -->
-    <EditorContent
-      :editor="editor"
-      class="content"
-    />
+    <EditorContent :editor="editor" class="content" />
   </div>
 </template>
 
@@ -1243,20 +1187,20 @@ onBeforeUnmount(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 2px solid #e5e7eb;
-  background: #e5e7eb;
+  border: 2px solid var(--viewer-color, var(--gray-300));
+  background: var(--gray-100);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   font-size: 12px;
-  color: #374151;
+  color: var(--gray-700);
   margin-left: -8px;
   flex-shrink: 0;
   cursor: pointer;
   position: relative;
   z-index: 1;
-  transition: border-color 0.15s, z-index 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, z-index 0.15s;
 }
 
 .rte-viewer-avatar:first-child {
@@ -1265,13 +1209,13 @@ onBeforeUnmount(() => {
 
 .rte-viewer-avatar:hover {
   z-index: 2;
-  border-color: #d1d5db;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
 .rte-viewer-avatar--selected {
   z-index: 3;
-  border-color: #a855f7;
-  box-shadow: 0 0 0 1px #a855f7;
+  border-color: var(--viewer-color, var(--primary-500));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
 .rte-viewer-avatar-img {
@@ -1285,7 +1229,7 @@ onBeforeUnmount(() => {
   background: #f3f4f6;
   color: #6b7280;
   font-size: 11px;
-  border-color: #e5e7eb;
+  border-color: var(--gray-200);
   cursor: default;
 }
 
@@ -1389,7 +1333,8 @@ onBeforeUnmount(() => {
   width: 16px;
   height: 16px;
   object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(22%) sepia(35%) saturate(1200%) hue-rotate(185deg);
+  filter: brightness(0) saturate(100%) invert(22%) sepia(35%) saturate(1200%)
+    hue-rotate(185deg);
   opacity: 0.92;
 }
 
@@ -1585,5 +1530,19 @@ onBeforeUnmount(() => {
 
 .rte-viewer-popup__detail-link:hover {
   text-decoration: underline;
+}
+/* :deep(.ProseMirror-yjs-selection) {
+  background: transparent !important;
+} */
+:deep(.ProseMirror-yjs-selection) {
+  background: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+:deep(.collaboration-carets__label) {
+  display: none !important;
+}
+
+:deep(.collaboration-carets__caret) {
+  border-left: 2px solid currentColor !important;
 }
 </style>
