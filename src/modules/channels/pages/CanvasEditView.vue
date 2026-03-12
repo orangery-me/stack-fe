@@ -5,7 +5,6 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
-import AppLoading from "@/components/loading/AppLoading.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
@@ -16,6 +15,7 @@ import * as Y from "yjs";
 import Collaboration from "@tiptap/extension-collaboration";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Editor } from "@tiptap/vue-3";
+import { useLoading } from "@/composables/useLoading.js";
 
 const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
@@ -25,6 +25,7 @@ const authStore = useAuthStore();
 const route = useRoute();
 const queryClient = useQueryClient();
 const canvasId = computed(() => route.params.canvasId as string);
+const { showFullscreen, hideFullscreen } = useLoading();
 
 // ======== Title =========
 const { data: selectedCanvas, isLoading } = requestCanvas({
@@ -34,6 +35,18 @@ const { data: selectedCanvas, isLoading } = requestCanvas({
 
 const displayTitle = ref("");
 let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(
+  () => isLoading.value,
+  (loading) => {
+    if (loading) {
+      showFullscreen();
+    } else {
+      hideFullscreen();
+    }
+  },
+  { immediate: true }
+);
 
 watch(
   () => [selectedCanvas.value?.title, canvasId.value, canvasStore.canvases],
@@ -248,7 +261,9 @@ function setupForCanvas(id: string) {
   syncReadyTimeoutId = setTimeout(() => {
     syncReadyTimeoutId = undefined;
     if (isEditorReady.value) return;
-    console.warn("[CanvasEditView] Sync timeout – enabling editor (offline mode)");
+    console.warn(
+      "[CanvasEditView] Sync timeout – enabling editor (offline mode)"
+    );
     syncStatus.value = "offline";
     setEditorReady();
   }, SYNC_READY_TIMEOUT_MS);
@@ -314,21 +329,7 @@ function handleMoveToTrash() {
 
 <template>
   <div class="canvas-edit-view">
-    <div
-      v-if="isLoading"
-      class="canvas-edit-view__skeleton"
-    >
-      <AppLoading
-        :active="true"
-        variant="inline"
-        label="Loading…"
-        min-height="200px"
-      />
-    </div>
-    <div
-      v-else
-      class="canvas-edit-view__editor"
-    >
+    <div class="canvas-edit-view__editor">
       <div
         v-if="!isEditorReady"
         class="canvas-edit-view__blocker"
