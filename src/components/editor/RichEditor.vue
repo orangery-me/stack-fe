@@ -1531,18 +1531,46 @@ onBeforeUnmount(() => {
 .rte-viewer-popup__detail-link:hover {
   text-decoration: underline;
 }
-/* :deep(.ProseMirror-yjs-selection) {
-  background: transparent !important;
-} */
-:deep(.ProseMirror-yjs-selection) {
-  background: color-mix(in srgb, currentColor 30%, transparent);
+
+:deep(.collaboration-carets__caret) {
+  display: inline-block !important;
+  position: relative !important;
+  border-left-width: 2px !important;
+  border-left-style: solid !important;
+  border-right: none !important;
+  width: 0 !important;
+  height: 1.2em !important;
+  vertical-align: text-bottom !important;
+  margin-left: -1px;
+  /* animation: collab-blink 1.1s step-start infinite !important; */
 }
 
 :deep(.collaboration-carets__label) {
-  display: none !important;
+  display: block !important;
+  position: absolute !important;
+  bottom: 100% !important;
+  margin-bottom: 4px !important;
+  left: 0 !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  padding: 3px 7px !important;
+  border-radius: 4px 4px 4px 0 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+  z-index: 100 !important;
 }
 
-:deep(.collaboration-carets__caret) {
-  border-left: 2px solid currentColor !important;
+@keyframes collab-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 </style>

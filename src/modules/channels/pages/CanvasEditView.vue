@@ -284,6 +284,14 @@ function setupForCanvas(id: string) {
           name: currentUser.value?.name ?? "Anonymous",
           color: generateColorFromName(currentUser.value?.name ?? ""),
         },
+        // render: () => {
+        //   const cursor = document.createElement("span");
+        //   const label = document.createElement("span");
+        //   label.classList.add("collaboration-cursor__label");
+        //   cursor.classList.add("collaboration-cursor__caret");
+        //   cursor.appendChild(label);
+        //   return { dom: cursor, label };
+        // },
       }),
       Placeholder.configure({
         placeholder: ({ node }) => {
