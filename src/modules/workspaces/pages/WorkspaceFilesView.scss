@@ -80,10 +80,14 @@
     border-color var(--ui-duration) var(--ui-ease),
     color var(--ui-duration) var(--ui-ease);
 
-  img {
+  img,
+  svg.icon-menu-svg {
     width: 20px;
     height: 20px;
     opacity: 1;
+  }
+
+  img {
     filter: brightness(0) saturate(100%);
   }
 

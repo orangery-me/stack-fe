@@ -8,8 +8,9 @@ import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.j
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import CreateChannelModal from "@/modules/channels/components/CreateChannelModal.vue";
 import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
+import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 
-const { error, success } = useToast();
+const { success } = useToast();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -57,6 +58,11 @@ onBeforeUnmount(() => {
 const channelsExpanded = ref(true);
 const directMessagesExpanded = ref(true);
 const isCreateChannelModalOpen = ref(false);
+const isAiOpen = ref(false);
+
+function toggleAi() {
+  isAiOpen.value = !isAiOpen.value;
+}
 
 // Get workspace initials for logo
 const getWorkspaceInitials = (name) => {
@@ -100,8 +106,8 @@ const handleChannelCreated = async () => {
   try {
     await channelStore.fetchUserChannels(workspaceId);
     success("Channel created successfully!");
-  } catch (err) {
-    console.error("Error refreshing channels:", err);
+  } catch {
+    // Toast is shown by the global axios interceptor
   }
 };
 
@@ -137,9 +143,8 @@ onMounted(async () => {
     } else if (channelStore.channels.length > 0) {
       channelStore.selectChannel(channelStore.channels[0].id);
     }
-  } catch (err) {
-    error("Failed to load workspace details");
-    console.error("Error loading workspace:", err);
+  } catch {
+    // Toast is shown by the global axios interceptor
   }
 });
 </script>
@@ -193,6 +198,30 @@ onMounted(async () => {
         >
           <img src="/icons/file.svg" alt="Files" class="icon-menu-svg" />
           <span class="icon-menu-label">Files</span>
+        </button>
+
+        <button
+          class="icon-menu-item"
+          :class="{ active: isAiOpen }"
+          title="AI Assistant"
+          type="button"
+          @click="toggleAi"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon-menu-svg"
+          >
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+          </svg>
+          <span class="icon-menu-label">AI</span>
         </button>
 
         <button class="icon-menu-item" title="More" type="button">
@@ -381,6 +410,8 @@ onMounted(async () => {
       :workspace-id="workspaceId"
       @created="handleChannelCreated"
     />
+
+    <AiChatSidebar v-model:open="isAiOpen" />
   </div>
 </template>
 

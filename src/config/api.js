@@ -51,5 +51,9 @@ export const API_ENDPOINTS = {
     RECENT: (workspaceId) => `/workspaces/${workspaceId}/canvases/recent`,
     SHARED_WITH_ME: (workspaceId) => `/workspaces/${workspaceId}/canvases/shared-with-me`,
   },
+  AGENT: {
+    ASK: '/agent/ask',
+    ASK_STREAM: '/agent/ask/stream',
+  },
 };
 

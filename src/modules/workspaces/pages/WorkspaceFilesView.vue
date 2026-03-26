@@ -1,12 +1,11 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useToast } from "@/composables/useToast.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import workspaceFilesService from "@/services/workspaceFiles.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
+import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 
-const { error } = useToast();
 const route = useRoute();
 const router = useRouter();
 const workspaceId = route.params.id;
@@ -23,6 +22,12 @@ const loadError = ref("");
 const activeSection = ref("recent");
 
 const workspaceInitials = computed(() => "W");
+
+const isAiOpen = ref(false);
+
+function toggleAi() {
+  isAiOpen.value = !isAiOpen.value;
+}
 
 const getUserInitials = (name) => {
   if (!name) return "?";
@@ -86,10 +91,9 @@ const loadCanvasesForTab = async () => {
       );
       sharedWithMeCanvases.value = shared;
     }
-  } catch (err) {
-    console.error("Failed to load workspace canvases", err);
+  } catch {
     loadError.value = "Failed to load canvases.";
-    error("Failed to load canvases");
+    // Toast is shown by the global axios interceptor
   } finally {
     isLoading.value = false;
   }
@@ -121,9 +125,8 @@ const handleCreateNewCanvas = async () => {
     });
     openCanvasInNewTab(created.id);
     await loadCanvasesForTab();
-  } catch (err) {
-    console.error("Failed to create canvas", err);
-    error("Failed to create canvas");
+  } catch {
+    // Toast is shown by the global axios interceptor
   } finally {
     isLoading.value = false;
   }
@@ -200,6 +203,30 @@ onMounted(async () => {
             class="icon-menu-svg"
           >
           <span class="icon-menu-label">Files</span>
+        </button>
+
+        <button
+          class="icon-menu-item"
+          :class="{ active: isAiOpen }"
+          title="AI Assistant"
+          type="button"
+          @click="toggleAi"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon-menu-svg"
+          >
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+          </svg>
+          <span class="icon-menu-label">AI</span>
         </button>
 
         <button
@@ -488,6 +515,8 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <AiChatSidebar v-model:open="isAiOpen" />
   </div>
 </template>
 

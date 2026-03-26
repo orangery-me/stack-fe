@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api.js';
+import { useToast } from '@/composables/useToast.js';
 
 /**
  * Normalize error message from API error object (NestJS style).
@@ -38,6 +39,32 @@ apiHelper.interceptors.request.use(
   }
 );
 
+// ---- Global error toast with dedupe ----
+// Key: `${method}:${url}:${status}`, value: timestamp of last toast shown.
+const _recentErrorToasts = new Map();
+const TOAST_DEDUPE_MS = 3000;
+
+/**
+ * Show an error toast unless:
+ * - The request config opts out via `config.silentToast = true`
+ * - An identical error was already toasted within TOAST_DEDUPE_MS ms
+ */
+function showErrorToast(config, status, message) {
+  if (config?.silentToast) return;
+
+  const method = (config?.method || 'get').toUpperCase();
+  const url = config?.url || '';
+  const key = `${method}:${url}:${status}`;
+
+  const lastShown = _recentErrorToasts.get(key);
+  if (lastShown && Date.now() - lastShown < TOAST_DEDUPE_MS) return;
+
+  _recentErrorToasts.set(key, Date.now());
+
+  const { error } = useToast();
+  error(message);
+}
+
 // Response interceptor - Handle token refresh on 401
 let isRefreshing = false;
 let failedQueue = [];
@@ -65,7 +92,7 @@ apiHelper.interceptors.response.use(
 
     // If error is 401 and we haven't tried to refresh yet
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // For public endpoints, just throw error without redirect
+      // For public endpoints, just throw error without redirect (caller shows its own toast)
       if (isPublicEndpoint) {
         const errorData = error.response?.data || error;
         return Promise.reject(errorData);
@@ -92,7 +119,7 @@ apiHelper.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken');
 
       if (!refreshToken) {
-        // No refresh token, redirect to login
+        // No refresh token, redirect to login – no toast needed, UX is handled by redirect
         processQueue(error, null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
@@ -119,12 +146,11 @@ apiHelper.interceptors.response.use(
         processQueue(null, accessToken);
         return apiHelper(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
+        // Refresh failed, clear tokens and redirect to login – no toast, redirect is the UX signal
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         window.location.href = '/login';
-        // Throw error.response.data if available
         const errorData = refreshError.response?.data || refreshError;
         return Promise.reject(errorData);
       } finally {
@@ -132,9 +158,11 @@ apiHelper.interceptors.response.use(
       }
     }
 
-    // For all other errors, throw error.response.data if available
-    // This allows direct access to error.message, error.statusCode, etc.
+    // For all other errors: show a toast (unless opt-out), then reject.
+    const status = error.response?.status;
     const errorData = error.response?.data || error;
+    const message = getMessageFromApiError(errorData);
+    showErrorToast(originalRequest, status, message);
     return Promise.reject(errorData);
   }
 );
