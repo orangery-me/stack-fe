@@ -1,7 +1,13 @@
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue';
-import { Sparkles, X, Send, Bot } from 'lucide-vue-next';
-import { askAgentStream } from '@/services/agent.service.js';
+import { Sparkles, X, Send, Bot, Plus, ChevronDown } from 'lucide-vue-next';
+import {
+  getActiveSession,
+  listSessions,
+  createSession,
+  getSessionMessages,
+  sendMessageStream,
+} from '@/services/agent.service.js';
 
 const props = defineProps({
   open: {
@@ -21,9 +27,15 @@ const MAX_WIDTH = 700;
 const sidebarWidth = ref(DEFAULT_WIDTH);
 const inputValue = ref('');
 const isStreaming = ref(false);
+const isLoadingSession = ref(false);
 const messages = ref([]);
 const messagesEl = ref(null);
 const textareaEl = ref(null);
+
+// Session state
+const activeSession = ref(null);
+const sessions = ref([]);
+const showSessionDropdown = ref(false);
 
 let abortController = null;
 let msgIdCounter = 0;
@@ -31,10 +43,81 @@ let msgIdCounter = 0;
 const DEFAULT_PROVIDER = 'openai';
 const DEFAULT_MODEL = 'gpt-5.3-codex';
 
+// ======== Session loading ========
+
+async function loadActiveSession() {
+  if (isLoadingSession.value) return;
+  isLoadingSession.value = true;
+  try {
+    const session = await getActiveSession();
+    activeSession.value = session;
+
+    const result = await getSessionMessages(session.id);
+    const rawMessages = Array.isArray(result) ? result : (result?.messages ?? []);
+    messages.value = rawMessages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      streaming: false,
+    }));
+    await scrollToBottom();
+  } catch {
+    // Toast shown by global interceptor
+  } finally {
+    isLoadingSession.value = false;
+  }
+}
+
+async function loadSessionList() {
+  try {
+    const data = await listSessions();
+    sessions.value = Array.isArray(data) ? data : (data?.sessions ?? []);
+  } catch {
+    // ignore
+  }
+}
+
+async function switchSession(session) {
+  if (session.id === activeSession.value?.id) {
+    showSessionDropdown.value = false;
+    return;
+  }
+  abortStream();
+  activeSession.value = session;
+  showSessionDropdown.value = false;
+  try {
+    const result = await getSessionMessages(session.id);
+    const rawMessages = Array.isArray(result) ? result : (result?.messages ?? []);
+    messages.value = rawMessages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      streaming: false,
+    }));
+    await scrollToBottom();
+  } catch {
+    // ignore
+  }
+}
+
+async function handleNewChat() {
+  abortStream();
+  showSessionDropdown.value = false;
+  try {
+    const session = await createSession();
+    activeSession.value = session;
+    messages.value = [];
+    await loadSessionList();
+  } catch {
+    // Toast shown by global interceptor
+  }
+}
+
 // ======== Close ========
 
 function close() {
   abortStream();
+  showSessionDropdown.value = false;
   emit('update:open', false);
 }
 
@@ -52,23 +135,15 @@ function abortStream() {
 
 async function sendMessage() {
   const text = inputValue.value.trim();
-  if (!text || isStreaming.value) return;
+  if (!text || isStreaming.value || !activeSession.value) return;
 
   abortStream();
 
-  messages.value.push({
-    id: ++msgIdCounter,
-    role: 'user',
-    content: text,
-  });
+  const userMsgId = ++msgIdCounter;
+  messages.value.push({ id: userMsgId, role: 'user', content: text });
 
   const assistantId = ++msgIdCounter;
-  messages.value.push({
-    id: assistantId,
-    role: 'assistant',
-    content: '',
-    streaming: true,
-  });
+  messages.value.push({ id: assistantId, role: 'assistant', content: '', streaming: true });
 
   inputValue.value = '';
   isStreaming.value = true;
@@ -76,7 +151,7 @@ async function sendMessage() {
 
   abortController = new AbortController();
 
-  await askAgentStream({
+  await sendMessageStream(activeSession.value.id, {
     message: text,
     provider: DEFAULT_PROVIDER,
     model: DEFAULT_MODEL,
@@ -123,11 +198,14 @@ async function scrollToBottom() {
   }
 }
 
-watch(() => props.open, (opened) => {
+watch(() => props.open, async (opened) => {
   if (opened) {
+    await loadActiveSession();
+    await loadSessionList();
     nextTick(() => textareaEl.value?.focus());
   } else {
     abortStream();
+    showSessionDropdown.value = false;
   }
 });
 
@@ -177,6 +255,10 @@ function formatContent(text) {
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>');
 }
+
+function sessionLabel(session) {
+  return session?.title || 'New chat';
+}
 </script>
 
 <template>
@@ -199,18 +281,65 @@ function formatContent(text) {
           <Sparkles :size="16" class="ai-chat-header-icon" />
           <span>AI Assistant</span>
         </div>
-        <button
-          type="button"
-          class="ai-chat-close-btn"
-          title="Đóng"
-          @click="close"
-        >
-          <X :size="16" />
-        </button>
+        <div class="ai-chat-header-actions">
+          <!-- Session switcher -->
+          <div class="ai-session-switcher">
+            <button
+              type="button"
+              class="ai-session-btn"
+              :title="activeSession ? sessionLabel(activeSession) : 'Chọn session'"
+              @click="showSessionDropdown = !showSessionDropdown"
+            >
+              <span class="ai-session-label">{{ activeSession ? sessionLabel(activeSession) : '...' }}</span>
+              <ChevronDown :size="12" />
+            </button>
+            <div v-if="showSessionDropdown" class="ai-session-dropdown">
+              <button
+                type="button"
+                class="ai-session-dropdown-item ai-session-dropdown-item--new"
+                @click="handleNewChat"
+              >
+                <Plus :size="13" />
+                <span>New chat</span>
+              </button>
+              <div v-if="sessions.length > 0" class="ai-session-dropdown-divider" />
+              <button
+                v-for="s in sessions"
+                :key="s.id"
+                type="button"
+                class="ai-session-dropdown-item"
+                :class="{ 'ai-session-dropdown-item--active': s.id === activeSession?.id }"
+                @click="switchSession(s)"
+              >
+                <span class="ai-session-dropdown-label">{{ sessionLabel(s) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="ai-chat-close-btn"
+            title="Đóng"
+            @click="close"
+          >
+            <X :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div v-if="isLoadingSession" class="ai-chat-loading">
+        <span class="ai-chat-loading-dot" />
+        <span class="ai-chat-loading-dot" />
+        <span class="ai-chat-loading-dot" />
       </div>
 
       <!-- Messages list -->
-      <div ref="messagesEl" class="ai-chat-messages">
+      <div
+        v-else
+        ref="messagesEl"
+        class="ai-chat-messages"
+      >
         <div
           v-if="messages.length === 0"
           class="ai-chat-empty"
@@ -256,13 +385,13 @@ function formatContent(text) {
           class="ai-chat-textarea"
           placeholder="Nhập câu hỏi... (Enter để gửi)"
           rows="3"
-          :disabled="isStreaming"
+          :disabled="isStreaming || isLoadingSession"
           @keydown="handleKeydown"
         />
         <button
           type="button"
           class="ai-chat-send-btn"
-          :disabled="isStreaming || !inputValue.trim()"
+          :disabled="isStreaming || isLoadingSession || !inputValue.trim()"
           title="Gửi (Enter)"
           @click="sendMessage"
         >
@@ -331,6 +460,7 @@ function formatContent(text) {
   border-bottom: 1px solid var(--ui-divider, #e5e7eb);
   background: rgba(37, 99, 235, 0.04);
   flex-shrink: 0;
+  gap: 8px;
 }
 
 .ai-chat-header-title {
@@ -340,10 +470,18 @@ function formatContent(text) {
   font-weight: 600;
   font-size: 14px;
   color: var(--ui-text, #0f172a);
+  flex-shrink: 0;
 }
 
 .ai-chat-header-icon {
   color: var(--primary-600, #2563eb);
+}
+
+.ai-chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .ai-chat-close-btn {
@@ -358,11 +496,137 @@ function formatContent(text) {
   color: var(--ui-text-muted, #64748b);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
 
   &:hover {
     background: rgba(15, 23, 42, 0.06);
     color: var(--ui-text, #0f172a);
   }
+}
+
+// Session switcher
+.ai-session-switcher {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+}
+
+.ai-session-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-divider, #e5e7eb);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-muted, #64748b);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  max-width: 160px;
+  width: 100%;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: var(--primary-300, #93c5fd);
+  }
+}
+
+.ai-session-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.ai-session-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 400;
+  background: #ffffff;
+  border: 1px solid var(--ui-divider, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  min-width: 180px;
+  max-width: 240px;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.ai-session-dropdown-divider {
+  height: 1px;
+  background: var(--ui-divider, #e5e7eb);
+  margin: 4px 0;
+}
+
+.ai-session-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--ui-text, #0f172a);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.06);
+  }
+
+  &--new {
+    color: var(--primary-600, #2563eb);
+    font-weight: 500;
+  }
+
+  &--active {
+    background: rgba(37, 99, 235, 0.06);
+    color: var(--primary-700, #1d4ed8);
+    font-weight: 500;
+  }
+}
+
+.ai-session-dropdown-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Loading state
+.ai-chat-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ai-chat-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-400, #60a5fa);
+  animation: loading-bounce 1.2s infinite ease-in-out;
+
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes loading-bounce {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
 }
 
 // Messages

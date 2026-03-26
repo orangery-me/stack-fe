@@ -54,6 +54,11 @@ export const API_ENDPOINTS = {
   AGENT: {
     ASK: '/agent/ask',
     ASK_STREAM: '/agent/ask/stream',
+    SESSIONS_ACTIVE: '/agent/sessions/active',
+    SESSIONS: '/agent/sessions',
+    SESSION_MESSAGES: (sessionId) => `/agent/sessions/${sessionId}/messages`,
+    SESSION_SEND: (sessionId) => `/agent/sessions/${sessionId}/messages`,
+    SESSION_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/messages/stream`,
   },
 };
 

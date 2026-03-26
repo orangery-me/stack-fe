@@ -1,51 +1,20 @@
 import apiHelper from '@/helpers/api.helper.js';
 import { API_BASE_URL, API_ENDPOINTS } from '@/config/api.js';
 
-/**
- * Agent API – gửi message tới AI agent, tùy chọn provider (openai/gemini) và model (vd: gpt-4o).
- * @param {Object} params
- * @param {string} params.message - Nội dung câu hỏi
- * @param {string} [params.provider] - "openai" | "gemini"
- * @param {string} [params.model] - e.g. "gpt-4o", "gpt-4", "gemini-1.5-pro"
- * @returns {Promise<{ response: string }>}
- */
-export async function askAgent({ message, provider, model }) {
-  const response = await apiHelper.post(API_ENDPOINTS.AGENT.ASK, {
-    message,
-    ...(provider && { provider }),
-    ...(model && { model }),
-  });
-  return response.data?.data ?? response.data;
-}
+// ---- Shared SSE stream helper ----
 
-/**
- * Streaming agent API – nhận token streaming qua SSE.
- * @param {Object} params
- * @param {string} params.message - Nội dung câu hỏi
- * @param {string} [params.provider] - "openai" | "gemini"
- * @param {string} [params.model] - model identifier
- * @param {AbortSignal} [params.signal] - AbortSignal để huỷ stream giữa chừng
- * @param {(chunk: string) => void} params.onChunk - callback nhận từng token
- * @param {() => void} [params.onDone] - callback khi stream kết thúc
- * @param {(err: Error) => void} [params.onError] - callback khi có lỗi
- * @returns {Promise<void>}
- */
-export async function askAgentStream({ message, provider, model, signal, onChunk, onDone, onError }) {
+async function _fetchSSEStream(url, body, { signal, onChunk, onDone, onError } = {}) {
   const accessToken = localStorage.getItem('accessToken');
 
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AGENT.ASK_STREAM}`, {
+    response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       },
-      body: JSON.stringify({
-        message,
-        ...(provider && { provider }),
-        ...(model && { model }),
-      }),
+      body: JSON.stringify(body),
       signal,
     });
   } catch (err) {
@@ -103,4 +72,85 @@ export async function askAgentStream({ message, provider, model, signal, onChunk
   }
 
   onDone?.();
+}
+
+// ---- Legacy single-shot (no session) ----
+
+/**
+ * @param {{ message: string, provider?: string, model?: string }} params
+ */
+export async function askAgent({ message, provider, model }) {
+  const response = await apiHelper.post(API_ENDPOINTS.AGENT.ASK, {
+    message,
+    ...(provider && { provider }),
+    ...(model && { model }),
+  });
+  return response.data?.data ?? response.data;
+}
+
+/**
+ * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
+ */
+export async function askAgentStream({ message, provider, model, signal, onChunk, onDone, onError }) {
+  await _fetchSSEStream(
+    API_ENDPOINTS.AGENT.ASK_STREAM,
+    { message, ...(provider && { provider }), ...(model && { model }) },
+    { signal, onChunk, onDone, onError },
+  );
+}
+
+// ---- Session management ----
+
+/**
+ * Get or create the active AI chat session for the current user.
+ * @returns {Promise<Session>}
+ */
+export async function getActiveSession() {
+  const response = await apiHelper.get(API_ENDPOINTS.AGENT.SESSIONS_ACTIVE);
+  return response.data?.data ?? response.data;
+}
+
+/**
+ * List all sessions for the current user.
+ * @returns {Promise<Session[]>}
+ */
+export async function listSessions() {
+  const response = await apiHelper.get(API_ENDPOINTS.AGENT.SESSIONS);
+  return response.data?.data ?? response.data;
+}
+
+/**
+ * Create a new chat session (archives current active session).
+ * @param {string} [title]
+ * @returns {Promise<Session>}
+ */
+export async function createSession(title) {
+  const response = await apiHelper.post(API_ENDPOINTS.AGENT.SESSIONS, { title });
+  return response.data?.data ?? response.data;
+}
+
+/**
+ * Get messages for a session.
+ * @param {string} sessionId
+ * @param {{ page?: number, size?: number }} [pagination]
+ * @returns {Promise<{ messages: ChatMessage[], total: number, hasMore: boolean }>}
+ */
+export async function getSessionMessages(sessionId, { page = 1, size = 50 } = {}) {
+  const response = await apiHelper.get(
+    `${API_ENDPOINTS.AGENT.SESSION_MESSAGES(sessionId)}?page=${page}&size=${size}`,
+  );
+  return response.data?.data ?? response.data;
+}
+
+/**
+ * Send a message in a session with SSE streaming.
+ * @param {string} sessionId
+ * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
+ */
+export async function sendMessageStream(sessionId, { message, provider, model, signal, onChunk, onDone, onError }) {
+  await _fetchSSEStream(
+    API_ENDPOINTS.AGENT.SESSION_SEND_STREAM(sessionId),
+    { message, ...(provider && { provider }), ...(model && { model }) },
+    { signal, onChunk, onDone, onError },
+  );
 }
