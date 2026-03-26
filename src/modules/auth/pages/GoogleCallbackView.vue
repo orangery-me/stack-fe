@@ -14,7 +14,7 @@ onMounted(async () => {
     const state = route.query.state;
 
     if (!code || !state) {
-      throw new Error('Missing Google OAuth data');
+      throw new Error("Missing Google OAuth data");
     }
 
     await authStore.googleSignIn({
@@ -22,31 +22,26 @@ onMounted(async () => {
       state,
     });
 
-    const redirect = route.query.redirect || '/';
+    const redirect = route.query.redirect || "/";
     router.replace(redirect);
-  } catch (error) {
-    console.error('Google sign-in failed:', error);
-    // router.replace({
-    //   path: '/login',
-    //   query: {
-    //     error: error.message || 'Google login failed',
-    //   },
-    // });
+  } catch (err) {
+    // Toast is shown by the global axios interceptor
+    router.replace({
+      path: "/login",
+      query: {
+        error: err?.message || "Google login failed",
+      },
+    });
   }
 });
-
 </script>
 
 <template>
   <section class="auth-status">
     <div class="container-center">
       <div class="auth-status__container">
-        <CalmHeading :level="3">
-          Processing sign in...
-        </CalmHeading>
-        <p class="auth-status__message ui-muted">
-          Please wait a moment
-        </p>
+        <CalmHeading :level="3"> Processing sign in... </CalmHeading>
+        <p class="auth-status__message ui-muted">Please wait a moment</p>
       </div>
     </div>
   </section>

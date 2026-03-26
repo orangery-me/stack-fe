@@ -30,10 +30,7 @@ const props = defineProps<{
   channelId: string;
 }>();
 
-const {
-  data: selectedCanvas,
-  isLoading,
-} = requestCanvas({
+const { data: selectedCanvas, isLoading } = requestCanvas({
   canvasId: computed(() => props.canvasId),
   staleTime: 5 * 60 * 1000, // 5 minutes
 });
@@ -236,8 +233,8 @@ watch(
 
     try {
       await canvasStore.selectCanvas(id);
-    } catch (error) {
-      console.error("[CanvasTabView] Failed to select canvas:", error);
+    } catch {
+      // Toast is shown by the global axios interceptor
     }
 
     setupForCanvas(id);
@@ -279,10 +276,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="canvas-tab-root">
-    <div
-      v-if="isLoading"
-      class="canvas-tab-root__skeleton"
-    >
+    <div v-if="isLoading" class="canvas-tab-root__skeleton">
       <AppLoading
         :active="true"
         variant="inline"
@@ -290,14 +284,8 @@ onBeforeUnmount(() => {
         min-height="160px"
       />
     </div>
-    <div
-      v-else
-      class="canvas-editor"
-    >
-      <div
-        v-if="!isEditorReady"
-        class="canvas-tab-root__blocker"
-      />
+    <div v-else class="canvas-editor">
+      <div v-if="!isEditorReady" class="canvas-tab-root__blocker" />
       <div
         v-if="syncStatus === 'offline' && isEditorReady"
         class="canvas-tab-root__offline-banner"

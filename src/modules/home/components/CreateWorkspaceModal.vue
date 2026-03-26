@@ -184,9 +184,7 @@ const handleCreateWorkspace = async () => {
     isCreateWorkspaceModalOpen.value = false;
     router.push(`/workspaces/${workspace.id}`);
   } catch (error) {
-    const message = error?.message || "Unable to create workspace";
-    toast.error(message);
-
+    // Toast is shown by the global axios interceptor
     if (error?.errors && typeof error.errors === "object") {
       createWorkspaceErrors.value = {
         ...createWorkspaceErrors.value,
@@ -233,12 +231,8 @@ const handleCreateWorkspace = async () => {
 
       <div class="create-workspace__section">
         <div class="create-workspace__sectionHeader">
-          <h3 class="ui-h3 create-workspace__sectionTitle">
-            Invite members
-          </h3>
-          <p class="ui-hint">
-            Search and invite members (optional).
-          </p>
+          <h3 class="ui-h3 create-workspace__sectionTitle">Invite members</h3>
+          <p class="ui-hint">Search and invite members (optional).</p>
         </div>
 
         <div class="invite-search">
@@ -254,11 +248,8 @@ const handleCreateWorkspace = async () => {
                   showSuggestions = false;
                 }, 200)
               "
-            >
-            <div
-              v-if="searchLoading"
-              class="invite-search__loading ui-hint"
-            >
+            />
+            <div v-if="searchLoading" class="invite-search__loading ui-hint">
               Searching…
             </div>
           </div>
@@ -274,10 +265,7 @@ const handleCreateWorkspace = async () => {
               class="invite-search__item"
               @mousedown.prevent="selectUser(user)"
             >
-              <div
-                class="invite-search__avatar"
-                aria-hidden="true"
-              >
+              <div class="invite-search__avatar" aria-hidden="true">
                 {{ user.name.charAt(0).toUpperCase() }}
               </div>
               <div class="invite-search__info">
@@ -294,10 +282,7 @@ const handleCreateWorkspace = async () => {
 
         <div
           v-if="invites.length > 0"
-          :class="[
-            'invites',
-            { 'invites--scrollable': invites.length > 3 },
-          ]"
+          :class="['invites', { 'invites--scrollable': invites.length > 3 }]"
         >
           <div
             v-for="(invite, index) in invites"
@@ -305,10 +290,7 @@ const handleCreateWorkspace = async () => {
             class="invites__row"
           >
             <div class="invites__user">
-              <div
-                class="invites__avatar"
-                aria-hidden="true"
-              >
+              <div class="invites__avatar" aria-hidden="true">
                 {{ invite.name.charAt(0).toUpperCase() }}
               </div>
               <div class="invites__meta">
@@ -338,10 +320,7 @@ const handleCreateWorkspace = async () => {
           </div>
         </div>
 
-        <p
-          v-if="createWorkspaceErrors.invites"
-          class="create-workspace__error"
-        >
+        <p v-if="createWorkspaceErrors.invites" class="create-workspace__error">
           {{ createWorkspaceErrors.invites }}
         </p>
       </div>
@@ -370,5 +349,3 @@ const handleCreateWorkspace = async () => {
 </template>
 
 <style scoped lang="scss" src="./CreateWorkspaceModal.scss"></style>
-
-

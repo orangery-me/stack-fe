@@ -141,9 +141,8 @@ const handleSubmit = async () => {
     toast.success("Workspace created successfully!");
     router.push(`/workspaces/${workspace.id}`);
   } catch (error) {
-    const message = error.message || "Unable to create workspace";
-    toast.error(message);
-    if (error.errors) {
+    // Toast is shown by the global axios interceptor
+    if (error?.errors) {
       errors.value = { ...errors.value, ...error.errors };
     }
   }

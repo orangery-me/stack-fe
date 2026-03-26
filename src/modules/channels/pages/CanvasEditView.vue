@@ -80,8 +80,8 @@ function onTitleUpdate(value: string) {
       if (updated) {
         queryClient.setQueryData(["canvas", id], updated);
       }
-    } catch (error) {
-      console.error("[CanvasEditView] Failed to update title:", error);
+    } catch {
+      // Toast is shown by the global axios interceptor
     }
   }, TITLE_SAVE_DEBOUNCE_MS);
 }
@@ -284,14 +284,6 @@ function setupForCanvas(id: string) {
           name: currentUser.value?.name ?? "Anonymous",
           color: generateColorFromName(currentUser.value?.name ?? ""),
         },
-        // render: () => {
-        //   const cursor = document.createElement("span");
-        //   const label = document.createElement("span");
-        //   label.classList.add("collaboration-cursor__label");
-        //   cursor.classList.add("collaboration-cursor__caret");
-        //   cursor.appendChild(label);
-        //   return { dom: cursor, label };
-        // },
       }),
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -322,8 +314,8 @@ watch(
 
     try {
       await canvasStore.selectCanvas(id);
-    } catch (error) {
-      console.error("[CanvasEditView] Failed to select canvas:", error);
+    } catch {
+      // Toast is shown by the global axios interceptor
     }
 
     setupForCanvas(id);

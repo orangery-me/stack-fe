@@ -7,7 +7,7 @@ import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.j
 
 const router = useRouter();
 const route = useRoute();
-const { success, error } = useToast();
+const { success } = useToast();
 const workspaceStore = useWorkspaceStore();
 
 const loading = computed(() => workspaceStore.acceptInviteLoading);
@@ -44,14 +44,8 @@ onMounted(async () => {
         router.push("/");
       }, 2000);
     }
-  } catch (err) {
-    // Error
+  } catch {
     status.value = "error";
-
-    // Show error toast with error message
-    const errorMessage =
-      err?.message || "Unable to accept invitation. Please try again.";
-    error(errorMessage, 5000);
 
     // Redirect to home after 3 seconds
     setTimeout(() => {

@@ -104,9 +104,7 @@ const handleCreateChannel = async () => {
     emit("created", channel);
     isCreateChannelModalOpen.value = false;
   } catch (error) {
-    const message = error?.message || "Unable to create channel";
-    toast.error(message);
-
+    // Toast is shown by the global axios interceptor
     if (error?.errors && typeof error.errors === "object") {
       createChannelErrors.value = {
         ...createChannelErrors.value,
@@ -127,10 +125,7 @@ const handleCreateChannel = async () => {
       Create a channel to organize conversations.
     </p>
 
-    <form
-      class="create-channel__form"
-      @submit.prevent="handleCreateChannel"
-    >
+    <form class="create-channel__form" @submit.prevent="handleCreateChannel">
       <CalmInput
         id="channelName"
         v-model="createChannelForm.name"
