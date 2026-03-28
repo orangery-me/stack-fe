@@ -143,6 +143,17 @@ export async function getSessionMessages(sessionId, { page = 1, size = 50 } = {}
 }
 
 /**
+ * Update session metadata (e.g. rename title).
+ * @param {string} sessionId
+ * @param {string} title
+ * @returns {Promise<Session>}
+ */
+export async function updateSession(sessionId, title) {
+  const response = await apiHelper.patch(API_ENDPOINTS.AGENT.SESSION_UPDATE(sessionId), { title });
+  return response.data?.data ?? response.data;
+}
+
+/**
  * Send a message in a session with SSE streaming.
  * @param {string} sessionId
  * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params

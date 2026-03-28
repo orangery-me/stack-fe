@@ -6,6 +6,7 @@ import { useLoading } from "@/composables/useLoading.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
+import { useUiStore } from "@/stores/ui.store.js";
 import CreateChannelModal from "@/modules/channels/components/CreateChannelModal.vue";
 import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
@@ -16,6 +17,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
+const uiStore = useUiStore();
 const { showFullscreen, hideFullscreen } = useLoading();
 
 const currentUser = computed(() => authStore.user);
@@ -58,11 +60,6 @@ onBeforeUnmount(() => {
 const channelsExpanded = ref(true);
 const directMessagesExpanded = ref(true);
 const isCreateChannelModalOpen = ref(false);
-const isAiOpen = ref(false);
-
-function toggleAi() {
-  isAiOpen.value = !isAiOpen.value;
-}
 
 // Get workspace initials for logo
 const getWorkspaceInitials = (name) => {
@@ -150,7 +147,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="workspace-detail-page">
+  <div
+    class="workspace-detail-page"
+    :style="{ paddingRight: uiStore.isAiOpen ? uiStore.aiSidebarWidth + 'px' : '0' }"
+  >
     <!-- Left Icon Menu Bar -->
     <div class="icon-menu-bar">
       <div class="icon-menu-header">
@@ -202,10 +202,10 @@ onMounted(async () => {
 
         <button
           class="icon-menu-item"
-          :class="{ active: isAiOpen }"
+          :class="{ active: uiStore.isAiOpen }"
           title="AI Assistant"
           type="button"
-          @click="toggleAi"
+          @click="uiStore.toggleAi"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -411,7 +411,7 @@ onMounted(async () => {
       @created="handleChannelCreated"
     />
 
-    <AiChatSidebar v-model:open="isAiOpen" />
+    <AiChatSidebar v-model:open="uiStore.isAiOpen" />
   </div>
 </template>
 

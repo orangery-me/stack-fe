@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
+import { useUiStore } from "@/stores/ui.store.js";
 import workspaceFilesService from "@/services/workspaceFiles.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
@@ -11,6 +12,7 @@ const router = useRouter();
 const workspaceId = route.params.id;
 
 const authStore = useAuthStore();
+const uiStore = useUiStore();
 const currentUser = computed(() => authStore.user);
 
 // Files page state
@@ -22,12 +24,6 @@ const loadError = ref("");
 const activeSection = ref("recent");
 
 const workspaceInitials = computed(() => "W");
-
-const isAiOpen = ref(false);
-
-function toggleAi() {
-  isAiOpen.value = !isAiOpen.value;
-}
 
 const getUserInitials = (name) => {
   if (!name) return "?";
@@ -138,7 +134,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="workspace-files-page">
+  <div
+    class="workspace-files-page"
+    :style="{ paddingRight: uiStore.isAiOpen ? uiStore.aiSidebarWidth + 'px' : '0' }"
+  >
     <!-- Left Icon Menu Bar (giữ nguyên như WorkspaceDetail để điều hướng dễ dàng) -->
     <div class="icon-menu-bar">
       <div class="icon-menu-header">
@@ -207,10 +206,10 @@ onMounted(async () => {
 
         <button
           class="icon-menu-item"
-          :class="{ active: isAiOpen }"
+          :class="{ active: uiStore.isAiOpen }"
           title="AI Assistant"
           type="button"
-          @click="toggleAi"
+          @click="uiStore.toggleAi"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -516,7 +515,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <AiChatSidebar v-model:open="isAiOpen" />
+    <AiChatSidebar v-model:open="uiStore.isAiOpen" />
   </div>
 </template>
 

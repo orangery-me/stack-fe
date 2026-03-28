@@ -1,13 +1,26 @@
 <script setup>
-import { ref, watch, nextTick, onBeforeUnmount } from 'vue';
-import { Sparkles, X, Send, Bot, Plus, ChevronDown } from 'lucide-vue-next';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
+import {
+  Sparkles,
+  X,
+  Send,
+  Bot,
+  Plus,
+  ChevronDown,
+  History,
+} from "lucide-vue-next";
+import { useUiStore } from "@/stores/ui.store.js";
+import AiChatHistoryModal from "./AiChatHistoryModal.vue";
 import {
   getActiveSession,
   listSessions,
   createSession,
   getSessionMessages,
   sendMessageStream,
-} from '@/services/agent.service.js';
+  updateSession,
+} from "@/services/agent.service.js";
+
+const uiStore = useUiStore();
 
 const props = defineProps({
   open: {
@@ -16,16 +29,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['update:open']);
+const emit = defineEmits(["update:open"]);
 
 // ======== State ========
 
-const DEFAULT_WIDTH = 380;
 const MIN_WIDTH = 260;
 const MAX_WIDTH = 700;
-
-const sidebarWidth = ref(DEFAULT_WIDTH);
-const inputValue = ref('');
+const inputValue = ref("");
 const isStreaming = ref(false);
 const isLoadingSession = ref(false);
 const messages = ref([]);
@@ -36,12 +46,13 @@ const textareaEl = ref(null);
 const activeSession = ref(null);
 const sessions = ref([]);
 const showSessionDropdown = ref(false);
+const showHistoryModal = ref(false);
 
 let abortController = null;
 let msgIdCounter = 0;
 
-const DEFAULT_PROVIDER = 'openai';
-const DEFAULT_MODEL = 'gpt-5.3-codex';
+const DEFAULT_PROVIDER = "openai";
+const DEFAULT_MODEL = "gpt-5.3-codex";
 
 // ======== Session loading ========
 
@@ -53,7 +64,7 @@ async function loadActiveSession() {
     activeSession.value = session;
 
     const result = await getSessionMessages(session.id);
-    const rawMessages = Array.isArray(result) ? result : (result?.messages ?? []);
+    const rawMessages = Array.isArray(result) ? result : result?.messages ?? [];
     messages.value = rawMessages.map((m) => ({
       id: m.id,
       role: m.role,
@@ -71,7 +82,7 @@ async function loadActiveSession() {
 async function loadSessionList() {
   try {
     const data = await listSessions();
-    sessions.value = Array.isArray(data) ? data : (data?.sessions ?? []);
+    sessions.value = Array.isArray(data) ? data : data?.sessions ?? [];
   } catch {
     // ignore
   }
@@ -87,7 +98,7 @@ async function switchSession(session) {
   showSessionDropdown.value = false;
   try {
     const result = await getSessionMessages(session.id);
-    const rawMessages = Array.isArray(result) ? result : (result?.messages ?? []);
+    const rawMessages = Array.isArray(result) ? result : result?.messages ?? [];
     messages.value = rawMessages.map((m) => ({
       id: m.id,
       role: m.role,
@@ -118,7 +129,7 @@ async function handleNewChat() {
 function close() {
   abortStream();
   showSessionDropdown.value = false;
-  emit('update:open', false);
+  emit("update:open", false);
 }
 
 // ======== Abort streaming ========
@@ -140,12 +151,17 @@ async function sendMessage() {
   abortStream();
 
   const userMsgId = ++msgIdCounter;
-  messages.value.push({ id: userMsgId, role: 'user', content: text });
+  messages.value.push({ id: userMsgId, role: "user", content: text });
 
   const assistantId = ++msgIdCounter;
-  messages.value.push({ id: assistantId, role: 'assistant', content: '', streaming: true });
+  messages.value.push({
+    id: assistantId,
+    role: "assistant",
+    content: "",
+    streaming: true,
+  });
 
-  inputValue.value = '';
+  inputValue.value = "";
   isStreaming.value = true;
   scrollToBottom();
 
@@ -163,16 +179,29 @@ async function sendMessage() {
         scrollToBottom();
       }
     },
-    onDone: () => {
+    onDone: async () => {
       const msg = messages.value.find((m) => m.id === assistantId);
       if (msg) msg.streaming = false;
       isStreaming.value = false;
       abortController = null;
+
+      // Auto-rename session after first message
+      if (activeSession.value?.title === "New chat") {
+        const newTitle = text.slice(0, 50);
+        try {
+          await updateSession(activeSession.value.id, newTitle);
+          activeSession.value.title = newTitle;
+          const s = sessions.value.find((x) => x.id === activeSession.value.id);
+          if (s) s.title = newTitle;
+        } catch {
+          // Non-critical — ignore rename failure
+        }
+      }
     },
     onError: (err) => {
       const msg = messages.value.find((m) => m.id === assistantId);
       if (msg) {
-        msg.content = msg.content || `(Lỗi: ${err?.message ?? 'Không rõ'})`;
+        msg.content = msg.content || `(Lỗi: ${err?.message ?? "Không rõ"})`;
         msg.streaming = false;
         msg.error = true;
       }
@@ -183,7 +212,7 @@ async function sendMessage() {
 }
 
 function handleKeydown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
@@ -198,16 +227,19 @@ async function scrollToBottom() {
   }
 }
 
-watch(() => props.open, async (opened) => {
-  if (opened) {
-    await loadActiveSession();
-    await loadSessionList();
-    nextTick(() => textareaEl.value?.focus());
-  } else {
-    abortStream();
-    showSessionDropdown.value = false;
+watch(
+  () => props.open,
+  async (opened) => {
+    if (opened) {
+      await loadActiveSession();
+      await loadSessionList();
+      nextTick(() => textareaEl.value?.focus());
+    } else {
+      abortStream();
+      showSessionDropdown.value = false;
+    }
   }
-});
+);
 
 // ======== Resize logic ========
 
@@ -218,26 +250,26 @@ let startWidth = 0;
 function startResize(e) {
   resizing = true;
   startX = e.clientX;
-  startWidth = sidebarWidth.value;
-  document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('mouseup', stopResize);
-  document.body.style.userSelect = 'none';
-  document.body.style.cursor = 'ew-resize';
+  startWidth = uiStore.aiSidebarWidth;
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", stopResize);
+  document.body.style.userSelect = "none";
+  document.body.style.cursor = "ew-resize";
 }
 
 function onMouseMove(e) {
   if (!resizing) return;
   const delta = startX - e.clientX;
   const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
-  sidebarWidth.value = newWidth;
+  uiStore.setAiSidebarWidth(newWidth);
 }
 
 function stopResize() {
   resizing = false;
-  document.removeEventListener('mousemove', onMouseMove);
-  document.removeEventListener('mouseup', stopResize);
-  document.body.style.userSelect = '';
-  document.body.style.cursor = '';
+  document.removeEventListener("mousemove", onMouseMove);
+  document.removeEventListener("mouseup", stopResize);
+  document.body.style.userSelect = "";
+  document.body.style.cursor = "";
 }
 
 onBeforeUnmount(() => {
@@ -248,16 +280,27 @@ onBeforeUnmount(() => {
 // ======== Text formatting ========
 
 function formatContent(text) {
-  if (!text) return '';
+  if (!text) return "";
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
 }
 
 function sessionLabel(session) {
-  return session?.title || 'New chat';
+  return session?.title || "New chat";
+}
+
+const recentSessions = computed(() => sessions.value.slice(0, 5));
+
+function openHistory() {
+  showSessionDropdown.value = false;
+  showHistoryModal.value = true;
+}
+
+function handleHistorySelect(session) {
+  switchSession(session);
 }
 </script>
 
@@ -266,7 +309,7 @@ function sessionLabel(session) {
     <div
       v-if="open"
       class="ai-chat-sidebar"
-      :style="{ width: sidebarWidth + 'px' }"
+      :style="{ width: uiStore.aiSidebarWidth + 'px' }"
     >
       <!-- Drag resize handle (left edge) -->
       <div
@@ -287,10 +330,14 @@ function sessionLabel(session) {
             <button
               type="button"
               class="ai-session-btn"
-              :title="activeSession ? sessionLabel(activeSession) : 'Chọn session'"
+              :title="
+                activeSession ? sessionLabel(activeSession) : 'Chọn session'
+              "
               @click="showSessionDropdown = !showSessionDropdown"
             >
-              <span class="ai-session-label">{{ activeSession ? sessionLabel(activeSession) : '...' }}</span>
+              <span class="ai-session-label">{{
+                activeSession ? sessionLabel(activeSession) : "..."
+              }}</span>
               <ChevronDown :size="12" />
             </button>
             <div v-if="showSessionDropdown" class="ai-session-dropdown">
@@ -302,16 +349,33 @@ function sessionLabel(session) {
                 <Plus :size="13" />
                 <span>New chat</span>
               </button>
-              <div v-if="sessions.length > 0" class="ai-session-dropdown-divider" />
+              <div
+                v-if="recentSessions.length > 0"
+                class="ai-session-dropdown-divider"
+              />
               <button
-                v-for="s in sessions"
+                v-for="s in recentSessions"
                 :key="s.id"
                 type="button"
                 class="ai-session-dropdown-item"
-                :class="{ 'ai-session-dropdown-item--active': s.id === activeSession?.id }"
+                :class="{
+                  'ai-session-dropdown-item--active':
+                    s.id === activeSession?.id,
+                }"
                 @click="switchSession(s)"
               >
-                <span class="ai-session-dropdown-label">{{ sessionLabel(s) }}</span>
+                <span class="ai-session-dropdown-label">{{
+                  sessionLabel(s)
+                }}</span>
+              </button>
+              <div class="ai-session-dropdown-divider" />
+              <button
+                type="button"
+                class="ai-session-dropdown-item ai-session-dropdown-item--history"
+                @click="openHistory"
+              >
+                <History :size="13" />
+                <span>See all chat history</span>
               </button>
             </div>
           </div>
@@ -335,17 +399,10 @@ function sessionLabel(session) {
       </div>
 
       <!-- Messages list -->
-      <div
-        v-else
-        ref="messagesEl"
-        class="ai-chat-messages"
-      >
-        <div
-          v-if="messages.length === 0"
-          class="ai-chat-empty"
-        >
+      <div v-else ref="messagesEl" class="ai-chat-messages">
+        <div v-if="messages.length === 0" class="ai-chat-empty">
           <Bot :size="32" class="ai-chat-empty-icon" />
-          <p>Chào! Tôi là AI Assistant.<br>Hãy hỏi bất cứ điều gì.</p>
+          <p>Chào! Tôi là AI Assistant.<br />Hãy hỏi bất cứ điều gì.</p>
         </div>
 
         <template v-else>
@@ -368,10 +425,7 @@ function sessionLabel(session) {
                 class="ai-chat-msg-text"
                 v-html="formatContent(msg.content)"
               />
-              <span
-                v-if="msg.streaming"
-                class="ai-chat-cursor"
-              >▌</span>
+              <span v-if="msg.streaming" class="ai-chat-cursor">▌</span>
             </div>
           </div>
         </template>
@@ -400,6 +454,12 @@ function sessionLabel(session) {
       </div>
     </div>
   </Transition>
+
+  <AiChatHistoryModal
+    v-model:open="showHistoryModal"
+    :sessions="sessions"
+    @select="handleHistorySelect"
+  />
 </template>
 
 <style scoped lang="scss">
@@ -591,6 +651,11 @@ function sessionLabel(session) {
     color: var(--primary-700, #1d4ed8);
     font-weight: 500;
   }
+
+  &--history {
+    color: var(--ui-text-muted, #64748b);
+    font-size: 12px;
+  }
 }
 
 .ai-session-dropdown-label {
@@ -625,8 +690,16 @@ function sessionLabel(session) {
 }
 
 @keyframes loading-bounce {
-  0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 // Messages
@@ -732,8 +805,13 @@ function sessionLabel(session) {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 // Input area
