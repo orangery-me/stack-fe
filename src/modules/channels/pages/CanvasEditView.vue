@@ -1,80 +1,40 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, ref, computed, shallowRef, reactive } from "vue";
+import { watch, onBeforeUnmount, ref, computed, shallowRef } from "vue";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
-import { Extension } from "@tiptap/core";
-import Suggestion from "@tiptap/suggestion";
-import RichEditor from "@/components/editor/RichEditor.vue";
-import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
-import AiWriterBar from "@/components/editor/AiWriterBar.vue";
-import type { SlashItem } from "@/components/editor/SlashCommandMenu.vue";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import { Editor } from "@tiptap/vue-3";
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import * as Y from "yjs";
+import RichEditor from "@/components/editor/RichEditor.vue";
+import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
-import { HocuspocusProvider } from "@hocuspocus/provider";
-import { Editor } from "@tiptap/vue-3";
 import { useLoading } from "@/composables/useLoading.js";
-import * as Y from "yjs";
 
 const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
-
-// ======== Slash command state =========
-
-const SLASH_ITEMS: SlashItem[] = [
-  {
-    id: "ai-writer",
-    label: "AI Writer",
-    description: "Tạo nội dung bằng AI",
-    icon: "✦",
-  },
-];
-
-const slashMenu = reactive<{
-  visible: boolean;
-  items: SlashItem[];
-  selectedIndex: number;
-  clientRect: DOMRect | null;
-  // eslint-disable-next-line no-unused-vars
-  onSelect: ((item: SlashItem) => void) | null;
-}>({
-  visible: false,
-  items: [],
-  selectedIndex: 0,
-  clientRect: null,
-  onSelect: null,
-});
-
-// ======== AI Writer Bar state =========
-
-const aiWriterBar = reactive<{
-  visible: boolean;
-  anchorRect: DOMRect | null;
-  insertPos: number;
-}>({
-  visible: false,
-  anchorRect: null,
-  insertPos: 0,
-});
 
 const canvasStore = useCanvasStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const queryClient = useQueryClient();
-const canvasId = computed(() => route.params.canvasId as string);
 const { showFullscreen, hideFullscreen } = useLoading();
 
+const canvasId = computed(() => route.params.canvasId as string);
+
 // ======== Title =========
+
 const { data: selectedCanvas, isLoading } = requestCanvas({
   canvasId: computed(() => canvasId.value),
-  staleTime: 5 * 60 * 1000, // 5 minutes
+  staleTime: 5 * 60 * 1000,
 });
 
 const displayTitle = ref("");
@@ -83,11 +43,8 @@ let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
 watch(
   () => isLoading.value,
   (loading) => {
-    if (loading) {
-      showFullscreen();
-    } else {
-      hideFullscreen();
-    }
+    if (loading) showFullscreen();
+    else hideFullscreen();
   },
   { immediate: true }
 );
@@ -120,9 +77,7 @@ function onTitleUpdate(value: string) {
     const title = displayTitle.value.trim() || "New page";
     try {
       const updated = await canvasStore.updateCanvasTitle(id, title);
-      if (updated) {
-        queryClient.setQueryData(["canvas", id], updated);
-      }
+      if (updated) queryClient.setQueryData(["canvas", id], updated);
     } catch {
       // Toast is shown by the global axios interceptor
     }
@@ -147,13 +102,13 @@ const currentUser = computed(() => {
   };
 });
 
-// ======== Yjs reactive lifecycle =========
+// ======== Yjs / Collab lifecycle =========
 
 const ydoc = shallowRef<Y.Doc | null>(null);
 const provider = shallowRef<HocuspocusProvider | null>(null);
 const editor = shallowRef<Editor | null>(null);
 
-const isEditorReady = ref(false); // true khi provider sync xong hoặc timeout
+const isEditorReady = ref(false);
 const syncStatus = ref<"connecting" | "synced" | "offline">("connecting");
 let syncReadyTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -170,18 +125,14 @@ const displaySaveStatus = computed<"saved" | "saving">(() =>
     : "saved"
 );
 
-const jwtToken = computed(() => {
-  return authStore.accessToken;
-});
+const jwtToken = computed(() => authStore.accessToken);
 
-// helper: map awareness states -> online users
 function refreshOnlineUsers() {
   const p = provider.value;
   if (!p) {
     onlineUsers.value = [];
     return;
   }
-
   const states = Array.from(p.awareness.getStates().values()) as any[];
   onlineUsers.value = states
     .map((state) => state.user)
@@ -229,125 +180,28 @@ function destroyCollabResources() {
   hadChangesSinceLastSaved.value = false;
 }
 
-// ======== Slash command extension =========
+// ======== AI Writer =========
 
-function buildSlashCommandExtension() {
-  return Extension.create({
-    name: "slashCommand",
-    addProseMirrorPlugins() {
-      return [
-        Suggestion({
-          editor: this.editor,
-          char: "/",
-          startOfLine: false,
-          items: ({ query }: { query: string }) => {
-            const q = query.toLowerCase();
-            return q
-              ? SLASH_ITEMS.filter(
-                  (item) =>
-                    item.label.toLowerCase().includes(q) ||
-                    item.description?.toLowerCase().includes(q)
-                )
-              : SLASH_ITEMS;
-          },
-          render: () => ({
-            onStart: (props: any) => {
-              slashMenu.items = props.items;
-              slashMenu.selectedIndex = 0;
-              slashMenu.clientRect = props.clientRect?.() ?? null;
-              slashMenu.visible = true;
-              slashMenu.onSelect = (item: SlashItem) => {
-                props.command(item);
-              };
-            },
-            onUpdate: (props: any) => {
-              slashMenu.items = props.items;
-              slashMenu.clientRect = props.clientRect?.() ?? null;
-            },
-            onExit: () => {
-              slashMenu.visible = false;
-              slashMenu.onSelect = null;
-            },
-            onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-              if (event.key === "ArrowDown") {
-                slashMenu.selectedIndex = Math.min(
-                  slashMenu.selectedIndex + 1,
-                  slashMenu.items.length - 1
-                );
-                return true;
-              }
-              if (event.key === "ArrowUp") {
-                slashMenu.selectedIndex = Math.max(
-                  slashMenu.selectedIndex - 1,
-                  0
-                );
-                return true;
-              }
-              if (event.key === "Enter") {
-                const item = slashMenu.items[slashMenu.selectedIndex];
-                if (item && slashMenu.onSelect) {
-                  slashMenu.onSelect(item);
-                }
-                return true;
-              }
-              if (event.key === "Escape") {
-                slashMenu.visible = false;
-                return true;
-              }
-              return false;
-            },
-          }),
-          command: ({
-            editor,
-            range,
-            props,
-          }: {
-            editor: Editor;
-            range: any;
-            props: SlashItem;
-          }) => {
-            editor.chain().focus().deleteRange(range).run();
+const {
+  slashMenu,
+  aiWriterBar,
+  canvasPlainText,
+  buildSlashCommandExtension,
+  handleAiInsert,
+  handleAiWriterClose,
+} = useCanvasAiWriter(editor);
 
-            if (props.id === "ai-writer") {
-              const { from } = editor.state.selection;
-              const domAtPos = editor.view.domAtPos(from);
-              const blockEl =
-                domAtPos.node.nodeType === 1
-                  ? (domAtPos.node as Element)
-                  : (domAtPos.node.parentElement as Element | null);
-              const rect = blockEl?.getBoundingClientRect() ?? null;
+// ======== Editor setup =========
 
-              aiWriterBar.anchorRect = rect;
-              aiWriterBar.insertPos = from;
-              aiWriterBar.visible = true;
-            }
-          },
-        }),
-      ];
-    },
-  });
-}
-
-function handleAiInsert(content: string) {
-  const e = editor.value;
-  if (!e) return;
-  const pos = aiWriterBar.insertPos;
-  const resolvedPos = e.state.doc.resolve(pos);
-  const blockEnd = resolvedPos.end();
-  e.chain()
-    .focus()
-    .insertContentAt(blockEnd, `<p>${content.replace(/\n/g, "</p><p>")}</p>`)
-    .run();
-}
-
-function handleAiWriterClose() {
-  aiWriterBar.visible = false;
-  aiWriterBar.anchorRect = null;
-  editor.value?.commands.focus();
+function generateColorFromName(name: string) {
+  return `#${name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    .toString(16)
+    .padStart(6, "0")}`;
 }
 
 function setupForCanvas(id: string) {
-  // 1. create ydoc
   const doc = new Y.Doc();
   const p = new HocuspocusProvider({
     url: "ws://localhost:1234",
@@ -366,16 +220,12 @@ function setupForCanvas(id: string) {
     console.warn("[CanvasEditView] Provider disconnected");
     syncStatus.value = "offline";
   });
-
-  // Khi có thay đổi nhưng chưa sync lên server
   p.on("unsyncedChanges", ({ number: count }: { number: number }) => {
     if (count > 0 && isEditorReady.value) {
       saveStatus.value = "saving";
       hadChangesSinceLastSaved.value = true;
     }
   });
-
-  // Khi server sync xong và trả về event "canvasSaved"
   p.on("stateless", (e: { payload: string }) => {
     try {
       const d = JSON.parse(e.payload) as { type?: string };
@@ -388,7 +238,6 @@ function setupForCanvas(id: string) {
     }
   });
 
-  // 2. awareness user
   const me = currentUser.value;
   p.awareness.setLocalStateField("user", {
     userId: me?.userId ?? "",
@@ -397,11 +246,9 @@ function setupForCanvas(id: string) {
     email: me?.email ?? "",
     color: generateColorFromName(me?.name ?? ""),
   });
-
   p.awareness.on("change", refreshOnlineUsers);
   refreshOnlineUsers();
 
-  // 3. sync state: cho edit khi synced HOẶC sau timeout
   isEditorReady.value = false;
   syncStatus.value = "connecting";
 
@@ -424,20 +271,15 @@ function setupForCanvas(id: string) {
   syncReadyTimeoutId = setTimeout(() => {
     syncReadyTimeoutId = undefined;
     if (isEditorReady.value) return;
-    console.warn(
-      "[CanvasEditView] Sync timeout – enabling editor (offline mode)"
-    );
+    console.warn("[CanvasEditView] Sync timeout – enabling editor (offline mode)");
     syncStatus.value = "offline";
     setEditorReady();
   }, SYNC_READY_TIMEOUT_MS);
 
-  // 4. create editor bound to ydoc
-  const e = new Editor({
+  editor.value = new Editor({
     extensions: [
       StarterKit,
-      Collaboration.configure({
-        document: doc,
-      }),
+      Collaboration.configure({ document: doc }),
       CollaborationCaret.configure({
         provider: p,
         user: {
@@ -446,12 +288,8 @@ function setupForCanvas(id: string) {
         },
       }),
       Placeholder.configure({
-        placeholder: ({ node }) => {
-          if (node.type.name === "heading") {
-            return "Title or start writing…";
-          }
-          return "Type something…";
-        },
+        placeholder: ({ node }) =>
+          node.type.name === "heading" ? "Title or start writing…" : "Type something…",
       }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Subscript,
@@ -461,24 +299,18 @@ function setupForCanvas(id: string) {
     autofocus: false,
     editable: false,
   });
-
-  editor.value = e;
 }
 
 watch(
   () => [canvasId.value, jwtToken.value],
   async ([id, token]) => {
-    // Chỉ khởi tạo collab khi đã có canvasId và accessToken
     if (!id || !token) return;
-
     destroyCollabResources();
-
     try {
       await canvasStore.selectCanvas(id);
     } catch {
       // Toast is shown by the global axios interceptor
     }
-
     setupForCanvas(id);
   },
   { immediate: true }
@@ -489,14 +321,6 @@ onBeforeUnmount(() => {
   destroyCollabResources();
 });
 
-function generateColorFromName(name: string) {
-  return `#${name
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    .toString(16)
-    .padStart(6, "0")}`;
-}
-
 function handleDownload() {
   // TODO: implement download canvas
 }
@@ -504,8 +328,6 @@ function handleDownload() {
 function handleMoveToTrash() {
   // TODO: implement move canvas to trash
 }
-
-const canvasPlainText = computed(() => editor.value?.getText() ?? "");
 </script>
 
 <template>
@@ -526,29 +348,16 @@ const canvasPlainText = computed(() => editor.value?.getText() ?? "");
         :viewers="onlineUsers"
         :current-user="currentUser"
         :save-status="displaySaveStatus"
+        :slash-menu="slashMenu"
+        :ai-writer-bar="aiWriterBar"
+        :canvas-plain-text="canvasPlainText"
         @update:title="onTitleUpdate"
         @download="handleDownload"
         @move-to-trash="handleMoveToTrash"
+        @ai-insert="handleAiInsert"
+        @ai-close="handleAiWriterClose"
       />
     </div>
-
-    <!-- Slash command popup -->
-    <SlashCommandMenu
-      v-if="slashMenu.visible"
-      :items="slashMenu.items"
-      :selected-index="slashMenu.selectedIndex"
-      :client-rect="slashMenu.clientRect"
-      @select="slashMenu.onSelect?.($event)"
-    />
-
-    <!-- AI Writer floating bar -->
-    <AiWriterBar
-      v-if="aiWriterBar.visible"
-      :anchor-rect="aiWriterBar.anchorRect"
-      :canvas-content="canvasPlainText"
-      @insert="handleAiInsert"
-      @close="handleAiWriterClose"
-    />
   </div>
 </template>
 
@@ -560,17 +369,12 @@ const canvasPlainText = computed(() => editor.value?.getText() ?? "");
   background: white;
 }
 
-.canvas-edit-view__skeleton {
-  padding: 24px;
-  flex: 1;
-}
-
 .canvas-edit-view__blocker {
   position: absolute;
   inset: 0;
   z-index: 10;
   cursor: wait;
-  pointer-events: all; // chặn click vào editor
+  pointer-events: all;
 }
 
 .canvas-edit-view__offline-banner {
@@ -604,5 +408,4 @@ const canvasPlainText = computed(() => editor.value?.getText() ?? "");
 .canvas-edit-view__editor :deep(.content) {
   flex: 1;
 }
-
 </style>

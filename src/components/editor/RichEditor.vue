@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
+import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
+import AiWriterBar from "@/components/editor/AiWriterBar.vue";
+import type { SlashMenuState, AiWriterBarState } from "@/composables/useCanvasAiWriter";
 
 export type ViewerUser = {
   userId: string;
@@ -23,6 +26,10 @@ const props = withDefaults(
       email?: string;
     } | null;
     saveStatus?: "saved" | "saving";
+    // AI Writer — optional; if provided, SlashCommandMenu + AiWriterBar are rendered
+    slashMenu?: SlashMenuState | null;
+    aiWriterBar?: AiWriterBarState | null;
+    canvasPlainText?: string;
   }>(),
   {
     readOnly: false,
@@ -30,6 +37,9 @@ const props = withDefaults(
     viewers: undefined,
     currentUser: null,
     saveStatus: "saved",
+    slashMenu: null,
+    aiWriterBar: null,
+    canvasPlainText: "",
   }
 );
 
@@ -39,6 +49,8 @@ const emit = defineEmits<{
   "update:title": [value: string];
   download: [];
   moveToTrash: [];
+  "ai-insert": [content: string];
+  "ai-close": [];
 }>();
 
 function onTitleInput(e: Event) {
@@ -853,6 +865,24 @@ onBeforeUnmount(() => {
     <!-- Editor -->
     <EditorContent :editor="editor" class="content" />
   </div>
+
+  <!-- Slash command popup (optional AI writer feature) -->
+  <SlashCommandMenu
+    v-if="slashMenu?.visible"
+    :items="slashMenu.items"
+    :selected-index="slashMenu.selectedIndex"
+    :client-rect="slashMenu.clientRect"
+    @select="slashMenu.onSelect?.($event)"
+  />
+
+  <!-- AI Writer floating bar (optional AI writer feature) -->
+  <AiWriterBar
+    v-if="aiWriterBar?.visible"
+    :anchor-rect="aiWriterBar.anchorRect"
+    :canvas-content="canvasPlainText"
+    @insert="emit('ai-insert', $event)"
+    @close="emit('ai-close')"
+  />
 </template>
 
 <style scoped>
