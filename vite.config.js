@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => {
 			alias: {
 				// '@': fileURLToPath(new URL('./src', import.meta.url))
 				"@": path.resolve(__dirname, "./src"),
-			}
+			},
+			dedupe: ['yjs'],
 		},
 	}
 })

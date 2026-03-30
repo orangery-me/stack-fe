@@ -165,3 +165,20 @@ export async function sendMessageStream(sessionId, { message, provider, model, s
     { signal, onChunk, onDone, onError },
   );
 }
+
+/**
+ * Canvas AI Writer — stream AI-generated content to insert into the canvas.
+ * @param {{ canvasContent: string, userRequest: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
+ */
+export async function sendCanvasAiWriteStream({ canvasContent, userRequest, provider, model, signal, onChunk, onDone, onError }) {
+  await _fetchSSEStream(
+    API_ENDPOINTS.AGENT.CANVAS_WRITE_STREAM,
+    {
+      canvasContent: canvasContent ?? '',
+      userRequest,
+      ...(provider && { provider }),
+      ...(model && { model }),
+    },
+    { signal, onChunk, onDone, onError },
+  );
+}

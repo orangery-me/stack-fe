@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, ref, computed, shallowRef } from "vue";
+import { watch, onBeforeUnmount, ref, computed, shallowRef, reactive } from "vue";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
+import { Extension } from "@tiptap/core";
+import Suggestion from "@tiptap/suggestion";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
+import AiWriterBar from "@/components/editor/AiWriterBar.vue";
+import type { SlashItem } from "@/components/editor/SlashCommandMenu.vue";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { requestCanvas } from "../queries/canvas.queries";
@@ -20,6 +25,44 @@ import * as Y from "yjs";
 
 const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
+
+// ======== Slash command state =========
+
+const SLASH_ITEMS: SlashItem[] = [
+  {
+    id: "ai-writer",
+    label: "AI Writer",
+    description: "Tạo nội dung bằng AI",
+    icon: "✦",
+  },
+];
+
+const slashMenu = reactive<{
+  visible: boolean;
+  items: SlashItem[];
+  selectedIndex: number;
+  clientRect: DOMRect | null;
+  // eslint-disable-next-line no-unused-vars
+  onSelect: ((item: SlashItem) => void) | null;
+}>({
+  visible: false,
+  items: [],
+  selectedIndex: 0,
+  clientRect: null,
+  onSelect: null,
+});
+
+// ======== AI Writer Bar state =========
+
+const aiWriterBar = reactive<{
+  visible: boolean;
+  anchorRect: DOMRect | null;
+  insertPos: number;
+}>({
+  visible: false,
+  anchorRect: null,
+  insertPos: 0,
+});
 
 const canvasStore = useCanvasStore();
 const authStore = useAuthStore();
@@ -186,6 +229,123 @@ function destroyCollabResources() {
   hadChangesSinceLastSaved.value = false;
 }
 
+// ======== Slash command extension =========
+
+function buildSlashCommandExtension() {
+  return Extension.create({
+    name: "slashCommand",
+    addProseMirrorPlugins() {
+      return [
+        Suggestion({
+          editor: this.editor,
+          char: "/",
+          startOfLine: false,
+          items: ({ query }: { query: string }) => {
+            const q = query.toLowerCase();
+            return q
+              ? SLASH_ITEMS.filter(
+                  (item) =>
+                    item.label.toLowerCase().includes(q) ||
+                    item.description?.toLowerCase().includes(q)
+                )
+              : SLASH_ITEMS;
+          },
+          render: () => ({
+            onStart: (props: any) => {
+              slashMenu.items = props.items;
+              slashMenu.selectedIndex = 0;
+              slashMenu.clientRect = props.clientRect?.() ?? null;
+              slashMenu.visible = true;
+              slashMenu.onSelect = (item: SlashItem) => {
+                props.command(item);
+              };
+            },
+            onUpdate: (props: any) => {
+              slashMenu.items = props.items;
+              slashMenu.clientRect = props.clientRect?.() ?? null;
+            },
+            onExit: () => {
+              slashMenu.visible = false;
+              slashMenu.onSelect = null;
+            },
+            onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+              if (event.key === "ArrowDown") {
+                slashMenu.selectedIndex = Math.min(
+                  slashMenu.selectedIndex + 1,
+                  slashMenu.items.length - 1
+                );
+                return true;
+              }
+              if (event.key === "ArrowUp") {
+                slashMenu.selectedIndex = Math.max(
+                  slashMenu.selectedIndex - 1,
+                  0
+                );
+                return true;
+              }
+              if (event.key === "Enter") {
+                const item = slashMenu.items[slashMenu.selectedIndex];
+                if (item && slashMenu.onSelect) {
+                  slashMenu.onSelect(item);
+                }
+                return true;
+              }
+              if (event.key === "Escape") {
+                slashMenu.visible = false;
+                return true;
+              }
+              return false;
+            },
+          }),
+          command: ({
+            editor,
+            range,
+            props,
+          }: {
+            editor: Editor;
+            range: any;
+            props: SlashItem;
+          }) => {
+            editor.chain().focus().deleteRange(range).run();
+
+            if (props.id === "ai-writer") {
+              const { from } = editor.state.selection;
+              const domAtPos = editor.view.domAtPos(from);
+              const blockEl =
+                domAtPos.node.nodeType === 1
+                  ? (domAtPos.node as Element)
+                  : (domAtPos.node.parentElement as Element | null);
+              const rect = blockEl?.getBoundingClientRect() ?? null;
+
+              aiWriterBar.anchorRect = rect;
+              aiWriterBar.insertPos = from;
+              aiWriterBar.visible = true;
+            }
+          },
+        }),
+      ];
+    },
+  });
+}
+
+function handleAiInsert(content: string) {
+  const e = editor.value;
+  if (!e) return;
+  const pos = aiWriterBar.insertPos;
+  const resolvedPos = e.state.doc.resolve(pos);
+  const blockEnd = resolvedPos.end();
+  e.chain()
+    .focus()
+    .insertContentAt(blockEnd, `<p>${content.replace(/\n/g, "</p><p>")}</p>`)
+    .run();
+}
+
+function handleAiWriterClose() {
+  aiWriterBar.visible = false;
+  aiWriterBar.anchorRect = null;
+  editor.value?.commands.focus();
+}
+
 function setupForCanvas(id: string) {
   // 1. create ydoc
   const doc = new Y.Doc();
@@ -296,6 +456,7 @@ function setupForCanvas(id: string) {
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Subscript,
       Superscript,
+      buildSlashCommandExtension(),
     ],
     autofocus: false,
     editable: false,
@@ -343,6 +504,8 @@ function handleDownload() {
 function handleMoveToTrash() {
   // TODO: implement move canvas to trash
 }
+
+const canvasPlainText = computed(() => editor.value?.getText() ?? "");
 </script>
 
 <template>
@@ -368,6 +531,24 @@ function handleMoveToTrash() {
         @move-to-trash="handleMoveToTrash"
       />
     </div>
+
+    <!-- Slash command popup -->
+    <SlashCommandMenu
+      v-if="slashMenu.visible"
+      :items="slashMenu.items"
+      :selected-index="slashMenu.selectedIndex"
+      :client-rect="slashMenu.clientRect"
+      @select="slashMenu.onSelect?.($event)"
+    />
+
+    <!-- AI Writer floating bar -->
+    <AiWriterBar
+      v-if="aiWriterBar.visible"
+      :anchor-rect="aiWriterBar.anchorRect"
+      :canvas-content="canvasPlainText"
+      @insert="handleAiInsert"
+      @close="handleAiWriterClose"
+    />
   </div>
 </template>
 
@@ -423,4 +604,5 @@ function handleMoveToTrash() {
 .canvas-edit-view__editor :deep(.content) {
   flex: 1;
 }
+
 </style>

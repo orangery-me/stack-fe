@@ -29,6 +29,7 @@
     "@tiptap/extension-text-align": "^3.18.0",
     "@tiptap/extension-underline": "^3.18.0",
     "@tiptap/starter-kit": "^3.18.0",
+    "@tiptap/suggestion": "^3.21.0",
     "@tiptap/vue-3": "^3.18.0",
     "@tiptap/y-tiptap": "^3.0.2",
     "axios": "^1.13.2",

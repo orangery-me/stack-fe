@@ -60,6 +60,7 @@ export const API_ENDPOINTS = {
     SESSION_UPDATE: (sessionId) => `/agent/sessions/${sessionId}`,
     SESSION_SEND: (sessionId) => `/agent/sessions/${sessionId}/messages`,
     SESSION_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/messages/stream`,
+    CANVAS_WRITE_STREAM: '/agent/canvas/write/stream',
   },
 };
 
