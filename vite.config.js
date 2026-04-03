@@ -21,7 +21,13 @@ export default defineConfig(({ mode }) => {
 				// '@': fileURLToPath(new URL('./src', import.meta.url))
 				"@": path.resolve(__dirname, "./src"),
 			},
-			dedupe: ['yjs'],
+			dedupe: [
+				'yjs',
+				'prosemirror-view',
+				'prosemirror-state',
+				'prosemirror-model',
+				'prosemirror-transform',
+			],
 		},
 	}
 })

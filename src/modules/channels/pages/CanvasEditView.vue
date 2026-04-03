@@ -11,6 +11,7 @@ import { Editor } from "@tiptap/vue-3";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import { AiPreviewExtension } from "@/components/editor/ai-preview.extension";
 import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
@@ -187,7 +188,11 @@ const {
   aiWriterBar,
   canvasPlainText,
   buildSlashCommandExtension,
-  handleAiInsert,
+  handlePreviewStart,
+  handlePreviewChunk,
+  handlePreviewDone,
+  handleAccept,
+  handleReject,
   handleAiWriterClose,
 } = useCanvasAiWriter(editor);
 
@@ -295,6 +300,7 @@ function setupForCanvas(id: string) {
       Subscript,
       Superscript,
       buildSlashCommandExtension(),
+      AiPreviewExtension,
     ],
     autofocus: false,
     editable: false,
@@ -354,7 +360,11 @@ function handleMoveToTrash() {
         @update:title="onTitleUpdate"
         @download="handleDownload"
         @move-to-trash="handleMoveToTrash"
-        @ai-insert="handleAiInsert"
+        @preview-start="handlePreviewStart"
+        @preview-chunk="handlePreviewChunk"
+        @preview-done="handlePreviewDone"
+        @accept="handleAccept"
+        @reject="handleReject"
         @ai-close="handleAiWriterClose"
       />
     </div>

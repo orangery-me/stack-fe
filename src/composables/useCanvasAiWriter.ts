@@ -44,7 +44,41 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
     insertPos: 0,
   });
 
+  // Internal: block element reference + scroll listener cleanup
+  let anchorBlockEl: Element | null = null;
+  let scrollUnsubscribe: (() => void) | null = null;
+
+  function findScrollContainer(el: Element | null): Element | Window {
+    let node = el?.parentElement ?? null;
+    while (node && node !== document.body) {
+      const { overflowY } = window.getComputedStyle(node);
+      if (overflowY === "auto" || overflowY === "scroll") return node;
+      node = node.parentElement;
+    }
+    return window;
+  }
+
+  function subscribeToScroll(blockEl: Element) {
+    anchorBlockEl = blockEl;
+    const container = findScrollContainer(blockEl);
+    const onScroll = () => {
+      if (anchorBlockEl) {
+        aiWriterBar.anchorRect = anchorBlockEl.getBoundingClientRect();
+      }
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    scrollUnsubscribe = () => container.removeEventListener("scroll", onScroll);
+  }
+
+  function unsubscribeFromScroll() {
+    scrollUnsubscribe?.();
+    scrollUnsubscribe = null;
+    anchorBlockEl = null;
+  }
+
   const canvasPlainText = computed(() => editorRef.value?.getText() ?? "");
+
+  // ======== Slash command extension =========
 
   function buildSlashCommandExtension() {
     return Extension.create({
@@ -55,6 +89,7 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
             editor: this.editor,
             char: "/",
             startOfLine: false,
+            allowedPrefixes: null, // allow "/" anywhere, not just after a space
             items: ({ query }: { query: string }) => {
               const q = query.toLowerCase();
               return q
@@ -130,6 +165,8 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
                 aiWriterBar.anchorRect = blockEl?.getBoundingClientRect() ?? null;
                 aiWriterBar.insertPos = from;
                 aiWriterBar.visible = true;
+
+                if (blockEl) subscribeToScroll(blockEl);
               }
             },
           }),
@@ -138,29 +175,52 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
     });
   }
 
-  function handleAiInsert(content: string) {
+  // ======== AI Preview handlers =========
+
+  function handlePreviewStart() {
     const e = editorRef.value;
     if (!e) return;
-    const resolvedPos = e.state.doc.resolve(aiWriterBar.insertPos);
-    const blockEnd = resolvedPos.end();
-    e.chain()
-      .focus()
-      .insertContentAt(blockEnd, `<p>${content.replace(/\n/g, "</p><p>")}</p>`)
-      .run();
+    // Insert exactly at the stored caret position in the current block
+    e.commands.startAiPreview(aiWriterBar.insertPos);
   }
 
-  function handleAiWriterClose() {
-    aiWriterBar.visible = false;
-    aiWriterBar.anchorRect = null;
-    editorRef.value?.commands.focus();
+  function handlePreviewChunk(chunk: string) {
+    editorRef.value?.commands.appendAiPreviewChunk(chunk);
   }
+
+  function handlePreviewDone() {
+    // No-op: wait for user to Accept or Reject
+  }
+
+        function handleAccept() {
+          unsubscribeFromScroll();
+          editorRef.value?.commands.acceptAiPreview();
+        }
+
+        function handleReject() {
+          editorRef.value?.commands.rejectAiPreview();
+          // Bar stays open so user can adjust the request and try again
+        }
+
+        function handleAiWriterClose() {
+          unsubscribeFromScroll();
+          // Clear any active preview decoration, then hide the bar
+          editorRef.value?.commands.rejectAiPreview();
+          aiWriterBar.visible = false;
+          aiWriterBar.anchorRect = null;
+          editorRef.value?.commands.focus();
+        }
 
   return {
     slashMenu,
     aiWriterBar,
     canvasPlainText,
     buildSlashCommandExtension,
-    handleAiInsert,
+    handlePreviewStart,
+    handlePreviewChunk,
+    handlePreviewDone,
+    handleAccept,
+    handleReject,
     handleAiWriterClose,
   };
 }

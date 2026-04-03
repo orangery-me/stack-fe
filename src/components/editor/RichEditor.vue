@@ -49,7 +49,11 @@ const emit = defineEmits<{
   "update:title": [value: string];
   download: [];
   moveToTrash: [];
-  "ai-insert": [content: string];
+  "preview-start": [];
+  "preview-chunk": [chunk: string];
+  "preview-done": [];
+  accept: [];
+  reject: [];
   "ai-close": [];
 }>();
 
@@ -880,7 +884,11 @@ onBeforeUnmount(() => {
     v-if="aiWriterBar?.visible"
     :anchor-rect="aiWriterBar.anchorRect"
     :canvas-content="canvasPlainText"
-    @insert="emit('ai-insert', $event)"
+    @preview-start="emit('preview-start')"
+    @preview-chunk="emit('preview-chunk', $event)"
+    @preview-done="emit('preview-done')"
+    @accept="emit('accept')"
+    @reject="emit('reject')"
     @close="emit('ai-close')"
   />
 </template>
@@ -1560,6 +1568,40 @@ onBeforeUnmount(() => {
 
 .rte-viewer-popup__detail-link:hover {
   text-decoration: underline;
+}
+
+/* AI Preview ghost text (Phase 2) */
+.content :deep(.ai-preview-ghost) {
+  display: block;
+  color: #374151;
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid #6366f1;
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 0 6px 6px 0;
+  white-space: pre-wrap;
+  pointer-events: none;
+  user-select: none;
+  max-width: 720px;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.content :deep(.ai-preview-cursor) {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: #6366f1;
+  vertical-align: text-bottom;
+  animation: ai-cursor-blink 1s step-start infinite;
+}
+
+@keyframes ai-cursor-blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 :deep(.collaboration-carets__caret) {
