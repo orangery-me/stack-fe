@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, ref, computed, shallowRef } from "vue";
+import { watch, onBeforeUnmount, ref, computed, shallowRef, nextTick } from "vue";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
@@ -186,14 +186,27 @@ function destroyCollabResources() {
 const {
   slashMenu,
   aiWriterBar,
+  selectionAiIcon,
+  selectionAiBar,
   canvasPlainText,
   buildSlashCommandExtension,
+  buildSelectionListener,
+  destroySelectionListeners,
+  // Phase 2
   handlePreviewStart,
   handlePreviewChunk,
   handlePreviewDone,
   handleAccept,
   handleReject,
   handleAiWriterClose,
+  // Phase 3
+  handleSelectionIconClick,
+  handleSelectionPreviewStart,
+  handleSelectionPreviewChunk,
+  handleSelectionPreviewDone,
+  handleSelectionAccept,
+  handleSelectionReject,
+  handleSelectionAiClose,
 } = useCanvasAiWriter(editor);
 
 // ======== Editor setup =========
@@ -305,6 +318,9 @@ function setupForCanvas(id: string) {
     autofocus: false,
     editable: false,
   });
+
+  // Phase 3: đăng ký selection listener sau khi editor được tạo
+  nextTick(() => buildSelectionListener());
 }
 
 watch(
@@ -324,6 +340,7 @@ watch(
 
 onBeforeUnmount(() => {
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
+  destroySelectionListeners();
   destroyCollabResources();
 });
 
@@ -340,33 +357,19 @@ function handleMoveToTrash() {
   <div class="canvas-edit-view">
     <div class="canvas-edit-view__editor">
       <div v-if="!isEditorReady" class="canvas-edit-view__blocker" />
-      <div
-        v-if="syncStatus === 'offline' && isEditorReady"
-        class="canvas-edit-view__offline-banner"
-      >
+      <div v-if="syncStatus === 'offline' && isEditorReady" class="canvas-edit-view__offline-banner">
         Đang chỉnh sửa offline – máy chủ đồng bộ chưa kết nối.
       </div>
-      <RichEditor
-        v-if="editor"
-        :editor="editor"
-        :read-only="!isEditorReady"
-        :title="displayTitle"
-        :viewers="onlineUsers"
-        :current-user="currentUser"
-        :save-status="displaySaveStatus"
-        :slash-menu="slashMenu"
-        :ai-writer-bar="aiWriterBar"
-        :canvas-plain-text="canvasPlainText"
-        @update:title="onTitleUpdate"
-        @download="handleDownload"
-        @move-to-trash="handleMoveToTrash"
-        @preview-start="handlePreviewStart"
-        @preview-chunk="handlePreviewChunk"
-        @preview-done="handlePreviewDone"
-        @accept="handleAccept"
-        @reject="handleReject"
-        @ai-close="handleAiWriterClose"
-      />
+      <RichEditor v-if="editor" :editor="editor" :read-only="!isEditorReady" :title="displayTitle"
+        :viewers="onlineUsers" :current-user="currentUser" :save-status="displaySaveStatus" :slash-menu="slashMenu"
+        :ai-writer-bar="aiWriterBar" :selection-ai-icon="selectionAiIcon" :selection-ai-bar="selectionAiBar"
+        :canvas-plain-text="canvasPlainText" @update:title="onTitleUpdate" @download="handleDownload"
+        @move-to-trash="handleMoveToTrash" @preview-start="handlePreviewStart" @preview-chunk="handlePreviewChunk"
+        @preview-done="handlePreviewDone" @accept="handleAccept" @reject="handleReject" @ai-close="handleAiWriterClose"
+        @selection-icon-click="handleSelectionIconClick" @selection-preview-start="handleSelectionPreviewStart"
+        @selection-preview-chunk="handleSelectionPreviewChunk" @selection-preview-done="handleSelectionPreviewDone"
+        @selection-accept="handleSelectionAccept" @selection-reject="handleSelectionReject"
+        @selection-ai-close="handleSelectionAiClose" />
     </div>
   </div>
 </template>

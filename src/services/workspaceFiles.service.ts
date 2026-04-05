@@ -5,6 +5,11 @@ export interface CanvasListItem {
   id: string;
   title: string;
   ownerId: string;
+  owner?: {
+    id: string;
+    name: string;
+    avatar?: string | null;
+  };
   workspaceId: string;
   visibility: "private" | "shared" | "public-workspace";
   status: string;

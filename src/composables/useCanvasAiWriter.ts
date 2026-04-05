@@ -20,6 +20,19 @@ export interface AiWriterBarState {
   insertPos: number;
 }
 
+export interface SelectionAiIconState {
+  visible: boolean;
+  iconRect: DOMRect | null;
+}
+
+export interface SelectionAiBarState {
+  visible: boolean;
+  anchorRect: DOMRect | null;
+  selectedText: string;
+  from: number;
+  to: number;
+}
+
 const SLASH_ITEMS: SlashItem[] = [
   {
     id: "ai-writer",
@@ -78,6 +91,156 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
 
   const canvasPlainText = computed(() => editorRef.value?.getText() ?? "");
 
+  // ======== Selection AI =========
+
+  const selectionAiIcon = reactive<SelectionAiIconState>({
+    visible: false,
+    iconRect: null,
+  });
+
+  const selectionAiBar = reactive<SelectionAiBarState>({
+    visible: false,
+    anchorRect: null,
+    selectedText: "",
+    from: 0,
+    to: 0,
+  });
+
+  let _selSnapshot: {
+    from: number;
+    to: number;
+    selectedText: string;
+    iconRect: DOMRect;
+    barRect: DOMRect;
+  } | null = null;
+
+  let _selDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let _editorDomMouseUpListener: (() => void) | null = null;
+  let _docMouseDownListener: (() => void) | null = null;
+
+  function _hideSelectionUi() {
+    selectionAiIcon.visible = false;
+    selectionAiIcon.iconRect = null;
+    _selSnapshot = null;
+  }
+
+  function _tryShowSelectionIcon() {
+    const editor = editorRef.value;
+    if (!editor) return;
+
+    const { state, view } = editor;
+    const { selection } = state;
+
+    if (selection.empty) { _hideSelectionUi(); return; }
+    if (aiWriterBar.visible) return;
+
+    const { from, to } = selection;
+    const selectedText = state.doc.textBetween(from, to, "\n");
+    if (!selectedText.trim()) { _hideSelectionUi(); return; }
+
+    const fromCoords = view.coordsAtPos(from);
+    const toCoords = view.coordsAtPos(to);
+
+    const iconRect = new DOMRect(toCoords.right + 4, toCoords.top, 28, toCoords.bottom - toCoords.top);
+    const barRect = new DOMRect(
+      Math.min(fromCoords.left, toCoords.left),
+      fromCoords.top,
+      Math.max(fromCoords.right, toCoords.right) - Math.min(fromCoords.left, toCoords.left),
+      toCoords.bottom - fromCoords.top
+    );
+
+    _selSnapshot = { from, to, selectedText, iconRect, barRect };
+    selectionAiIcon.iconRect = iconRect;
+    selectionAiIcon.visible = true;
+  }
+
+  function buildSelectionListener() {
+    const editor = editorRef.value;
+    if (!editor) return;
+
+    const editorDom = editor.view.dom as HTMLElement;
+
+    // Mouse selection: show icon on mouseup (after drag-to-select)
+    const onMouseUp = () => setTimeout(_tryShowSelectionIcon, 10);
+    editorDom.addEventListener("mouseup", onMouseUp);
+    _editorDomMouseUpListener = () => editorDom.removeEventListener("mouseup", onMouseUp);
+
+    // Keyboard selection: debounce selectionUpdate
+    editor.on("selectionUpdate", () => {
+      const { selection } = editor.state;
+      if (selection.empty) {
+        if (_selDebounceTimer) { clearTimeout(_selDebounceTimer); _selDebounceTimer = null; }
+        _hideSelectionUi();
+        return;
+      }
+      if (_selDebounceTimer) clearTimeout(_selDebounceTimer);
+      _selDebounceTimer = setTimeout(() => { _selDebounceTimer = null; _tryShowSelectionIcon(); }, 350);
+    });
+
+    // Click outside: hide icon
+    const onDocMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (document.querySelector(".ai-sel-icon")?.contains(target)) return;
+      if (document.querySelector(".ai-sel-bar")?.contains(target)) return;
+      _hideSelectionUi();
+    };
+    document.addEventListener("mousedown", onDocMouseDown, true);
+    _docMouseDownListener = () => document.removeEventListener("mousedown", onDocMouseDown, true);
+  }
+
+  function destroySelectionListeners() {
+    _editorDomMouseUpListener?.();
+    _editorDomMouseUpListener = null;
+    _docMouseDownListener?.();
+    _docMouseDownListener = null;
+    if (_selDebounceTimer) { clearTimeout(_selDebounceTimer); _selDebounceTimer = null; }
+  }
+
+  function handleSelectionIconClick() {
+    if (!_selSnapshot) return;
+    const { from, to, selectedText, barRect } = _selSnapshot;
+    selectionAiBar.from = from;
+    selectionAiBar.to = to;
+    selectionAiBar.selectedText = selectedText;
+    selectionAiBar.anchorRect = barRect;
+    selectionAiBar.visible = true;
+    selectionAiIcon.visible = false;
+    selectionAiIcon.iconRect = null;
+  }
+
+  function handleSelectionPreviewStart() {
+    editorRef.value?.commands.startAiPreview(selectionAiBar.to);
+  }
+
+  function handleSelectionPreviewChunk(chunk: string) {
+    editorRef.value?.commands.appendAiPreviewChunk(chunk);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  function handleSelectionPreviewDone() { }
+
+  function handleSelectionAccept(editMode: "replace" | "append") {
+    const e = editorRef.value;
+    if (!e) return;
+    e.commands.acceptAiSelectionPreview(selectionAiBar.from, selectionAiBar.to, editMode);
+    selectionAiBar.visible = false;
+    selectionAiBar.anchorRect = null;
+    selectionAiBar.selectedText = "";
+    _selSnapshot = null;
+  }
+
+  function handleSelectionReject() {
+    editorRef.value?.commands.rejectAiPreview();
+  }
+
+  function handleSelectionAiClose() {
+    editorRef.value?.commands.rejectAiPreview();
+    selectionAiBar.visible = false;
+    selectionAiBar.anchorRect = null;
+    selectionAiBar.selectedText = "";
+    _selSnapshot = null;
+  }
+
   // ======== Slash command extension =========
 
   function buildSlashCommandExtension() {
@@ -94,10 +257,10 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
               const q = query.toLowerCase();
               return q
                 ? SLASH_ITEMS.filter(
-                    (i) =>
-                      i.label.toLowerCase().includes(q) ||
-                      i.description?.toLowerCase().includes(q)
-                  )
+                  (i) =>
+                    i.label.toLowerCase().includes(q) ||
+                    i.description?.toLowerCase().includes(q)
+                )
                 : SLASH_ITEMS;
             },
             render: () => ({
@@ -192,35 +355,46 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
     // No-op: wait for user to Accept or Reject
   }
 
-        function handleAccept() {
-          unsubscribeFromScroll();
-          editorRef.value?.commands.acceptAiPreview();
-        }
+  function handleAccept() {
+    unsubscribeFromScroll();
+    editorRef.value?.commands.acceptAiPreview();
+  }
 
-        function handleReject() {
-          editorRef.value?.commands.rejectAiPreview();
-          // Bar stays open so user can adjust the request and try again
-        }
+  function handleReject() {
+    editorRef.value?.commands.rejectAiPreview();
+    // Bar stays open so user can adjust the request and try again
+  }
 
-        function handleAiWriterClose() {
-          unsubscribeFromScroll();
-          // Clear any active preview decoration, then hide the bar
-          editorRef.value?.commands.rejectAiPreview();
-          aiWriterBar.visible = false;
-          aiWriterBar.anchorRect = null;
-          editorRef.value?.commands.focus();
-        }
+  function handleAiWriterClose() {
+    unsubscribeFromScroll();
+    // Clear any active preview decoration, then hide the bar
+    editorRef.value?.commands.rejectAiPreview();
+    aiWriterBar.visible = false;
+    aiWriterBar.anchorRect = null;
+    editorRef.value?.commands.focus();
+  }
 
   return {
     slashMenu,
     aiWriterBar,
+    selectionAiIcon,
+    selectionAiBar,
     canvasPlainText,
     buildSlashCommandExtension,
+    buildSelectionListener,
+    destroySelectionListeners,
     handlePreviewStart,
     handlePreviewChunk,
     handlePreviewDone,
     handleAccept,
     handleReject,
     handleAiWriterClose,
+    handleSelectionIconClick,
+    handleSelectionPreviewStart,
+    handleSelectionPreviewChunk,
+    handleSelectionPreviewDone,
+    handleSelectionAccept,
+    handleSelectionReject,
+    handleSelectionAiClose,
   };
 }

@@ -18,6 +18,12 @@ declare module "@tiptap/core" {
       appendAiPreviewChunk: (chunk: string) => ReturnType;
       acceptAiPreview: () => ReturnType;
       rejectAiPreview: () => ReturnType;
+      /** Accept selection edit — replace `from..to` or append after `to` */
+      acceptAiSelectionPreview: (
+        from: number,
+        to: number,
+        editMode: "replace" | "append"
+      ) => ReturnType;
     };
   }
 }
@@ -82,6 +88,52 @@ export const AiPreviewExtension = Extension.create({
         () =>
         ({ dispatch, tr }) => {
           if (dispatch) dispatch(tr.setMeta(aiPreviewPluginKey, { type: "clear" }));
+          return true;
+        },
+
+      acceptAiSelectionPreview:
+        (from: number, to: number, editMode: "replace" | "append") =>
+        ({ state, dispatch, editor }) => {
+          const s = aiPreviewPluginKey.getState(state);
+          if (!s?.active || !s.content) return false;
+
+          if (dispatch) {
+            const { content } = s;
+            const lines = content
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean);
+
+            const nodes =
+              lines.length > 0
+                ? lines.map((text) =>
+                    state.schema.nodes.paragraph.create(
+                      null,
+                      state.schema.text(text)
+                    )
+                  )
+                : [state.schema.nodes.paragraph.create()];
+
+            let tr = state.tr;
+
+            if (editMode === "replace") {
+              // Xoá đoạn đã chọn rồi insert nội dung AI tại vị trí `from`
+              tr = tr.delete(from, to);
+              tr = tr.insert(from, Fragment.fromArray(nodes));
+            } else {
+              // Append: chèn ngay sau `to` 
+              tr = tr.insert(to, Fragment.fromArray(nodes));
+            }
+
+            dispatch(
+              tr
+                .setMeta(aiPreviewPluginKey, { type: "clear" })
+                .setMeta("addToHistory", true)
+            );
+
+            setTimeout(() => editor.commands.focus(), 0);
+          }
+
           return true;
         },
     };

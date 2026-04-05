@@ -61,6 +61,13 @@ const documents = computed(() => {
   return [];
 });
 
+const LOCATION_ICON_MY_DOCUMENT = "/icons/canvas/my-document.svg";
+const LOCATION_ICON_SHARE_WITH_ME = "/icons/canvas/share-with-me.svg";
+
+/** Recent list mixes owned + shared; use API `isShared` when present. */
+const locationIconForRecentDoc = (doc) =>
+  doc?.isShared ? LOCATION_ICON_SHARE_WITH_ME : LOCATION_ICON_MY_DOCUMENT;
+
 const loadCanvasesForTab = async () => {
   try {
     isLoading.value = true;
@@ -398,18 +405,18 @@ onMounted(async () => {
 
         <div class="files-table">
           <div class="files-table-header">
-            <div class="col-name">
+            <span class="col-name">
               Name
-            </div>
-            <div class="col-location">
+            </span>
+            <span class="col-location">
               Location
-            </div>
-            <div class="col-owner">
+            </span>
+            <span class="col-owner">
               Owner
-            </div>
-            <div class="col-updated">
+            </span>
+            <span class="col-updated">
               Updated
-            </div>
+            </span>
           </div>
 
           <div
@@ -440,19 +447,32 @@ onMounted(async () => {
                 type="button"
                 @click="handleOpenDocument(doc)"
               >
-                <div class="col-name">
-                  <span class="file-icon">📄</span>
+                <span class="col-name">
+                  <img
+                    src="/icons/canvas/docs.svg"
+                    alt=""
+                    class="file-icon-img"
+                    width="24"
+                    height="24"
+                  >
                   <span class="file-title">{{ doc.title }}</span>
-                </div>
-                <div class="col-location">
+                </span>
+                <span class="col-location">
+                  <img
+                    :src="locationIconForRecentDoc(doc)"
+                    alt=""
+                    class="col-inline-icon"
+                    width="14"
+                    height="14"
+                  >
                   Recent
-                </div>
-                <div class="col-owner">
-                  {{ doc.ownerId }}
-                </div>
-                <div class="col-updated">
+                </span>
+                <span class="col-owner">
+                  {{ doc.owner?.name || doc.ownerId }}
+                </span>
+                <span class="col-updated">
                   {{ new Date(doc.updatedAt).toLocaleString() }}
-                </div>
+                </span>
               </button>
             </template>
 
@@ -464,19 +484,32 @@ onMounted(async () => {
                 type="button"
                 @click="handleOpenDocument(doc)"
               >
-                <div class="col-name">
-                  <span class="file-icon">📄</span>
+                <span class="col-name">
+                  <img
+                    src="/icons/canvas/docs.svg"
+                    alt=""
+                    class="file-icon-img"
+                    width="24"
+                    height="24"
+                  >
                   <span class="file-title">{{ doc.title }}</span>
-                </div>
-                <div class="col-location">
+                </span>
+                <span class="col-location">
+                  <img
+                    :src="LOCATION_ICON_MY_DOCUMENT"
+                    alt=""
+                    class="col-inline-icon"
+                    width="14"
+                    height="14"
+                  >
                   Owned by me
-                </div>
-                <div class="col-owner">
+                </span>
+                <span class="col-owner">
                   You
-                </div>
-                <div class="col-updated">
+                </span>
+                <span class="col-updated">
                   {{ new Date(doc.updatedAt).toLocaleString() }}
-                </div>
+                </span>
               </button>
             </template>
 
@@ -488,19 +521,32 @@ onMounted(async () => {
                 type="button"
                 @click="handleOpenDocument(doc)"
               >
-                <div class="col-name">
-                  <span class="file-icon">📄</span>
+                <span class="col-name">
+                  <img
+                    src="/icons/canvas/docs.svg"
+                    alt=""
+                    class="file-icon-img"
+                    width="24"
+                    height="24"
+                  >
                   <span class="file-title">{{ doc.title }}</span>
-                </div>
-                <div class="col-location">
+                </span>
+                <span class="col-location">
+                  <img
+                    :src="LOCATION_ICON_SHARE_WITH_ME"
+                    alt=""
+                    class="col-inline-icon"
+                    width="14"
+                    height="14"
+                  >
                   Shared with me
-                </div>
-                <div class="col-owner">
-                  {{ doc.ownerId }}
-                </div>
-                <div class="col-updated">
+                </span>
+                <span class="col-owner">
+                  {{ doc.owner?.name || doc.ownerId }}
+                </span>
+                <span class="col-updated">
                   {{ new Date(doc.updatedAt).toLocaleString() }}
-                </div>
+                </span>
               </button>
             </template>
 

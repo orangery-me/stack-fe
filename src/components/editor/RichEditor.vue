@@ -3,7 +3,9 @@ import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
 import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
 import AiWriterBar from "@/components/editor/AiWriterBar.vue";
-import type { SlashMenuState, AiWriterBarState } from "@/composables/useCanvasAiWriter";
+import AiSelectionBar from "@/components/editor/AiSelectionBar.vue";
+import AiSelectionIcon from "@/components/editor/AiSelectionIcon.vue";
+import type { SlashMenuState, AiWriterBarState, SelectionAiBarState, SelectionAiIconState } from "@/composables/useCanvasAiWriter";
 
 export type ViewerUser = {
   userId: string;
@@ -29,6 +31,9 @@ const props = withDefaults(
     // AI Writer — optional; if provided, SlashCommandMenu + AiWriterBar are rendered
     slashMenu?: SlashMenuState | null;
     aiWriterBar?: AiWriterBarState | null;
+    // Selection AI
+    selectionAiIcon?: SelectionAiIconState | null;
+    selectionAiBar?: SelectionAiBarState | null;
     canvasPlainText?: string;
   }>(),
   {
@@ -39,6 +44,8 @@ const props = withDefaults(
     saveStatus: "saved",
     slashMenu: null,
     aiWriterBar: null,
+    selectionAiIcon: null,
+    selectionAiBar: null,
     canvasPlainText: "",
   }
 );
@@ -49,12 +56,21 @@ const emit = defineEmits<{
   "update:title": [value: string];
   download: [];
   moveToTrash: [];
+  // AI Writer
   "preview-start": [];
   "preview-chunk": [chunk: string];
   "preview-done": [];
   accept: [];
   reject: [];
   "ai-close": [];
+  // Selection AI
+  "selection-icon-click": [];
+  "selection-preview-start": [];
+  "selection-preview-chunk": [chunk: string];
+  "selection-preview-done": [];
+  "selection-accept": [editMode: "replace" | "append"];
+  "selection-reject": [];
+  "selection-ai-close": [];
 }>();
 
 function onTitleInput(e: Event) {
@@ -879,7 +895,7 @@ onBeforeUnmount(() => {
     @select="slashMenu.onSelect?.($event)"
   />
 
-  <!-- AI Writer floating bar (optional AI writer feature) -->
+  <!-- AI Writer floating bar  -->
   <AiWriterBar
     v-if="aiWriterBar?.visible"
     :anchor-rect="aiWriterBar.anchorRect"
@@ -890,6 +906,25 @@ onBeforeUnmount(() => {
     @accept="emit('accept')"
     @reject="emit('reject')"
     @close="emit('ai-close')"
+  />
+
+  <AiSelectionIcon
+    v-if="selectionAiIcon?.visible"
+    :icon-rect="selectionAiIcon.iconRect"
+    @click="emit('selection-icon-click')"
+  />
+
+  <AiSelectionBar
+    v-if="selectionAiBar?.visible"
+    :anchor-rect="selectionAiBar.anchorRect"
+    :canvas-content="canvasPlainText"
+    :selected-text="selectionAiBar.selectedText"
+    @preview-start="emit('selection-preview-start')"
+    @preview-chunk="emit('selection-preview-chunk', $event)"
+    @preview-done="emit('selection-preview-done')"
+    @accept="emit('selection-accept', $event)"
+    @reject="emit('selection-reject')"
+    @close="emit('selection-ai-close')"
   />
 </template>
 
