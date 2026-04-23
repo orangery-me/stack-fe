@@ -17,7 +17,9 @@ import {
   createSession,
   getSessionMessages,
   sendMessageStream,
+  sendCanvasSessionMessageStream,
   updateSession,
+  applyCanvasAction,
 } from "@/services/agent.service.js";
 
 const uiStore = useUiStore();
@@ -26,6 +28,10 @@ const props = defineProps({
   open: {
     type: Boolean,
     default: false,
+  },
+  context: {
+    type: Object,
+    default: null,
   },
 });
 
@@ -53,6 +59,7 @@ let msgIdCounter = 0;
 
 const DEFAULT_PROVIDER = "openai";
 const DEFAULT_MODEL = "gpt-5.3-codex";
+const isCanvasMode = computed(() => props.context?.kind === "canvas");
 
 // ======== Session loading ========
 
@@ -64,13 +71,22 @@ async function loadActiveSession() {
     activeSession.value = session;
 
     const result = await getSessionMessages(session.id);
-    const rawMessages = Array.isArray(result) ? result : result?.messages ?? [];
-    messages.value = rawMessages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      streaming: false,
-    }));
+    const rawMessages = Array.isArray(result)
+      ? result
+      : (result?.messages ?? []);
+    messages.value = rawMessages.map((m) => {
+      const parsed =
+        m.role === "assistant"
+          ? parseStoredAssistantMessage(m.content)
+          : { content: m.content, actions: [] };
+      return {
+        id: m.id,
+        role: m.role,
+        content: parsed.content,
+        actions: parsed.actions,
+        streaming: false,
+      };
+    });
     await scrollToBottom();
   } catch {
     // Toast shown by global interceptor
@@ -82,7 +98,7 @@ async function loadActiveSession() {
 async function loadSessionList() {
   try {
     const data = await listSessions();
-    sessions.value = Array.isArray(data) ? data : data?.sessions ?? [];
+    sessions.value = Array.isArray(data) ? data : (data?.sessions ?? []);
   } catch {
     // ignore
   }
@@ -98,13 +114,22 @@ async function switchSession(session) {
   showSessionDropdown.value = false;
   try {
     const result = await getSessionMessages(session.id);
-    const rawMessages = Array.isArray(result) ? result : result?.messages ?? [];
-    messages.value = rawMessages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      streaming: false,
-    }));
+    const rawMessages = Array.isArray(result)
+      ? result
+      : (result?.messages ?? []);
+    messages.value = rawMessages.map((m) => {
+      const parsed =
+        m.role === "assistant"
+          ? parseStoredAssistantMessage(m.content)
+          : { content: m.content, actions: [] };
+      return {
+        id: m.id,
+        role: m.role,
+        content: parsed.content,
+        actions: parsed.actions,
+        streaming: false,
+      };
+    });
     await scrollToBottom();
   } catch {
     // ignore
@@ -142,6 +167,22 @@ function abortStream() {
   isStreaming.value = false;
 }
 
+function focusTextareaToEnd() {
+  nextTick(() => {
+    if (!textareaEl.value) return;
+    textareaEl.value.focus();
+    const cursorPosition = textareaEl.value.value.length;
+    textareaEl.value.setSelectionRange(cursorPosition, cursorPosition);
+  });
+}
+
+function applyPendingDraft() {
+  if (!uiStore.aiDraft) return;
+  inputValue.value = uiStore.aiDraft;
+  uiStore.clearAiDraft();
+  focusTextareaToEnd();
+}
+
 // ======== Send message ========
 
 async function sendMessage() {
@@ -166,49 +207,116 @@ async function sendMessage() {
   scrollToBottom();
 
   abortController = new AbortController();
+  const onDoneCommon = async () => {
+    const msg = messages.value.find((m) => m.id === assistantId);
+    if (msg) msg.streaming = false;
+    isStreaming.value = false;
+    abortController = null;
 
-  await sendMessageStream(activeSession.value.id, {
-    message: text,
-    provider: DEFAULT_PROVIDER,
-    model: DEFAULT_MODEL,
-    signal: abortController.signal,
-    onChunk: (chunk) => {
-      const msg = messages.value.find((m) => m.id === assistantId);
-      if (msg) {
-        msg.content += chunk;
-        scrollToBottom();
+    if (activeSession.value?.title === "New chat") {
+      const newTitle = text.slice(0, 50);
+      try {
+        await updateSession(activeSession.value.id, newTitle);
+        activeSession.value.title = newTitle;
+        const s = sessions.value.find((x) => x.id === activeSession.value.id);
+        if (s) s.title = newTitle;
+      } catch {
+        // Non-critical
       }
-    },
-    onDone: async () => {
-      const msg = messages.value.find((m) => m.id === assistantId);
-      if (msg) msg.streaming = false;
-      isStreaming.value = false;
-      abortController = null;
+    }
+  };
 
-      // Auto-rename session after first message
-      if (activeSession.value?.title === "New chat") {
-        const newTitle = text.slice(0, 50);
-        try {
-          await updateSession(activeSession.value.id, newTitle);
-          activeSession.value.title = newTitle;
-          const s = sessions.value.find((x) => x.id === activeSession.value.id);
-          if (s) s.title = newTitle;
-        } catch {
-          // Non-critical — ignore rename failure
+  const onErrorCommon = (err) => {
+    const msg = messages.value.find((m) => m.id === assistantId);
+    if (msg) {
+      msg.content = msg.content || `(Lỗi: ${err?.message ?? "Không rõ"})`;
+      msg.streaming = false;
+      msg.error = true;
+    }
+    isStreaming.value = false;
+    abortController = null;
+  };
+
+  if (isCanvasMode.value) {
+    const ctx = props.context || {};
+    await sendCanvasSessionMessageStream(activeSession.value.id, {
+      canvasId: ctx.canvasId,
+      canvasContent: ctx.canvasPlainText ?? "",
+      message: text,
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      signal: abortController.signal,
+      onChunk: (chunk) => {
+        const msg = messages.value.find((m) => m.id === assistantId);
+        if (msg) {
+          msg.content += chunk;
+          scrollToBottom();
         }
-      }
-    },
-    onError: (err) => {
-      const msg = messages.value.find((m) => m.id === assistantId);
-      if (msg) {
-        msg.content = msg.content || `(Lỗi: ${err?.message ?? "Không rõ"})`;
-        msg.streaming = false;
-        msg.error = true;
-      }
-      isStreaming.value = false;
-      abortController = null;
-    },
-  });
+      },
+      onEvent: (event) => {
+        const msg = messages.value.find((m) => m.id === assistantId);
+        if (!msg || !event?.type) return;
+        if (event.type === "status" && event.message) {
+          msg.content += `${msg.content ? "\n" : ""}[${event.message}]`;
+        }
+        if (event.type === "assistant" && event.content) {
+          msg.content += `${msg.content ? "\n" : ""}${event.content}`;
+        }
+        if (event.type === "actions" && Array.isArray(event.actions)) {
+          msg.actions = event.actions.map((a) => ({
+            ...a,
+            status: a.status || "pending",
+          }));
+        }
+        scrollToBottom();
+      },
+      onDone: onDoneCommon,
+      onError: onErrorCommon,
+    });
+  } else {
+    await sendMessageStream(activeSession.value.id, {
+      message: text,
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      signal: abortController.signal,
+      onChunk: (chunk) => {
+        const msg = messages.value.find((m) => m.id === assistantId);
+        if (msg) {
+          msg.content += chunk;
+          scrollToBottom();
+        }
+      },
+      onDone: onDoneCommon,
+      onError: onErrorCommon,
+    });
+  }
+}
+
+async function handleAcceptAction(messageId, action) {
+  if (!props.context?.canvasId || !action?.name) return;
+  const msg = messages.value.find((m) => m.id === messageId);
+  if (!msg?.actions) return;
+  action.status = "applying";
+  try {
+    const result = await applyCanvasAction({
+      canvasId: props.context.canvasId,
+      actionName: action.name,
+      actionArgs: action.arguments || {},
+    });
+    action.status = result?.ok ? "accepted" : "failed";
+    if (!result?.ok) {
+      action.error = result?.error || "Apply thất bại";
+    }
+  } catch (err) {
+    action.status = "failed";
+    action.error = err?.message || "Apply thất bại";
+  }
+}
+
+function handleRejectAction(messageId, action) {
+  const msg = messages.value.find((m) => m.id === messageId);
+  if (!msg?.actions) return;
+  action.status = "rejected";
 }
 
 function handleKeydown(e) {
@@ -233,12 +341,23 @@ watch(
     if (opened) {
       await loadActiveSession();
       await loadSessionList();
-      nextTick(() => textareaEl.value?.focus());
+      applyPendingDraft();
+      if (!inputValue.value) {
+        focusTextareaToEnd();
+      }
     } else {
       abortStream();
       showSessionDropdown.value = false;
     }
-  }
+  },
+);
+
+watch(
+  () => uiStore.aiDraft,
+  () => {
+    if (!props.open) return;
+    applyPendingDraft();
+  },
 );
 
 // ======== Resize logic ========
@@ -294,6 +413,21 @@ function sessionLabel(session) {
 
 const recentSessions = computed(() => sessions.value.slice(0, 5));
 
+function parseStoredAssistantMessage(content) {
+  if (typeof content !== "string") return { content: "", actions: [] };
+  const marker = "\n\n[ACTIONS]\n";
+  const idx = content.indexOf(marker);
+  if (idx < 0) return { content, actions: [] };
+  const text = content.slice(0, idx);
+  const jsonPart = content.slice(idx + marker.length);
+  try {
+    const parsed = JSON.parse(jsonPart);
+    return { content: text, actions: Array.isArray(parsed) ? parsed : [] };
+  } catch {
+    return { content, actions: [] };
+  }
+}
+
 function openHistory() {
   showSessionDropdown.value = false;
   showHistoryModal.value = true;
@@ -323,6 +457,7 @@ function handleHistorySelect(session) {
         <div class="ai-chat-header-title">
           <Sparkles :size="16" class="ai-chat-header-icon" />
           <span>AI Assistant</span>
+          <span v-if="isCanvasMode" class="ai-mode-chip">Canvas mode</span>
         </div>
         <div class="ai-chat-header-actions">
           <!-- Session switcher -->
@@ -426,6 +561,54 @@ function handleHistorySelect(session) {
                 v-html="formatContent(msg.content)"
               />
               <span v-if="msg.streaming" class="ai-chat-cursor">▌</span>
+              <div
+                v-if="
+                  msg.role === 'assistant' &&
+                  Array.isArray(msg.actions) &&
+                  msg.actions.length > 0
+                "
+                class="ai-action-list"
+              >
+                <div
+                  v-for="action in msg.actions"
+                  :key="action.id"
+                  class="ai-action-item"
+                >
+                  <div class="ai-action-main">
+                    <span class="ai-action-name">{{ action.name }}</span>
+                    <span
+                      class="ai-action-status"
+                      :class="`is-${action.status}`"
+                      >{{ action.status }}</span
+                    >
+                  </div>
+                  <div class="ai-action-args">
+                    {{ JSON.stringify(action.arguments || {}) }}
+                  </div>
+                  <div v-if="action.error" class="ai-action-error">
+                    {{ action.error }}
+                  </div>
+                  <div
+                    v-if="action.status === 'pending'"
+                    class="ai-action-buttons"
+                  >
+                    <button
+                      type="button"
+                      class="ai-action-btn ai-action-btn--accept"
+                      @click="handleAcceptAction(msg.id, action)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      class="ai-action-btn ai-action-btn--reject"
+                      @click="handleRejectAction(msg.id, action)"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </template>
@@ -482,7 +665,9 @@ function handleHistorySelect(session) {
 // Slide animation
 .ai-sidebar-slide-enter-active,
 .ai-sidebar-slide-leave-active {
-  transition: transform 0.22s ease, opacity 0.22s ease;
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease;
 }
 
 .ai-sidebar-slide-enter-from,
@@ -537,6 +722,16 @@ function handleHistorySelect(session) {
   color: var(--primary-600, #2563eb);
 }
 
+.ai-mode-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 2px 6px;
+}
+
 .ai-chat-header-actions {
   display: flex;
   align-items: center;
@@ -555,7 +750,9 @@ function handleHistorySelect(session) {
   border-radius: 6px;
   color: var(--ui-text-muted, #64748b);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   flex-shrink: 0;
 
   &:hover {
@@ -582,7 +779,9 @@ function handleHistorySelect(session) {
   color: var(--ui-text-muted, #64748b);
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   max-width: 160px;
   width: 100%;
 
@@ -793,6 +992,99 @@ function handleHistorySelect(session) {
   color: var(--ui-text, #0f172a);
 }
 
+.ai-action-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-action-item {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+}
+
+.ai-action-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ai-action-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.ai-action-status {
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ai-action-status.is-pending {
+  color: #92400e;
+}
+
+.ai-action-status.is-applying {
+  color: #1d4ed8;
+}
+
+.ai-action-status.is-accepted {
+  color: #166534;
+}
+
+.ai-action-status.is-rejected {
+  color: #991b1b;
+}
+
+.ai-action-status.is-failed {
+  color: #b91c1c;
+}
+
+.ai-action-args {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 11px;
+  color: #334155;
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 6px;
+  overflow-x: auto;
+}
+
+.ai-action-error {
+  font-size: 11px;
+  color: #b91c1c;
+  margin-top: 4px;
+}
+
+.ai-action-buttons {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.ai-action-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ai-action-btn--accept {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ai-action-btn--reject {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .ai-chat-msg-text {
   display: inline;
 }
@@ -837,7 +1129,9 @@ function handleHistorySelect(session) {
   color: var(--ui-text, #0f172a);
   background: var(--gray-50, #f8fafc);
   outline: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 
   &:focus {
     border-color: var(--primary-400, #60a5fa);
@@ -867,7 +1161,9 @@ function handleHistorySelect(session) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
 
   &:hover:not(:disabled) {
     background: var(--primary-700, #1d4ed8);

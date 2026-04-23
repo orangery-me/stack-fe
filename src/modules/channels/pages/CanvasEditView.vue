@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount, ref, computed, shallowRef, nextTick } from "vue";
+import {
+  watch,
+  onBeforeUnmount,
+  ref,
+  computed,
+  shallowRef,
+  nextTick,
+} from "vue";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
@@ -11,6 +18,7 @@ import { Editor } from "@tiptap/vue-3";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import { AiPreviewExtension } from "@/components/editor/ai-preview.extension";
 import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
@@ -19,6 +27,9 @@ import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useLoading } from "@/composables/useLoading.js";
+import { useUiStore } from "@/stores/ui.store.js";
+
+const uiStore = useUiStore();
 
 const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
@@ -30,6 +41,12 @@ const queryClient = useQueryClient();
 const { showFullscreen, hideFullscreen } = useLoading();
 
 const canvasId = computed(() => route.params.canvasId as string);
+const aiCanvasContext = computed(() => ({
+  kind: "canvas",
+  canvasId: canvasId.value,
+  canvasTitle: displayTitle.value,
+  canvasPlainText: canvasPlainText.value,
+}));
 
 // ======== Title =========
 
@@ -47,7 +64,7 @@ watch(
     if (loading) showFullscreen();
     else hideFullscreen();
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(
@@ -65,7 +82,7 @@ watch(
       if (c?.title != null) displayTitle.value = c.title ?? "";
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 function onTitleUpdate(value: string) {
@@ -123,7 +140,7 @@ const hadChangesSinceLastSaved = ref(false);
 const displaySaveStatus = computed<"saved" | "saving">(() =>
   saveStatus.value === "saving" || hadChangesSinceLastSaved.value
     ? "saving"
-    : "saved"
+    : "saved",
 );
 
 const jwtToken = computed(() => authStore.accessToken);
@@ -187,7 +204,6 @@ const {
   slashMenu,
   aiWriterBar,
   selectionAiIcon,
-  selectionAiBar,
   canvasPlainText,
   buildSlashCommandExtension,
   buildSelectionListener,
@@ -199,14 +215,7 @@ const {
   handleAccept,
   handleReject,
   handleAiWriterClose,
-  // Phase 3
   handleSelectionIconClick,
-  handleSelectionPreviewStart,
-  handleSelectionPreviewChunk,
-  handleSelectionPreviewDone,
-  handleSelectionAccept,
-  handleSelectionReject,
-  handleSelectionAiClose,
 } = useCanvasAiWriter(editor);
 
 // ======== Editor setup =========
@@ -289,7 +298,9 @@ function setupForCanvas(id: string) {
   syncReadyTimeoutId = setTimeout(() => {
     syncReadyTimeoutId = undefined;
     if (isEditorReady.value) return;
-    console.warn("[CanvasEditView] Sync timeout – enabling editor (offline mode)");
+    console.warn(
+      "[CanvasEditView] Sync timeout – enabling editor (offline mode)",
+    );
     syncStatus.value = "offline";
     setEditorReady();
   }, SYNC_READY_TIMEOUT_MS);
@@ -307,7 +318,9 @@ function setupForCanvas(id: string) {
       }),
       Placeholder.configure({
         placeholder: ({ node }) =>
-          node.type.name === "heading" ? "Title or start writing…" : "Type something…",
+          node.type.name === "heading"
+            ? "Title or start writing…"
+            : "Type something…",
       }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Subscript,
@@ -335,7 +348,7 @@ watch(
     }
     setupForCanvas(id);
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 onBeforeUnmount(() => {
@@ -355,22 +368,44 @@ function handleMoveToTrash() {
 
 <template>
   <div class="canvas-edit-view">
-    <div class="canvas-edit-view__editor">
+    <div
+      class="canvas-edit-view__editor"
+      :style="
+        uiStore.isAiOpen ? { paddingRight: uiStore.aiSidebarWidth + 'px' } : {}
+      "
+    >
       <div v-if="!isEditorReady" class="canvas-edit-view__blocker" />
-      <div v-if="syncStatus === 'offline' && isEditorReady" class="canvas-edit-view__offline-banner">
+      <div
+        v-if="syncStatus === 'offline' && isEditorReady"
+        class="canvas-edit-view__offline-banner"
+      >
         Đang chỉnh sửa offline – máy chủ đồng bộ chưa kết nối.
       </div>
-      <RichEditor v-if="editor" :editor="editor" :read-only="!isEditorReady" :title="displayTitle"
-        :viewers="onlineUsers" :current-user="currentUser" :save-status="displaySaveStatus" :slash-menu="slashMenu"
-        :ai-writer-bar="aiWriterBar" :selection-ai-icon="selectionAiIcon" :selection-ai-bar="selectionAiBar"
-        :canvas-plain-text="canvasPlainText" @update:title="onTitleUpdate" @download="handleDownload"
-        @move-to-trash="handleMoveToTrash" @preview-start="handlePreviewStart" @preview-chunk="handlePreviewChunk"
-        @preview-done="handlePreviewDone" @accept="handleAccept" @reject="handleReject" @ai-close="handleAiWriterClose"
-        @selection-icon-click="handleSelectionIconClick" @selection-preview-start="handleSelectionPreviewStart"
-        @selection-preview-chunk="handleSelectionPreviewChunk" @selection-preview-done="handleSelectionPreviewDone"
-        @selection-accept="handleSelectionAccept" @selection-reject="handleSelectionReject"
-        @selection-ai-close="handleSelectionAiClose" />
+      <RichEditor
+        v-if="editor"
+        :editor="editor"
+        :read-only="!isEditorReady"
+        :title="displayTitle"
+        :viewers="onlineUsers"
+        :current-user="currentUser"
+        :save-status="displaySaveStatus"
+        :slash-menu="slashMenu"
+        :ai-writer-bar="aiWriterBar"
+        :selection-ai-icon="selectionAiIcon"
+        :canvas-plain-text="canvasPlainText"
+        @update:title="onTitleUpdate"
+        @download="handleDownload"
+        @move-to-trash="handleMoveToTrash"
+        @preview-start="handlePreviewStart"
+        @preview-chunk="handlePreviewChunk"
+        @preview-done="handlePreviewDone"
+        @accept="handleAccept"
+        @reject="handleReject"
+        @ai-close="handleAiWriterClose"
+        @selection-icon-click="handleSelectionIconClick"
+      />
     </div>
+    <AiChatSidebar v-model:open="uiStore.isAiOpen" :context="aiCanvasContext" />
   </div>
 </template>
 

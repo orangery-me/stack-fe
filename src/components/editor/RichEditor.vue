@@ -3,9 +3,15 @@ import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
 import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
 import AiWriterBar from "@/components/editor/AiWriterBar.vue";
-import AiSelectionBar from "@/components/editor/AiSelectionBar.vue";
 import AiSelectionIcon from "@/components/editor/AiSelectionIcon.vue";
-import type { SlashMenuState, AiWriterBarState, SelectionAiBarState, SelectionAiIconState } from "@/composables/useCanvasAiWriter";
+import type {
+  SlashMenuState,
+  AiWriterBarState,
+  SelectionAiIconState,
+} from "@/composables/useCanvasAiWriter";
+import { useUiStore } from "@/stores/ui.store.js";
+
+const uiStore = useUiStore();
 
 export type ViewerUser = {
   userId: string;
@@ -31,9 +37,8 @@ const props = withDefaults(
     // AI Writer — optional; if provided, SlashCommandMenu + AiWriterBar are rendered
     slashMenu?: SlashMenuState | null;
     aiWriterBar?: AiWriterBarState | null;
-    // Selection AI
+    // Selection AI trigger
     selectionAiIcon?: SelectionAiIconState | null;
-    selectionAiBar?: SelectionAiBarState | null;
     canvasPlainText?: string;
   }>(),
   {
@@ -45,9 +50,8 @@ const props = withDefaults(
     slashMenu: null,
     aiWriterBar: null,
     selectionAiIcon: null,
-    selectionAiBar: null,
     canvasPlainText: "",
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -63,14 +67,8 @@ const emit = defineEmits<{
   accept: [];
   reject: [];
   "ai-close": [];
-  // Selection AI
+  // Selection AI trigger
   "selection-icon-click": [];
-  "selection-preview-start": [];
-  "selection-preview-chunk": [chunk: string];
-  "selection-preview-done": [];
-  "selection-accept": [editMode: "replace" | "append"];
-  "selection-reject": [];
-  "selection-ai-close": [];
 }>();
 
 function onTitleInput(e: Event) {
@@ -81,7 +79,7 @@ function onTitleInput(e: Event) {
 const editor = computed(() => props.editor);
 
 const displaySaveStatus = computed<"saved" | "saving">(
-  () => props.saveStatus ?? "saved"
+  () => props.saveStatus ?? "saved",
 );
 
 watch(
@@ -89,7 +87,7 @@ watch(
   ([inst, readOnly]) => {
     if (inst) inst.setEditable(!readOnly);
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 const currentHeadingLabel = computed(() => {
@@ -532,6 +530,30 @@ onBeforeUnmount(() => {
               class="rte-header-action-icon rte-header-action-icon--comment"
             />
           </button>
+          <button
+            type="button"
+            class="rte-header-action-btn rte-header-action-btn--ai"
+            :class="{ 'rte-header-action-btn--ai-active': uiStore.isAiOpen }"
+            title="AI Assistant"
+            aria-label="AI Assistant"
+            @click="uiStore.toggleAi()"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+              />
+            </svg>
+          </button>
           <details class="rte-share-wrap">
             <summary class="rte-share-btn">
               <img
@@ -913,19 +935,6 @@ onBeforeUnmount(() => {
     :icon-rect="selectionAiIcon.iconRect"
     @click="emit('selection-icon-click')"
   />
-
-  <AiSelectionBar
-    v-if="selectionAiBar?.visible"
-    :anchor-rect="selectionAiBar.anchorRect"
-    :canvas-content="canvasPlainText"
-    :selected-text="selectionAiBar.selectedText"
-    @preview-start="emit('selection-preview-start')"
-    @preview-chunk="emit('selection-preview-chunk', $event)"
-    @preview-done="emit('selection-preview-done')"
-    @accept="emit('selection-accept', $event)"
-    @reject="emit('selection-reject')"
-    @close="emit('selection-ai-close')"
-  />
 </template>
 
 <style scoped>
@@ -1273,7 +1282,10 @@ onBeforeUnmount(() => {
   cursor: pointer;
   position: relative;
   z-index: 1;
-  transition: border-color 0.15s, box-shadow 0.15s, z-index 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    z-index 0.15s;
 }
 
 .rte-viewer-avatar:first-child {
@@ -1336,6 +1348,24 @@ onBeforeUnmount(() => {
 
 .rte-header-action-btn:hover {
   background: #f3f4f6;
+}
+
+.rte-header-action-btn--ai {
+  color: #6b7280;
+}
+
+.rte-header-action-btn--ai:hover {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.rte-header-action-btn--ai-active {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.rte-header-action-btn--ai-active:hover {
+  background: #ddd6fe;
 }
 
 .rte-header-action-icon {

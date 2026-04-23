@@ -1,24 +1,28 @@
-import apiHelper from '@/helpers/api.helper.js';
-import { API_BASE_URL, API_ENDPOINTS } from '@/config/api.js';
+import apiHelper from "@/helpers/api.helper.js";
+import { API_BASE_URL, API_ENDPOINTS } from "@/config/api.js";
 
 // ---- Shared SSE stream helper ----
 
-async function _fetchSSEStream(url, body, { signal, onChunk, onDone, onError } = {}) {
-  const accessToken = localStorage.getItem('accessToken');
+async function _fetchSSEStream(
+  url,
+  body,
+  { signal, onChunk, onEvent, onDone, onError } = {},
+) {
+  const accessToken = localStorage.getItem("accessToken");
 
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       },
       body: JSON.stringify(body),
       signal,
     });
   } catch (err) {
-    if (err.name === 'AbortError') return;
+    if (err.name === "AbortError") return;
     onError?.(err);
     return;
   }
@@ -30,7 +34,7 @@ async function _fetchSSEStream(url, body, { signal, onChunk, onDone, onError } =
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = '';
+  let buffer = "";
 
   try {
     while (true) {
@@ -38,15 +42,15 @@ async function _fetchSSEStream(url, body, { signal, onChunk, onDone, onError } =
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed.startsWith('data: ')) continue;
+        if (!trimmed.startsWith("data: ")) continue;
         const dataStr = trimmed.slice(6).trim();
 
-        if (dataStr === '[DONE]') {
+        if (dataStr === "[DONE]") {
           onDone?.();
           return;
         }
@@ -57,7 +61,25 @@ async function _fetchSSEStream(url, body, { signal, onChunk, onDone, onError } =
             onError?.(new Error(data.error));
             return;
           }
-          if (typeof data.chunk === 'string' && data.chunk) {
+          if (data.event && typeof data.event === "object") {
+            onEvent?.(data.event);
+          }
+          if (data.chunk && typeof data.chunk === "string") {
+            try {
+              const maybeEvent = JSON.parse(data.chunk);
+              if (
+                maybeEvent &&
+                typeof maybeEvent === "object" &&
+                typeof maybeEvent.type === "string"
+              ) {
+                onEvent?.(maybeEvent);
+                continue;
+              }
+            } catch {
+              // Keep as plain text chunk
+            }
+          }
+          if (typeof data.chunk === "string" && data.chunk) {
             onChunk?.(data.chunk);
           }
         } catch {
@@ -66,7 +88,7 @@ async function _fetchSSEStream(url, body, { signal, onChunk, onDone, onError } =
       }
     }
   } catch (err) {
-    if (err.name === 'AbortError') return;
+    if (err.name === "AbortError") return;
     onError?.(err);
     return;
   }
@@ -91,7 +113,15 @@ export async function askAgent({ message, provider, model }) {
 /**
  * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
  */
-export async function askAgentStream({ message, provider, model, signal, onChunk, onDone, onError }) {
+export async function askAgentStream({
+  message,
+  provider,
+  model,
+  signal,
+  onChunk,
+  onDone,
+  onError,
+}) {
   await _fetchSSEStream(
     API_ENDPOINTS.AGENT.ASK_STREAM,
     { message, ...(provider && { provider }), ...(model && { model }) },
@@ -125,7 +155,9 @@ export async function listSessions() {
  * @returns {Promise<Session>}
  */
 export async function createSession(title) {
-  const response = await apiHelper.post(API_ENDPOINTS.AGENT.SESSIONS, { title });
+  const response = await apiHelper.post(API_ENDPOINTS.AGENT.SESSIONS, {
+    title,
+  });
   return response.data?.data ?? response.data;
 }
 
@@ -135,7 +167,10 @@ export async function createSession(title) {
  * @param {{ page?: number, size?: number }} [pagination]
  * @returns {Promise<{ messages: ChatMessage[], total: number, hasMore: boolean }>}
  */
-export async function getSessionMessages(sessionId, { page = 1, size = 50 } = {}) {
+export async function getSessionMessages(
+  sessionId,
+  { page = 1, size = 50 } = {},
+) {
   const response = await apiHelper.get(
     `${API_ENDPOINTS.AGENT.SESSION_MESSAGES(sessionId)}?page=${page}&size=${size}`,
   );
@@ -149,7 +184,10 @@ export async function getSessionMessages(sessionId, { page = 1, size = 50 } = {}
  * @returns {Promise<Session>}
  */
 export async function updateSession(sessionId, title) {
-  const response = await apiHelper.patch(API_ENDPOINTS.AGENT.SESSION_UPDATE(sessionId), { title });
+  const response = await apiHelper.patch(
+    API_ENDPOINTS.AGENT.SESSION_UPDATE(sessionId),
+    { title },
+  );
   return response.data?.data ?? response.data;
 }
 
@@ -158,7 +196,10 @@ export async function updateSession(sessionId, title) {
  * @param {string} sessionId
  * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
  */
-export async function sendMessageStream(sessionId, { message, provider, model, signal, onChunk, onDone, onError }) {
+export async function sendMessageStream(
+  sessionId,
+  { message, provider, model, signal, onChunk, onDone, onError },
+) {
   await _fetchSSEStream(
     API_ENDPOINTS.AGENT.SESSION_SEND_STREAM(sessionId),
     { message, ...(provider && { provider }), ...(model && { model }) },
@@ -168,16 +209,23 @@ export async function sendMessageStream(sessionId, { message, provider, model, s
 
 /**
  * Canvas AI Writer — stream AI-generated content to insert into the canvas.
- * @param {{ canvasContent: string, userRequest: string, selectedText?: string, editMode?: 'replace'|'append', provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
+ * @param {{ canvasContent: string, userRequest: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
  */
-export async function sendCanvasAiWriteStream({ canvasContent, userRequest, selectedText, editMode, provider, model, signal, onChunk, onDone, onError }) {
+export async function sendCanvasAiWriteStream({
+  canvasContent,
+  userRequest,
+  provider,
+  model,
+  signal,
+  onChunk,
+  onDone,
+  onError,
+}) {
   await _fetchSSEStream(
     API_ENDPOINTS.AGENT.CANVAS_WRITE_STREAM,
     {
-      canvasContent: canvasContent ?? '',
+      canvasContent: canvasContent ?? "",
       userRequest,
-      ...(selectedText && { selectedText }),
-      ...(editMode && { editMode }),
       ...(provider && { provider }),
       ...(model && { model }),
     },
@@ -185,3 +233,49 @@ export async function sendCanvasAiWriteStream({ canvasContent, userRequest, sele
   );
 }
 
+/**
+ * Canvas chat stream with persisted session history.
+ * Streams assistant text + structured action events for Accept/Reject UI.
+ */
+export async function sendCanvasSessionMessageStream(
+  sessionId,
+  {
+    canvasId,
+    canvasContent,
+    message,
+    provider,
+    model,
+    signal,
+    onChunk,
+    onEvent,
+    onDone,
+    onError,
+  },
+) {
+  await _fetchSSEStream(
+    API_ENDPOINTS.AGENT.SESSION_CANVAS_SEND_STREAM(sessionId),
+    {
+      canvasId,
+      canvasContent: canvasContent ?? "",
+      message,
+      ...(provider && { provider }),
+      ...(model && { model }),
+    },
+    { signal, onChunk, onEvent, onDone, onError },
+  );
+}
+
+/**
+ * Apply one approved canvas action.
+ */
+export async function applyCanvasAction({ canvasId, actionName, actionArgs }) {
+  const response = await apiHelper.post(
+    API_ENDPOINTS.AGENT.CANVAS_APPLY_ACTION,
+    {
+      canvasId,
+      actionName,
+      actionArgsJson: JSON.stringify(actionArgs ?? {}),
+    },
+  );
+  return response.data?.data ?? response.data;
+}
