@@ -160,6 +160,14 @@
   }
 }
 
+// Main Content
+.workspace-main-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
 // Sidebar
 .sidebar {
   background: var(--gray-50);
