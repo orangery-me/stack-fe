@@ -5,6 +5,8 @@ import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useChatStore } from "@/modules/channels/stores/chat.store";
 import AppLoading from "@/components/loading/AppLoading.vue";
 
+const emit = defineEmits(["add-people-to-channel"]);
+
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
 const chatStore = useChatStore();
@@ -144,6 +146,10 @@ const handleRetryMessage = (message) => {
   );
 };
 
+const handleAddPeopleToChannel = () => {
+  emit("add-people-to-channel");
+};
+
 const getChannelCreator = (channel) => {
   if (!channel || !channel.createdById) return null;
   const creator = members.value.find((m) => m.id === channel.createdById);
@@ -256,7 +262,11 @@ onUnmounted(() => {
               channel.
             </p>
             <div class="message-tab-action-cards">
-              <div class="action-card action-card--purple">
+              <button
+                class="action-card action-card--purple"
+                type="button"
+                @click="handleAddPeopleToChannel"
+              >
                 <div class="action-card-icon">
                   <img
                     src="/icons/message-circle-dot.svg"
@@ -264,7 +274,7 @@ onUnmounted(() => {
                   />
                 </div>
                 <h3 class="action-card-title">Add people to channel</h3>
-              </div>
+              </button>
               <div class="action-card action-card--blue">
                 <div class="action-card-icon">
                   <img src="/icons/file.svg" alt="Channel description icon" />

@@ -55,6 +55,20 @@ class ChannelService {
     );
     return response.data.data;
   }
+
+  /**
+   * Add a workspace user into channel
+   * @param {string} workspaceId
+   * @param {string} channelId
+   * @param {{ userId: string, memberRole?: 'manager' | 'member' }} payload
+   */
+  async addMember(workspaceId, channelId, payload) {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CHANNELS.ADD_MEMBER(workspaceId, channelId),
+      payload
+    );
+    return response.data.data;
+  }
 }
 
 export default new ChannelService();

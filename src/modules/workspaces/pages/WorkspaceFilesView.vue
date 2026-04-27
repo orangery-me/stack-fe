@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
+import { useNotificationStore } from "@/modules/notifications/stores/notification.store.js";
 import { useUiStore } from "@/stores/ui.store.js";
 import workspaceFilesService from "@/services/workspaceFiles.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
@@ -12,8 +13,11 @@ const router = useRouter();
 const workspaceId = route.params.id;
 
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
 const uiStore = useUiStore();
 const currentUser = computed(() => authStore.user);
+const unreadCount = computed(() => notificationStore.unreadCount);
+const notifications = computed(() => notificationStore.items);
 
 // Files page state
 const myCanvases = ref([]);
@@ -52,6 +56,22 @@ const goToWorkspaceFiles = () => {
       params: { id: workspaceId },
     });
   }
+};
+
+const toggleActivityPanel = async () => {
+  if (notificationStore.isPanelOpen) {
+    notificationStore.closePanel();
+    return;
+  }
+  await notificationStore.openPanel(workspaceId);
+};
+
+const markNotificationRead = async (notificationId) => {
+  await notificationStore.markRead(notificationId, workspaceId);
+};
+
+const markAllNotificationsRead = async () => {
+  await notificationStore.markAllRead(workspaceId);
 };
 
 const documents = computed(() => {
@@ -136,7 +156,13 @@ const handleCreateNewCanvas = async () => {
 };
 
 onMounted(async () => {
+  await notificationStore.fetchUnreadCount(workspaceId);
+  await notificationStore.connectRealtime(workspaceId);
   await loadCanvasesForTab();
+});
+
+onBeforeUnmount(() => {
+  notificationStore.disconnectRealtime();
 });
 </script>
 
@@ -183,16 +209,15 @@ onMounted(async () => {
           <span class="icon-menu-label">DMs</span>
         </button>
 
-        <button
-          class="icon-menu-item"
-          title="Activity"
-          type="button"
-        >
+        <button class="icon-menu-item" title="Activity" type="button" @click="toggleActivityPanel">
           <img
             src="/icons/notification.svg"
             alt="Activity"
             class="icon-menu-svg"
           >
+          <span v-if="unreadCount > 0" class="notification-badge">{{
+            unreadCount > 99 ? "99+" : unreadCount
+          }}</span>
           <span class="icon-menu-label">Activity</span>
         </button>
 
@@ -562,6 +587,40 @@ onMounted(async () => {
     </div>
 
     <AiChatSidebar v-model:open="uiStore.isAiOpen" />
+
+    <div
+      v-if="notificationStore.isPanelOpen"
+      class="notification-overlay"
+      @click.self="notificationStore.closePanel()"
+    >
+      <div class="notification-panel">
+        <div class="notification-panel-header">
+          <h3>Activity</h3>
+          <button type="button" @click="markAllNotificationsRead">
+            Mark all as read
+          </button>
+        </div>
+        <div v-if="notificationStore.loading" class="notification-empty">
+          Loading...
+        </div>
+        <div v-else-if="notifications.length === 0" class="notification-empty">
+          No notifications yet.
+        </div>
+        <div v-else class="notification-list">
+          <button
+            v-for="item in notifications"
+            :key="item.id"
+            class="notification-item"
+            :class="{ unread: !item.readAt }"
+            type="button"
+            @click="markNotificationRead(item.id)"
+          >
+            <div class="notification-item-title">{{ item.title || "Notification" }}</div>
+            <div class="notification-item-body">{{ item.body || "You have a new update." }}</div>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

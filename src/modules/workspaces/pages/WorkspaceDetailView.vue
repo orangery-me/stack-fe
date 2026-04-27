@@ -6,6 +6,7 @@ import { useLoading } from "@/composables/useLoading.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
+import { useNotificationStore } from "@/modules/notifications/stores/notification.store.js";
 import { useUiStore } from "@/stores/ui.store.js";
 import CreateChannelModal from "@/modules/channels/components/CreateChannelModal.vue";
 import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
@@ -17,6 +18,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
+const notificationStore = useNotificationStore();
 const uiStore = useUiStore();
 const { showFullscreen, hideFullscreen } = useLoading();
 
@@ -28,6 +30,8 @@ const workspace = computed(() => workspaceStore.workspaceDetail);
 const members = computed(() => workspaceStore.members);
 const channels = computed(() => channelStore.channels);
 const selectedChannel = computed(() => channelStore.selectedChannel);
+const notifications = computed(() => notificationStore.items);
+const unreadCount = computed(() => notificationStore.unreadCount);
 
 const shouldFullscreenLoading = computed(() => {
   return (
@@ -55,6 +59,7 @@ watch(
 
 onBeforeUnmount(() => {
   hideFullscreen();
+  notificationStore.disconnectRealtime();
 });
 
 const channelsExpanded = ref(true);
@@ -123,13 +128,31 @@ const goToWorkspaceFiles = () => {
   });
 };
 
+const toggleActivityPanel = async () => {
+  if (notificationStore.isPanelOpen) {
+    notificationStore.closePanel();
+    return;
+  }
+  await notificationStore.openPanel(workspaceId);
+};
+
+const markNotificationRead = async (notificationId) => {
+  await notificationStore.markRead(notificationId, workspaceId);
+};
+
+const markAllNotificationsRead = async () => {
+  await notificationStore.markAllRead(workspaceId);
+};
+
 onMounted(async () => {
   try {
     await Promise.all([
       workspaceStore.fetchWorkspaceById(workspaceId),
       workspaceStore.fetchMembers(workspaceId),
       channelStore.fetchUserChannels(workspaceId),
+      notificationStore.fetchUnreadCount(workspaceId),
     ]);
+    await notificationStore.connectRealtime(workspaceId);
 
     // Automatically select default channel
     const defaultChannel = channelStore.channels.find(
@@ -180,12 +203,20 @@ onMounted(async () => {
           <span class="icon-menu-label">DMs</span>
         </button>
 
-        <button class="icon-menu-item" title="Activity" type="button">
+        <button
+          class="icon-menu-item"
+          title="Activity"
+          type="button"
+          @click="toggleActivityPanel"
+        >
           <img
             src="/icons/notification.svg"
             alt="Activity"
             class="icon-menu-svg"
           />
+          <span v-if="unreadCount > 0" class="notification-badge">{{
+            unreadCount > 99 ? "99+" : unreadCount
+          }}</span>
           <span class="icon-menu-label">Activity</span>
         </button>
 
@@ -412,6 +443,40 @@ onMounted(async () => {
     />
 
     <AiChatSidebar v-model:open="uiStore.isAiOpen" />
+
+    <div
+      v-if="notificationStore.isPanelOpen"
+      class="notification-overlay"
+      @click.self="notificationStore.closePanel()"
+    >
+      <div class="notification-panel">
+        <div class="notification-panel-header">
+          <h3>Activity</h3>
+          <button type="button" @click="markAllNotificationsRead">
+            Mark all as read
+          </button>
+        </div>
+        <div v-if="notificationStore.loading" class="notification-empty">
+          Loading...
+        </div>
+        <div v-else-if="notifications.length === 0" class="notification-empty">
+          No notifications yet.
+        </div>
+        <div v-else class="notification-list">
+          <button
+            v-for="item in notifications"
+            :key="item.id"
+            class="notification-item"
+            :class="{ unread: !item.readAt }"
+            type="button"
+            @click="markNotificationRead(item.id)"
+          >
+            <div class="notification-item-title">{{ item.title || "Notification" }}</div>
+            <div class="notification-item-body">{{ item.body || "You have a new update." }}</div>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

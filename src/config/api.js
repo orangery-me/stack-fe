@@ -25,10 +25,18 @@ export const API_ENDPOINTS = {
     GET_ALL_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     CREATE: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
+    ADD_MEMBER: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/members`,
   },
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
     SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+  },
+  NOTIFICATIONS: {
+    LIST: "/notifications",
+    UNREAD_COUNT: "/notifications/unread-count",
+    MARK_READ: (id) => `/notifications/${id}/read`,
+    MARK_READ_ALL: "/notifications/read-all",
   },
   CANVAS: {
     // List & create (query channelId)
