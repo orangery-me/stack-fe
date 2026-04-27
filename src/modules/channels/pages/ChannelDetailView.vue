@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
@@ -8,6 +8,7 @@ import channelService from "@/services/channel.service.js";
 import { useToast } from "@/composables/useToast.js";
 import MessageTabView from "@/modules/channels/components/messages/MessageTabView.vue";
 import AutoComplete from "primevue/autocomplete";
+import Listbox from "primevue/listbox";
 
 const route = useRoute();
 const { success, info } = useToast();
@@ -23,6 +24,42 @@ const isInviteModalOpen = ref(false);
 const selectedMember = ref(null);
 const isSubmittingInvite = ref(false);
 const items = ref([]);
+const isChannelMenuOpen = ref(false);
+const isChannelDetailModalOpen = ref(false);
+const channelMenuRef = ref(null);
+const selectedChannelAction = ref(null);
+const channelActions = ref([
+  { name: "Open channel details", code: "open-details" },
+  { name: "Search in channel", code: "search-channel" },
+  { name: "Edit settings", code: "edit-settings" },
+  { name: "Leave channel", code: "leave-channel" },
+]);
+const activeDetailTab = ref("about");
+
+const channelDetailTabs = computed(() => [
+  { key: "about", label: "About" },
+  { key: "members", label: `Members ${workspaceMembers.value.length}` },
+  { key: "tabs", label: "Tabs" },
+  { key: "integrations", label: "Integrations" },
+  { key: "settings", label: "Settings" },
+]);
+
+const createdByDisplay = computed(() => {
+  if (!selectedChannel.value?.createdById) return "Unknown";
+  const creator = workspaceMembers.value.find(
+    (member) => member.id === selectedChannel.value.createdById
+  );
+  return creator?.name || creator?.email || "Unknown";
+});
+
+const createdAtDisplay = computed(() => {
+  if (!selectedChannel.value?.createdAt) return "";
+  return new Date(selectedChannel.value.createdAt).toLocaleString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+});
 
 const availableMembers = computed(() => {
   const currentUserId = authStore.user?.id;
@@ -85,6 +122,61 @@ const submitInviteTeammate = async () => {
     isSubmittingInvite.value = false;
   }
 };
+
+const closeChannelMenu = () => {
+  isChannelMenuOpen.value = false;
+  selectedChannelAction.value = null;
+};
+
+const toggleChannelMenu = () => {
+  isChannelMenuOpen.value = !isChannelMenuOpen.value;
+};
+
+const openChannelDetailsModal = () => {
+  isChannelDetailModalOpen.value = true;
+};
+
+const closeChannelDetailsModal = () => {
+  isChannelDetailModalOpen.value = false;
+};
+
+const leaveChannel = () => {
+  info("Leave channel flow is coming soon.");
+};
+
+const onChannelActionChange = (action) => {
+  switch (action?.code) {
+    case "open-details":
+      openChannelDetailsModal();
+      break;
+    case "search-channel":
+      info("Search in channel is coming soon.");
+      break;
+    case "edit-settings":
+      info("Edit channel settings is coming soon.");
+      break;
+    case "leave-channel":
+      leaveChannel();
+      break;
+    default:
+      break;
+  }
+  closeChannelMenu();
+};
+
+const handleClickOutsideChannelMenu = (event) => {
+  if (!isChannelMenuOpen.value) return;
+  if (channelMenuRef.value?.contains(event.target)) return;
+  closeChannelMenu();
+};
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutsideChannelMenu);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutsideChannelMenu);
+});
 </script>
 
 <template>
@@ -117,37 +209,34 @@ const submitInviteTeammate = async () => {
           >
             Invite teammates
           </button>
-          <button
-            class="header-button"
-            title="More options"
+          <div
+            ref="channelMenuRef"
+            class="channel-actions-menu"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+            <button
+              class="header-button"
+              title="More options"
+              type="button"
+              @click.stop="toggleChannelMenu"
             >
-              <circle
-                cx="12"
-                cy="12"
-                r="1"
-                fill="currentColor"
+              <i
+                class="pi pi-ellipsis-v"
+                style="font-size: 12px"
               />
-              <circle
-                cx="19"
-                cy="12"
-                r="1"
-                fill="currentColor"
+            </button>
+            <div
+              v-if="isChannelMenuOpen"
+              class="channel-actions-menu__overlay"
+            >
+              <Listbox
+                v-model="selectedChannelAction"
+                :options="channelActions"
+                option-label="name"
+                class="channel-actions-listbox"
+                @change="onChannelActionChange($event.value)"
               />
-              <circle
-                cx="5"
-                cy="12"
-                r="1"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
+            </div>
+          </div>
         </div>
       </div>
       <!-- list of tabs -->
@@ -213,6 +302,89 @@ const submitInviteTeammate = async () => {
           >
             {{ isSubmittingInvite ? "Adding..." : "Add to channel" }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="isChannelDetailModalOpen"
+      class="channel-detail-overlay"
+      @click.self="closeChannelDetailsModal"
+    >
+      <div class="channel-detail-modal">
+        <div class="channel-detail-modal__header">
+          <h3># {{ selectedChannel?.name || "Unknown channel" }}</h3>
+          <button
+            type="button"
+            class="channel-detail-modal__close"
+            @click="closeChannelDetailsModal"
+          >
+            <i class="pi pi-times" />
+          </button>
+        </div>
+        <div class="channel-detail-tabs">
+          <button
+            v-for="tab in channelDetailTabs"
+            :key="tab.key"
+            type="button"
+            class="channel-detail-tab"
+            :class="{ 'channel-detail-tab--active': activeDetailTab === tab.key }"
+            @click="activeDetailTab = tab.key"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+        <div class="channel-detail-modal__body">
+          <div class="channel-detail-section">
+            <span class="channel-detail-section__label">Channel name</span>
+            <span class="channel-detail-section__value"># {{ selectedChannel?.name || "Unknown channel" }}</span>
+          </div>
+          <div class="channel-detail-group">
+            <div class="channel-detail-row">
+              <div class="channel-detail-row__content">
+                <span class="channel-detail-section__label">Topic</span>
+                <span class="channel-detail-section__value">{{ selectedChannel?.topic || "Add a topic" }}</span>
+              </div>
+              <button
+                type="button"
+                class="channel-detail-edit-btn"
+                @click="info('Edit topic is coming soon.')"
+              >
+                Edit
+              </button>
+            </div>
+            <div class="channel-detail-row">
+              <div class="channel-detail-row__content">
+                <span class="channel-detail-section__label">Description</span>
+                <span class="channel-detail-section__value">{{ selectedChannel?.description || "No description yet." }}</span>
+              </div>
+              <button
+                type="button"
+                class="channel-detail-edit-btn"
+                @click="info('Edit description is coming soon.')"
+              >
+                Edit
+              </button>
+            </div>
+            <div class="channel-detail-row">
+              <div class="channel-detail-row__content">
+                <span class="channel-detail-section__label">Created by</span>
+                <span class="channel-detail-section__value">
+                  {{ createdByDisplay }}{{ createdAtDisplay ? ` on ${createdAtDisplay}` : "" }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="channel-leave-btn"
+            @click="leaveChannel"
+          >
+            Leave channel
+          </button>
+          <div class="channel-detail-id">
+            Channel ID: {{ selectedChannel?.id || "N/A" }}
+          </div>
         </div>
       </div>
     </div>

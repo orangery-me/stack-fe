@@ -413,6 +413,7 @@ export const useChatStore = defineStore("chat", {
         senderId: message.senderId,
         authorName,
         content: message.content,
+        messageType: message.messageType || "text",
         createdAt: message.createdAt,
         channelId: message.channelId,
         status: message.status || status,

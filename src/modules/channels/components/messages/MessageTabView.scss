@@ -153,6 +153,11 @@
   margin-bottom: var(--space-12);
 }
 
+.message-item--system {
+  justify-content: center;
+  margin: 10px 0;
+}
+
 .message-item-avatar {
   width: 32px;
   height: 32px;
@@ -195,6 +200,16 @@
   color: var(--ui-text);
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+.message-item-content--system {
+  font-size: 12px;
+  color: var(--ui-text-hint);
+  border: 1px solid var(--ui-divider);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--gray-50);
+  text-align: center;
 }
 
 .message-item--pending {

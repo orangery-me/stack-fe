@@ -60,11 +60,54 @@ watch(
 onBeforeUnmount(() => {
   hideFullscreen();
   notificationStore.disconnectRealtime();
+  window.removeEventListener("mousemove", handleResizeMenuBar);
+  window.removeEventListener("mouseup", stopResizeMenuBar);
+  window.removeEventListener("resize", handleWindowResize);
+  stopResizeMenuBar();
 });
 
 const channelsExpanded = ref(true);
 const directMessagesExpanded = ref(true);
 const isCreateChannelModalOpen = ref(false);
+const menuBarWidth = ref(280);
+const isResizingMenuBar = ref(false);
+const resizeStartX = ref(0);
+const resizeStartWidth = ref(280);
+const MENU_BAR_MIN_WIDTH = 220;
+
+const getMenuBarMaxWidth = () => {
+  const maxByScreen = Math.floor(window.innerWidth * 0.35);
+  return Math.max(MENU_BAR_MIN_WIDTH, maxByScreen);
+};
+
+const clampMenuBarWidth = (width) => {
+  return Math.min(Math.max(width, MENU_BAR_MIN_WIDTH), getMenuBarMaxWidth());
+};
+
+const startResizeMenuBar = (event) => {
+  isResizingMenuBar.value = true;
+  resizeStartX.value = event.clientX;
+  resizeStartWidth.value = menuBarWidth.value;
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+};
+
+const stopResizeMenuBar = () => {
+  if (!isResizingMenuBar.value) return;
+  isResizingMenuBar.value = false;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+};
+
+const handleResizeMenuBar = (event) => {
+  if (!isResizingMenuBar.value) return;
+  const deltaX = event.clientX - resizeStartX.value;
+  menuBarWidth.value = clampMenuBarWidth(resizeStartWidth.value + deltaX);
+};
+
+const handleWindowResize = () => {
+  menuBarWidth.value = clampMenuBarWidth(menuBarWidth.value);
+};
 
 // Get workspace initials for logo
 const getWorkspaceInitials = (name) => {
@@ -145,6 +188,11 @@ const markAllNotificationsRead = async () => {
 };
 
 onMounted(async () => {
+  window.addEventListener("mousemove", handleResizeMenuBar);
+  window.addEventListener("mouseup", stopResizeMenuBar);
+  window.addEventListener("resize", handleWindowResize);
+  menuBarWidth.value = clampMenuBarWidth(menuBarWidth.value);
+
   try {
     await Promise.all([
       workspaceStore.fetchWorkspaceById(workspaceId),
@@ -172,7 +220,10 @@ onMounted(async () => {
 <template>
   <div
     class="workspace-detail-page"
-    :style="{ paddingRight: uiStore.isAiOpen ? uiStore.aiSidebarWidth + 'px' : '0' }"
+    :style="{
+      paddingRight: uiStore.isAiOpen ? uiStore.aiSidebarWidth + 'px' : '0',
+      '--workspace-sidebar-width': `${menuBarWidth}px`,
+    }"
   >
     <!-- Left Icon Menu Bar -->
     <div class="icon-menu-bar">
@@ -189,15 +240,21 @@ onMounted(async () => {
           title="Home"
           type="button"
         >
-          <img src="/icons/home.svg" alt="Home" class="icon-menu-svg" />
+          <i
+            class="pi pi-home icon-menu-svg"
+            aria-hidden="true"
+          />
           <span class="icon-menu-label">Home</span>
         </button>
 
-        <button class="icon-menu-item" title="DMs" type="button">
-          <img
-            src="/icons/message-circle-dot.svg"
-            alt="DMs"
-            class="icon-menu-svg"
+        <button
+          class="icon-menu-item"
+          title="DMs"
+          type="button"
+        >
+          <i
+            class="pi pi-comments icon-menu-svg"
+            aria-hidden="true"
           />
           <span class="notification-badge">1</span>
           <span class="icon-menu-label">DMs</span>
@@ -209,12 +266,14 @@ onMounted(async () => {
           type="button"
           @click="toggleActivityPanel"
         >
-          <img
-            src="/icons/notification.svg"
-            alt="Activity"
-            class="icon-menu-svg"
+          <i
+            class="pi pi-bell icon-menu-svg"
+            aria-hidden="true"
           />
-          <span v-if="unreadCount > 0" class="notification-badge">{{
+          <span
+            v-if="unreadCount > 0"
+            class="notification-badge"
+          >{{
             unreadCount > 99 ? "99+" : unreadCount
           }}</span>
           <span class="icon-menu-label">Activity</span>
@@ -227,7 +286,10 @@ onMounted(async () => {
           type="button"
           @click="goToWorkspaceFiles"
         >
-          <img src="/icons/file.svg" alt="Files" class="icon-menu-svg" />
+          <i
+            class="pi pi-folder icon-menu-svg"
+            aria-hidden="true"
+          />
           <span class="icon-menu-label">Files</span>
         </button>
 
@@ -238,34 +300,34 @@ onMounted(async () => {
           type="button"
           @click="uiStore.toggleAi"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="icon-menu-svg"
-          >
-            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-          </svg>
+          <i
+            class="pi pi-sparkles icon-menu-svg"
+            aria-hidden="true"
+          />
           <span class="icon-menu-label">AI</span>
         </button>
 
-        <button class="icon-menu-item" title="More" type="button">
-          <img
-            src="/icons/more-horizontal.svg"
-            alt="More"
-            class="icon-menu-svg"
+        <button
+          class="icon-menu-item"
+          title="More"
+          type="button"
+        >
+          <i
+            class="pi pi-ellipsis-h icon-menu-svg"
+            aria-hidden="true"
           />
           <span class="icon-menu-label">More</span>
         </button>
 
-        <button class="icon-menu-item" title="Admin" type="button">
-          <img src="/icons/setting.svg" alt="Admin" class="icon-menu-svg" />
+        <button
+          class="icon-menu-item"
+          title="Admin"
+          type="button"
+        >
+          <i
+            class="pi pi-cog icon-menu-svg"
+            aria-hidden="true"
+          />
           <span class="icon-menu-label">Admin</span>
         </button>
       </div>
@@ -282,10 +344,9 @@ onMounted(async () => {
       <div class="sidebar-header">
         <div class="workspace-name">
           <span>{{ workspaceDisplayName }}</span>
-          <img
-            src="/icons/arrow-down.svg"
-            alt="Toggle workspace menu"
-            class="workspace-arrow-icon"
+          <i
+            class="pi pi-angle-down workspace-arrow-icon"
+            aria-hidden="true"
           />
         </div>
       </div>
@@ -305,7 +366,10 @@ onMounted(async () => {
           <span>Error: Failed to load workspace details</span>
         </div>
 
-        <div v-else-if="!workspace" class="sidebar-loading">
+        <div
+          v-else-if="!workspace"
+          class="sidebar-loading"
+        >
           <span>Workspace not found</span>
         </div>
 
@@ -313,10 +377,9 @@ onMounted(async () => {
           <!-- Draft & Sent -->
           <div class="sidebar-section">
             <button class="sidebar-item">
-              <img
-                src="/icons/paperplane.svg"
-                alt="Drafts & sent"
-                class="sidebar-icon"
+              <i
+                class="pi pi-send sidebar-icon"
+                aria-hidden="true"
               />
               <span>Drafts & sent</span>
             </button>
@@ -325,10 +388,9 @@ onMounted(async () => {
           <!-- Directories -->
           <div class="sidebar-section">
             <button class="sidebar-item">
-              <img
-                src="/icons/directory.svg"
-                alt="Directories"
-                class="sidebar-icon"
+              <i
+                class="pi pi-folder-open sidebar-icon"
+                aria-hidden="true"
               />
               <span>Directories</span>
             </button>
@@ -336,17 +398,29 @@ onMounted(async () => {
 
           <!-- Channels -->
           <div class="sidebar-section">
-            <button class="sidebar-section-header" @click="toggleChannels">
-              <img
-                src="/icons/arrow-down.svg"
-                alt="Toggle channels"
-                class="sidebar-arrow-icon"
+            <button
+              class="sidebar-section-header"
+              @click="toggleChannels"
+            >
+              <i
+                class="pi pi-angle-down sidebar-arrow-icon"
+                aria-hidden="true"
+              />
+              <i
+                class="pi pi-hashtag sidebar-section-icon"
+                aria-hidden="true"
               />
               <span>Channels</span>
             </button>
 
-            <div v-if="channelsExpanded" class="sidebar-section-content">
-              <div v-if="channelStore.channelsLoading" class="sidebar-loading">
+            <div
+              v-if="channelsExpanded"
+              class="sidebar-section-content"
+            >
+              <div
+                v-if="channelStore.channelsLoading"
+                class="sidebar-loading"
+              >
                 <!-- fullscreen loading -->
               </div>
               <template v-else-if="channels && channels.length > 0">
@@ -357,17 +431,30 @@ onMounted(async () => {
                   :class="{ active: selectedChannel?.id === channel.id }"
                   @click="selectChannel(channel.id)"
                 >
-                  <span class="channel-prefix">#</span>
+                  <i
+                    class="pi pi-hashtag channel-prefix-icon"
+                    aria-hidden="true"
+                  />
                   <span class="channel-name">{{
                     channel.name || "Unnamed"
                   }}</span>
                 </button>
               </template>
-              <div v-else class="sidebar-loading">
+              <div
+                v-else
+                class="sidebar-loading"
+              >
                 <span>No channels yet</span>
               </div>
-              <button class="sidebar-add-item" @click="openCreateChannelModal">
-                <span>+ Add channels</span>
+              <button
+                class="sidebar-add-item"
+                @click="openCreateChannelModal"
+              >
+                <i
+                  class="pi pi-plus sidebar-add-icon"
+                  aria-hidden="true"
+                />
+                <span>Add channels</span>
               </button>
             </div>
           </div>
@@ -378,16 +465,25 @@ onMounted(async () => {
               class="sidebar-section-header"
               @click="toggleDirectMessages"
             >
-              <img
-                src="/icons/arrow-down.svg"
-                alt="Toggle direct messages"
-                class="sidebar-arrow-icon"
+              <i
+                class="pi pi-angle-down sidebar-arrow-icon"
+                aria-hidden="true"
+              />
+              <i
+                class="pi pi-users sidebar-section-icon"
+                aria-hidden="true"
               />
               <span>Direct messages</span>
             </button>
 
-            <div v-if="directMessagesExpanded" class="sidebar-section-content">
-              <div v-if="workspaceStore.membersLoading" class="sidebar-loading">
+            <div
+              v-if="directMessagesExpanded"
+              class="sidebar-section-content"
+            >
+              <div
+                v-if="workspaceStore.membersLoading"
+                class="sidebar-loading"
+              >
                 <!-- fullscreen loading -->
               </div>
               <template v-else-if="members && members.length > 0">
@@ -403,14 +499,20 @@ onMounted(async () => {
                   <span
                     v-if="member.userId === currentUser?.id"
                     class="user-badge"
-                    >you</span
-                  >
+                  >you</span>
                 </button>
                 <button class="sidebar-add-item">
-                  <span>+ Invite people</span>
+                  <i
+                    class="pi pi-user-plus sidebar-add-icon"
+                    aria-hidden="true"
+                  />
+                  <span>Invite people</span>
                 </button>
               </template>
-              <div v-else class="sidebar-loading">
+              <div
+                v-else
+                class="sidebar-loading"
+              >
                 <span>No members found</span>
               </div>
             </div>
@@ -419,9 +521,20 @@ onMounted(async () => {
       </div>
     </div>
 
+    <div
+      class="sidebar-resize-handle"
+      role="separator"
+      aria-label="Resize menu bar"
+      aria-orientation="vertical"
+      @mousedown="startResizeMenuBar"
+    />
+
     <!-- Main Content Area -->
     <div class="workspace-main-content">
-      <div v-if="workspaceStore.workspaceDetailLoading" class="sidebar-loading">
+      <div
+        v-if="workspaceStore.workspaceDetailLoading"
+        class="sidebar-loading"
+      >
         <!-- fullscreen loading -->
       </div>
       <div
@@ -430,7 +543,10 @@ onMounted(async () => {
       >
         <span>Error: Failed to load workspace details</span>
       </div>
-      <div v-else-if="!workspace" class="sidebar-loading">
+      <div
+        v-else-if="!workspace"
+        class="sidebar-loading"
+      >
         <span>Workspace not found</span>
       </div>
       <ChannelDetailView v-else />
@@ -452,17 +568,29 @@ onMounted(async () => {
       <div class="notification-panel">
         <div class="notification-panel-header">
           <h3>Activity</h3>
-          <button type="button" @click="markAllNotificationsRead">
+          <button
+            type="button"
+            @click="markAllNotificationsRead"
+          >
             Mark all as read
           </button>
         </div>
-        <div v-if="notificationStore.loading" class="notification-empty">
+        <div
+          v-if="notificationStore.loading"
+          class="notification-empty"
+        >
           Loading...
         </div>
-        <div v-else-if="notifications.length === 0" class="notification-empty">
+        <div
+          v-else-if="notifications.length === 0"
+          class="notification-empty"
+        >
           No notifications yet.
         </div>
-        <div v-else class="notification-list">
+        <div
+          v-else
+          class="notification-list"
+        >
           <button
             v-for="item in notifications"
             :key="item.id"
@@ -471,8 +599,12 @@ onMounted(async () => {
             type="button"
             @click="markNotificationRead(item.id)"
           >
-            <div class="notification-item-title">{{ item.title || "Notification" }}</div>
-            <div class="notification-item-body">{{ item.body || "You have a new update." }}</div>
+            <div class="notification-item-title">
+              {{ item.title || "Notification" }}
+            </div>
+            <div class="notification-item-body">
+              {{ item.body || "You have a new update." }}
+            </div>
           </button>
         </div>
       </div>

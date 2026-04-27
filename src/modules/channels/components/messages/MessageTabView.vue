@@ -307,17 +307,24 @@ onUnmounted(() => {
                 :key="message.id"
                 class="message-item"
                 :class="{
+                  'message-item--system': message.messageType === 'system',
                   'message-item--pending': message.status === 'pending',
                   'message-item--failed': message.status === 'failed',
                 }"
               >
-                <div class="message-item-avatar">
+                <div
+                  v-if="message.messageType !== 'system'"
+                  class="message-item-avatar"
+                >
                   <span>
                     {{ message.authorName?.charAt(0).toUpperCase() || "U" }}
                   </span>
                 </div>
                 <div class="message-item-body">
-                  <div class="message-item-header">
+                  <div
+                    v-if="message.messageType !== 'system'"
+                    class="message-item-header"
+                  >
                     <span class="message-item-author">
                       {{ message.authorName }}
                     </span>
@@ -325,7 +332,10 @@ onUnmounted(() => {
                       {{ formatTime(message.createdAt) }}
                     </span>
                   </div>
-                  <div class="message-item-content">
+                  <div
+                    class="message-item-content"
+                    :class="{ 'message-item-content--system': message.messageType === 'system' }"
+                  >
                     {{ message.content }}
                   </div>
                   <div
