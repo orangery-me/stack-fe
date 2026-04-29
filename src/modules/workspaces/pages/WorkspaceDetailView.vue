@@ -10,6 +10,7 @@ import { useNotificationStore } from "@/modules/notifications/stores/notificatio
 import { useUiStore } from "@/stores/ui.store.js";
 import CreateChannelModal from "@/modules/channels/components/CreateChannelModal.vue";
 import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
+import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 
 const { success } = useToast();
@@ -225,119 +226,16 @@ onMounted(async () => {
       '--workspace-sidebar-width': `${menuBarWidth}px`,
     }"
   >
-    <!-- Left Icon Menu Bar -->
-    <div class="icon-menu-bar">
-      <div class="icon-menu-header">
-        <div class="workspace-logo">
-          <span>{{ workspaceInitials }}</span>
-        </div>
-      </div>
-
-      <div class="icon-menu-items">
-        <button
-          class="icon-menu-item"
-          :class="{ active: route.name === 'workspaceDetail' }"
-          title="Home"
-          type="button"
-        >
-          <i
-            class="pi pi-home icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span class="icon-menu-label">Home</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="DMs"
-          type="button"
-        >
-          <i
-            class="pi pi-comments icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span class="notification-badge">1</span>
-          <span class="icon-menu-label">DMs</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="Activity"
-          type="button"
-          @click="toggleActivityPanel"
-        >
-          <i
-            class="pi pi-bell icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span
-            v-if="unreadCount > 0"
-            class="notification-badge"
-          >{{
-            unreadCount > 99 ? "99+" : unreadCount
-          }}</span>
-          <span class="icon-menu-label">Activity</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          :class="{ active: route.name === 'workspaceFiles' }"
-          title="Files"
-          type="button"
-          @click="goToWorkspaceFiles"
-        >
-          <i
-            class="pi pi-folder icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span class="icon-menu-label">Files</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          :class="{ active: uiStore.isAiOpen }"
-          title="AI Assistant"
-          type="button"
-          @click="uiStore.toggleAi"
-        >
-          <i
-            class="pi pi-sparkles icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span class="icon-menu-label">AI</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="More"
-          type="button"
-        >
-          <i
-            class="pi pi-ellipsis-h icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span class="icon-menu-label">More</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="Admin"
-          type="button"
-        >
-          <i
-            class="pi pi-cog icon-menu-svg"
-            aria-hidden="true"
-          />
-          <span class="icon-menu-label">Admin</span>
-        </button>
-      </div>
-
-      <div class="icon-menu-footer">
-        <div class="profile-icon">
-          {{ getUserInitials(currentUser?.name || "U") }}
-        </div>
-      </div>
-    </div>
+    <WorkspaceIconMenu
+      :workspace-initials="workspaceInitials"
+      :current-user-initials="getUserInitials(currentUser?.name || 'U')"
+      :unread-count="unreadCount"
+      :is-ai-open="uiStore.isAiOpen"
+      :active-route-name="String(route.name || '')"
+      @files="goToWorkspaceFiles"
+      @activity="toggleActivityPanel"
+      @ai="uiStore.toggleAi"
+    />
 
     <!-- Sidebar -->
     <div class="sidebar">

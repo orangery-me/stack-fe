@@ -7,6 +7,7 @@ import { useUiStore } from "@/stores/ui.store.js";
 import workspaceFilesService from "@/services/workspaceFiles.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
+import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -171,128 +172,17 @@ onBeforeUnmount(() => {
     class="workspace-files-page"
     :style="{ paddingRight: uiStore.isAiOpen ? uiStore.aiSidebarWidth + 'px' : '0' }"
   >
-    <!-- Left Icon Menu Bar (giữ nguyên như WorkspaceDetail để điều hướng dễ dàng) -->
-    <div class="icon-menu-bar">
-      <div class="icon-menu-header">
-        <div class="workspace-logo">
-          <span>{{ workspaceInitials }}</span>
-        </div>
-      </div>
-
-      <div class="icon-menu-items">
-        <button
-          class="icon-menu-item"
-          :class="{ active: route.name === 'workspaceDetail' }"
-          title="Home"
-          type="button"
-          @click="goToWorkspaceHome"
-        >
-          <img
-            src="/icons/home.svg"
-            alt="Home"
-            class="icon-menu-svg"
-          >
-          <span class="icon-menu-label">Home</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="DMs"
-          type="button"
-        >
-          <img
-            src="/icons/message-circle-dot.svg"
-            alt="DMs"
-            class="icon-menu-svg"
-          >
-          <span class="notification-badge">1</span>
-          <span class="icon-menu-label">DMs</span>
-        </button>
-
-        <button class="icon-menu-item" title="Activity" type="button" @click="toggleActivityPanel">
-          <img
-            src="/icons/notification.svg"
-            alt="Activity"
-            class="icon-menu-svg"
-          >
-          <span v-if="unreadCount > 0" class="notification-badge">{{
-            unreadCount > 99 ? "99+" : unreadCount
-          }}</span>
-          <span class="icon-menu-label">Activity</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          :class="{ active: route.name === 'workspaceFiles' }"
-          title="Files"
-          type="button"
-          @click="goToWorkspaceFiles"
-        >
-          <img
-            src="/icons/file.svg"
-            alt="Files"
-            class="icon-menu-svg"
-          >
-          <span class="icon-menu-label">Files</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          :class="{ active: uiStore.isAiOpen }"
-          title="AI Assistant"
-          type="button"
-          @click="uiStore.toggleAi"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="icon-menu-svg"
-          >
-            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-          </svg>
-          <span class="icon-menu-label">AI</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="More"
-          type="button"
-        >
-          <img
-            src="/icons/more-horizontal.svg"
-            alt="More"
-            class="icon-menu-svg"
-          >
-          <span class="icon-menu-label">More</span>
-        </button>
-
-        <button
-          class="icon-menu-item"
-          title="Admin"
-          type="button"
-        >
-          <img
-            src="/icons/setting.svg"
-            alt="Admin"
-            class="icon-menu-svg"
-          >
-          <span class="icon-menu-label">Admin</span>
-        </button>
-      </div>
-
-      <div class="icon-menu-footer">
-        <div class="profile-icon">
-          {{ getUserInitials(currentUser?.name || "U") }}
-        </div>
-      </div>
-    </div>
+    <WorkspaceIconMenu
+      :workspace-initials="workspaceInitials"
+      :current-user-initials="getUserInitials(currentUser?.name || 'U')"
+      :unread-count="unreadCount"
+      :is-ai-open="uiStore.isAiOpen"
+      :active-route-name="String(route.name || '')"
+      @home="goToWorkspaceHome"
+      @files="goToWorkspaceFiles"
+      @activity="toggleActivityPanel"
+      @ai="uiStore.toggleAi"
+    />
 
     <!-- Files layout: sidebar + content -->
     <div class="files-main">
