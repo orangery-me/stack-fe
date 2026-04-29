@@ -373,12 +373,12 @@ onUnmounted(() => {
                     v-if="message.status === 'failed'"
                     class="message-item-error"
                   >
-                    Gửi thất bại.
+                    Sent failed
                     <button
                       class="message-item-retry"
                       @click="handleRetryMessage(message)"
                     >
-                      Thử lại
+                      Retry
                     </button>
                   </div>
                 </div>
@@ -399,13 +399,36 @@ onUnmounted(() => {
           @keydown.enter.exact.prevent="handleSendMessage"
           @keydown.shift.enter.stop
         />
-        <button
-          class="message-input-send"
-          type="button"
-          @click="handleSendMessage"
-        >
-          Send
-        </button>
+        <div class="message-input-toolbar">
+          <div class="message-input-actions">
+            <button class="message-input-action-btn" type="button" title="Add">
+              <i class="pi pi-plus" />
+            </button>
+            <button class="message-input-action-btn" type="button" title="Emoji">
+              <i class="pi pi-face-smile" />
+            </button>
+            <button class="message-input-action-btn" type="button" title="Mention">
+              <i class="pi pi-at" />
+            </button>
+            <button class="message-input-action-btn" type="button" title="Video">
+              <i class="pi pi-video" />
+            </button>
+            <button class="message-input-action-btn" type="button" title="Voice message">
+              <i class="pi pi-microphone" />
+            </button>
+            <button class="message-input-action-btn" type="button" title="Note">
+              <i class="pi pi-file-edit" />
+            </button>
+          </div>
+          <button
+            class="message-input-send"
+            type="button"
+            :disabled="!newMessage.trim()"
+            @click="handleSendMessage"
+          >
+            <i class="pi pi-send" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
