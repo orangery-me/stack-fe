@@ -25,8 +25,12 @@ export const API_ENDPOINTS = {
     GET_ALL_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     CREATE: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
+    GET_MEMBERS: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/members`,
     ADD_MEMBER: (workspaceId, channelId) =>
       `/workspaces/${workspaceId}/channels/${channelId}/members`,
+    KICK_MEMBER: (workspaceId, channelId, userId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/members/${userId}`,
   },
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,

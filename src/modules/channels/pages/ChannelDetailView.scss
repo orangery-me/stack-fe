@@ -225,13 +225,15 @@
     color: var(--ui-text);
   }
 }
+.channel-detail-modal__content {
+  // background color to gray
+  background: var(--gray-50);
+}
 
 .channel-detail-modal__body {
   padding: 12px 22px 18px 22px;
   display: grid;
   gap: 10px;
-  // background color to gray
-  background: var(--gray-50);
 }
 
 .channel-detail-section {
@@ -317,6 +319,101 @@
 
 .channel-detail-id {
   margin-top: 2px;
+  font-size: 12px;
+  color: var(--ui-text-muted);
+}
+
+.channel-members-empty {
+  border: 1px solid var(--ui-divider);
+  background: var(--ui-bg-page);
+  border-radius: 10px;
+  padding: 14px;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+
+.channel-members-toolbar {
+  display: grid;
+  gap: 12px;
+}
+
+.channel-members-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.2);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+
+  i {
+    color: var(--ui-text-muted);
+    font-size: 14px;
+  }
+
+  input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 14px;
+    color: var(--ui-text);
+    background: transparent;
+  }
+}
+
+.channel-members-add {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-divider);
+  border-radius: 10px;
+  background: var(--ui-bg-page);
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gray-100);
+  }
+}
+
+.channel-members-list {
+  border: 1px solid var(--ui-divider);
+  border-radius: 10px;
+  background: var(--ui-bg-page);
+  overflow: hidden;
+}
+
+.channel-members-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ui-divider);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.channel-members-user {
+  display: grid;
+  gap: 4px;
+}
+
+.channel-members-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.channel-members-role {
   font-size: 12px;
   color: var(--ui-text-muted);
 }

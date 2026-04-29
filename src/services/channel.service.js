@@ -69,6 +69,32 @@ class ChannelService {
     );
     return response.data.data;
   }
+
+  /**
+   * Get members of a channel
+   * @param {string} workspaceId
+   * @param {string} channelId
+   * @returns {Promise<Array<{channelId: string, userId: string, workspaceMemberId: string, name?: string, email?: string, avatar?: string, memberRole: 'manager' | 'member', joinedAt: Date}>>}
+   */
+  async getMembers(workspaceId, channelId) {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CHANNELS.GET_MEMBERS(workspaceId, channelId)
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Remove a member from channel
+   * @param {string} workspaceId
+   * @param {string} channelId
+   * @param {string} userId
+   */
+  async kickMember(workspaceId, channelId, userId) {
+    const response = await apiHelper.delete(
+      API_ENDPOINTS.CHANNELS.KICK_MEMBER(workspaceId, channelId, userId)
+    );
+    return response.data.data;
+  }
 }
 
 export default new ChannelService();

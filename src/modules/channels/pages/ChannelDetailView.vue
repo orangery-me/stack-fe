@@ -4,7 +4,6 @@ import { useRoute } from "vue-router";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
-import channelService from "@/services/channel.service.js";
 import { useToast } from "@/composables/useToast.js";
 import MessageTabView from "@/modules/channels/components/messages/MessageTabView.vue";
 import AutoComplete from "primevue/autocomplete";
@@ -23,6 +22,7 @@ const workspaceId = computed(() => route.params.id);
 const isInviteModalOpen = ref(false);
 const selectedMember = ref(null);
 const isSubmittingInvite = ref(false);
+const memberSearchKeyword = ref("");
 const items = ref([]);
 const isChannelMenuOpen = ref(false);
 const isChannelDetailModalOpen = ref(false);
@@ -36,13 +36,41 @@ const channelActions = ref([
 ]);
 const activeDetailTab = ref("about");
 
+const channelMembers = computed(() => {
+  const channelId = selectedChannel.value?.id;
+  if (!channelId) return [];
+  return channelStore.getChannelMembersById(channelId);
+});
+
+const isMembersLoading = computed(() => {
+  const channelId = selectedChannel.value?.id;
+  if (!channelId) return false;
+  return !!channelStore.channelMembersLoadingById[channelId];
+});
+
+const canKickMember = computed(
+  () => selectedChannel.value?.permissions?.canKick === true
+);
+
 const channelDetailTabs = computed(() => [
   { key: "about", label: "About" },
-  { key: "members", label: `Members ${workspaceMembers.value.length}` },
+  { key: "members", label: "Members" },
   { key: "tabs", label: "Tabs" },
   { key: "integrations", label: "Integrations" },
   { key: "settings", label: "Settings" },
 ]);
+
+const filteredChannelMembers = computed(() => {
+  const keyword = memberSearchKeyword.value.trim().toLowerCase();
+  if (!keyword) {
+    return channelMembers.value;
+  }
+
+  return channelMembers.value.filter((member) => {
+    const searchable = `${member.name || ""} ${member.email || ""} ${member.userId || ""}`.toLowerCase();
+    return searchable.includes(keyword);
+  });
+});
 
 const createdByDisplay = computed(() => {
   if (!selectedChannel.value?.createdById) return "Unknown";
@@ -112,7 +140,7 @@ const submitInviteTeammate = async () => {
 
   isSubmittingInvite.value = true;
   try {
-    await channelService.addMember(workspaceId.value, selectedChannel.value.id, {
+    await channelStore.addMemberToChannel(workspaceId.value, selectedChannel.value.id, {
       userId: selectedMember.value.userId,
       memberRole: "member",
     });
@@ -121,6 +149,19 @@ const submitInviteTeammate = async () => {
   } finally {
     isSubmittingInvite.value = false;
   }
+};
+
+const removeMember = async (member) => {
+  if (!selectedChannel.value || !workspaceId.value || !member?.userId) {
+    return;
+  }
+
+  await channelStore.kickMemberFromChannel(
+    workspaceId.value,
+    selectedChannel.value.id,
+    member.userId
+  );
+  success("Member removed from channel.");
 };
 
 const closeChannelMenu = () => {
@@ -133,12 +174,40 @@ const toggleChannelMenu = () => {
 };
 
 const openChannelDetailsModal = () => {
+  activeDetailTab.value = "about";
+  memberSearchKeyword.value = "";
   isChannelDetailModalOpen.value = true;
+  if (workspaceId.value && selectedChannel.value?.id) {
+    channelStore
+      .fetchChannelById(workspaceId.value, selectedChannel.value.id)
+      .catch(() => {});
+  }
 };
 
 const closeChannelDetailsModal = () => {
   isChannelDetailModalOpen.value = false;
+  memberSearchKeyword.value = "";
 };
+
+const selectDetailTab = async (tabKey) => {
+  activeDetailTab.value = tabKey;
+  if (
+    tabKey === "members" &&
+    selectedChannel.value?.id &&
+    workspaceId.value
+  ) {
+    await channelStore.fetchChannelMembers(
+      workspaceId.value,
+      selectedChannel.value.id
+    );
+  }
+};
+
+
+const isAbleToKick = (userId, memberRole) => {
+  // không kick chính mình
+  return canKickMember.value && userId !== authStore.user?.id && memberRole !== "manager";
+}
 
 const leaveChannel = () => {
   info("Leave channel flow is coming soon.");
@@ -329,61 +398,133 @@ onBeforeUnmount(() => {
             type="button"
             class="channel-detail-tab"
             :class="{ 'channel-detail-tab--active': activeDetailTab === tab.key }"
-            @click="activeDetailTab = tab.key"
+            @click="selectDetailTab(tab.key)"
           >
             {{ tab.label }}
           </button>
         </div>
-        <div class="channel-detail-modal__body">
-          <div class="channel-detail-section">
-            <span class="channel-detail-section__label">Channel name</span>
-            <span class="channel-detail-section__value"># {{ selectedChannel?.name || "Unknown channel" }}</span>
-          </div>
-          <div class="channel-detail-group">
-            <div class="channel-detail-row">
-              <div class="channel-detail-row__content">
-                <span class="channel-detail-section__label">Topic</span>
-                <span class="channel-detail-section__value">{{ selectedChannel?.topic || "Add a topic" }}</span>
+        <div class="channel-detail-modal__content">
+          <div class="channel-detail-modal__body">
+            <template v-if="activeDetailTab === 'about'">
+              <div class="channel-detail-section">
+                <span class="channel-detail-section__label">Channel name</span>
+                <span class="channel-detail-section__value"># {{ selectedChannel?.name || "Unknown channel" }}</span>
+              </div>
+              <div class="channel-detail-group">
+                <div class="channel-detail-row">
+                  <div class="channel-detail-row__content">
+                    <span class="channel-detail-section__label">Topic</span>
+                    <span class="channel-detail-section__value">{{ selectedChannel?.topic || "Add a topic" }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="channel-detail-edit-btn"
+                    @click="info('Edit topic is coming soon.')"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div class="channel-detail-row">
+                  <div class="channel-detail-row__content">
+                    <span class="channel-detail-section__label">Description</span>
+                    <span class="channel-detail-section__value">{{ selectedChannel?.description || "No description yet." }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="channel-detail-edit-btn"
+                    @click="info('Edit description is coming soon.')"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div class="channel-detail-row">
+                  <div class="channel-detail-row__content">
+                    <span class="channel-detail-section__label">Created by</span>
+                    <span class="channel-detail-section__value">
+                      {{ createdByDisplay }}{{ createdAtDisplay ? ` on ${createdAtDisplay}` : "" }}
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
-                class="channel-detail-edit-btn"
-                @click="info('Edit topic is coming soon.')"
+                class="channel-leave-btn"
+                @click="leaveChannel"
               >
-                Edit
+                Leave channel
               </button>
-            </div>
-            <div class="channel-detail-row">
-              <div class="channel-detail-row__content">
-                <span class="channel-detail-section__label">Description</span>
-                <span class="channel-detail-section__value">{{ selectedChannel?.description || "No description yet." }}</span>
+              <div class="channel-detail-id">
+                Channel ID: {{ selectedChannel?.id || "N/A" }}
               </div>
-              <button
-                type="button"
-                class="channel-detail-edit-btn"
-                @click="info('Edit description is coming soon.')"
+            </template>
+  
+            <template v-else-if="activeDetailTab === 'members'">
+              <div class="channel-members-toolbar">
+                <div class="channel-members-search">
+                  <i class="pi pi-search" />
+                  <input
+                    v-model="memberSearchKeyword"
+                    type="text"
+                    placeholder="Find members"
+                  >
+                </div>
+                <button
+                  type="button"
+                  class="channel-members-add"
+                  @click="openInviteTeammatesModal"
+                >
+                  <i class="pi pi-user-plus" />
+                  <span>Add people</span>
+                </button>
+              </div>
+              <div
+                v-if="isMembersLoading"
+                class="channel-members-empty"
               >
-                Edit
-              </button>
-            </div>
-            <div class="channel-detail-row">
-              <div class="channel-detail-row__content">
-                <span class="channel-detail-section__label">Created by</span>
-                <span class="channel-detail-section__value">
-                  {{ createdByDisplay }}{{ createdAtDisplay ? ` on ${createdAtDisplay}` : "" }}
-                </span>
+                Loading members...
               </div>
+              <div
+                v-else-if="!filteredChannelMembers.length"
+                class="channel-members-empty"
+              >
+                {{ channelMembers.length ? "No members match your search." : "No members in this channel." }}
+              </div>
+              <div
+                v-else
+                class="channel-members-list"
+              >
+                <div
+                  v-for="member in filteredChannelMembers"
+                  :key="member.userId"
+                  class="channel-members-row"
+                >
+                  <div class="channel-members-user">
+                    <div class="channel-members-name">
+                      {{ member.name || member.email || member.userId }}
+                      <span v-if="member.userId === authStore.user?.id">(you)</span>
+                    </div>
+                    <div class="channel-members-role">
+                      {{ member.memberRole }}
+                    </div>
+                  </div>
+                  <button
+                    v-if="isAbleToKick(member.userId, member.memberRole)"
+                    type="button"
+                    class="channel-detail-edit-btn"
+                    @click="removeMember(member)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </template>
+  
+            <div
+              v-else
+              class="channel-members-empty"
+            >
+              This tab is coming soon.
             </div>
-          </div>
-          <button
-            type="button"
-            class="channel-leave-btn"
-            @click="leaveChannel"
-          >
-            Leave channel
-          </button>
-          <div class="channel-detail-id">
-            Channel ID: {{ selectedChannel?.id || "N/A" }}
           </div>
         </div>
       </div>

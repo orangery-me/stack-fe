@@ -153,6 +153,10 @@
   margin-bottom: var(--space-12);
 }
 
+.message-item--grouped {
+  margin-bottom: var(--space-6);
+}
+
 .message-item--system {
   justify-content: center;
   margin: 10px 0;
@@ -170,6 +174,10 @@
   font-weight: 600;
   font-size: 12px;
   color: var(--ui-text-muted);
+}
+
+.message-item-avatar--hidden {
+  visibility: hidden;
 }
 
 .message-item-body {

@@ -172,6 +172,35 @@ const formatTime = (dateString) => {
   });
 };
 
+const normalizeAuthorName = (message) =>
+  String(message?.authorName || "")
+    .trim()
+    .toLowerCase();
+
+const isSameSender = (currentMessage, previousMessage) => {
+  const currentSenderId = String(currentMessage?.senderId || "").trim();
+  const previousSenderId = String(previousMessage?.senderId || "").trim();
+
+  if (currentSenderId && previousSenderId) {
+    return currentSenderId === previousSenderId;
+  }
+
+  const currentAuthorName = normalizeAuthorName(currentMessage);
+  const previousAuthorName = normalizeAuthorName(previousMessage);
+
+  return Boolean(currentAuthorName) && currentAuthorName === previousAuthorName;
+};
+
+const isMessageGroupStart = (dayMessages, index) => {
+  const currentMessage = dayMessages[index];
+  if (!currentMessage || currentMessage.messageType === "system") return true;
+  if (index === 0) return true;
+
+  const previousMessage = dayMessages[index - 1];
+  if (!previousMessage || previousMessage.messageType === "system") return true;
+  return !isSameSender(currentMessage, previousMessage);
+};
+
 watch(
   () => messages.value.length,
   () => {
@@ -303,18 +332,20 @@ onUnmounted(() => {
               </div>
 
               <div
-                v-for="message in day.messages"
+                v-for="(message, messageIndex) in day.messages"
                 :key="message.id"
                 class="message-item"
                 :class="{
                   'message-item--system': message.messageType === 'system',
                   'message-item--pending': message.status === 'pending',
                   'message-item--failed': message.status === 'failed',
+                  'message-item--grouped': message.messageType !== 'system' && !isMessageGroupStart(day.messages, messageIndex),
                 }"
               >
                 <div
                   v-if="message.messageType !== 'system'"
                   class="message-item-avatar"
+                  :class="{ 'message-item-avatar--hidden': !isMessageGroupStart(day.messages, messageIndex) }"
                 >
                   <span>
                     {{ message.authorName?.charAt(0).toUpperCase() || "U" }}
@@ -322,7 +353,7 @@ onUnmounted(() => {
                 </div>
                 <div class="message-item-body">
                   <div
-                    v-if="message.messageType !== 'system'"
+                    v-if="message.messageType !== 'system' && isMessageGroupStart(day.messages, messageIndex)"
                     class="message-item-header"
                   >
                     <span class="message-item-author">
