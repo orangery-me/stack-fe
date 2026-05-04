@@ -83,7 +83,7 @@
     background: var(--ui-bg-page);
 
     .channel-tab {
-      min-width: 140px;
+      // min-width: 140px;
       max-width: 220px;
       padding: 6px 14px;
       border-radius: 8px 8px 0 0;
@@ -92,7 +92,7 @@
       background: transparent;
       color: var(--ui-text-muted);
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -112,7 +112,69 @@
         background: #e0f2fe;
         border-color: #bae6fd;
         color: var(--ui-text);
+      }
+    }
 
+    .channel-tab-add {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .channel-tab-add-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid transparent;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        background: transparent;
+        color: var(--ui-text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--ui-duration) var(--ui-ease);
+
+        &:hover {
+          background: rgba(15, 23, 42, 0.04);
+          color: var(--ui-text);
+        }
+      }
+
+      .channel-tab-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        background: #fff;
+        border: 1px solid var(--ui-border);
+        border-radius: 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        padding: 4px;
+        min-width: 140px;
+        z-index: 50;
+
+        .channel-tab-dropdown-item {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          font-size: 13px;
+          color: var(--ui-text);
+          background: transparent;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.15s;
+
+          &:hover {
+            background: var(--gray-50);
+          }
+
+          i {
+            font-size: 14px;
+            color: var(--ui-text-muted);
+          }
+        }
       }
     }
   }

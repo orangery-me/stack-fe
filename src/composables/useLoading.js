@@ -35,6 +35,32 @@ export function useLoading() {
     showFullscreen,
     hideFullscreen,
     withFullscreen,
+    createLocalLoading,
   };
+}
+
+/**
+ * Create a component-scoped (non-fullscreen) loading state.
+ * Usage: const { isLoading, withLoading } = createLocalLoading();
+ */
+export function createLocalLoading() {
+  const isLoading = ref(false);
+
+  const show = () => { isLoading.value = true; };
+  const hide = () => { isLoading.value = false; };
+
+  async function withLoading(promiseOrFn) {
+    show();
+    try {
+      if (typeof promiseOrFn === 'function') {
+        return await promiseOrFn();
+      }
+      return await promiseOrFn;
+    } finally {
+      hide();
+    }
+  }
+
+  return { isLoading, show, hide, withLoading };
 }
 

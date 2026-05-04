@@ -34,6 +34,34 @@ export const API_ENDPOINTS = {
     UPDATE_PERMISSIONS: (workspaceId, channelId) =>
       `/workspaces/${workspaceId}/channels/${channelId}/settings/permissions`,
   },
+  TASK_LISTS: {
+    LIST: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/task-lists`,
+    CREATE: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/task-lists`,
+    UPDATE: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}`,
+    DELETE: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}`,
+  },
+  TASKS: {
+    LIST_BY_LIST: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}/tasks`,
+    CREATE: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}/tasks`,
+    MY_TASKS: (workspaceId) =>
+      `/workspaces/${workspaceId}/tasks/my`,
+    GET_BY_ID: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
+    UPDATE: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
+    DELETE: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
+    ASSIGN: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/assignees`,
+    UNASSIGN: (workspaceId, taskId, memberId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/assignees/${memberId}`,
+  },
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
     SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,

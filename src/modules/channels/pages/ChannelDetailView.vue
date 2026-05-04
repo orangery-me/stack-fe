@@ -6,14 +6,18 @@ import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.j
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useToast } from "@/composables/useToast.js";
 import MessageTabView from "@/modules/channels/components/messages/MessageTabView.vue";
+import TaskTabView from "@/modules/channels/components/tasks/TaskTabView.vue";
+import { useTaskStore } from "@/modules/channels/stores/task.store.js";
 import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
+import AppLoading from "@/components/loading/AppLoading.vue";
 
 const route = useRoute();
 const { success, info } = useToast();
 const channelStore = useChannelStore();
 const workspaceStore = useWorkspaceStore();
 const authStore = useAuthStore();
+const taskStore = useTaskStore();
 
 const selectedChannel = computed(() => channelStore.selectedChannel);
 const workspaceMembers = computed(() => workspaceStore.members || []);
@@ -27,6 +31,7 @@ const items = ref([]);
 const isChannelMenuOpen = ref(false);
 const isChannelDetailModalOpen = ref(false);
 const channelMenuRef = ref(null);
+const channelTabAddRef = ref(null);
 const selectedChannelAction = ref(null);
 const channelActions = ref([
   { name: "Settings", code: "settings", icon: "pi pi-cog" },
@@ -34,12 +39,58 @@ const channelActions = ref([
   { name: "Leave channel", code: "leave-channel", icon: "pi pi-sign-out" },
 ]);
 const activeDetailTab = ref("about");
+const activeMainTab = ref("messages");
+const showAddTabMenu = ref(false);
 
 const channelMembers = computed(() => {
   const channelId = selectedChannel.value?.id;
   if (!channelId) return [];
   return channelStore.getChannelMembersById(channelId);
 });
+
+const taskLists = computed(() => {
+  const channelId = selectedChannel.value?.id;
+  if (!channelId) return [];
+  return taskStore.getTaskListsByChannelId(channelId);
+});
+
+const activeTaskListId = computed(() => {
+  if (activeMainTab.value.startsWith('task-')) {
+    return activeMainTab.value.replace('task-', '');
+  }
+  return null;
+});
+
+const addTaskTab = async () => {
+  showAddTabMenu.value = false;
+  if (!selectedChannel.value?.id || !workspaceId.value) return;
+  try {
+    const newList = await taskStore.createTaskList(
+      workspaceId.value,
+      selectedChannel.value.id,
+      "Untitled list"
+    );
+    activeMainTab.value = `task-${newList.id}`;
+  } catch (e) {
+    console.error("Failed to add task tab:", e);
+  }
+};
+
+const handleUpdateListName = (listId, newName) => {
+  // Store handles API/state update, component updates reactively
+};
+
+watch(
+  () => selectedChannel.value?.id,
+  async (newChannelId) => {
+    if (newChannelId && workspaceId.value) {
+      await taskStore.fetchTaskLists(workspaceId.value, newChannelId);
+      // Reset tab on channel change
+      activeMainTab.value = "messages";
+    }
+  },
+  { immediate: true }
+);
 
 const isMembersLoading = computed(() => {
   const channelId = selectedChannel.value?.id;
@@ -312,12 +363,20 @@ const handleClickOutsideChannelMenu = (event) => {
   closeChannelMenu();
 };
 
+const handleClickOutsideTabMenu = (event) => {
+  if (channelTabAddRef.value && !channelTabAddRef.value.contains(event.target)) {
+    showAddTabMenu.value = false;
+  }
+};
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutsideChannelMenu);
+  document.addEventListener("click", handleClickOutsideTabMenu);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutsideChannelMenu);
+  document.removeEventListener("click", handleClickOutsideTabMenu);
 });
 </script>
 
@@ -394,17 +453,63 @@ onBeforeUnmount(() => {
         class="channel-tabs"
       >
         <button
-          class="channel-tab active"
+          class="channel-tab"
+          :class="{ active: activeMainTab === 'messages' }"
           type="button"
+          @click="activeMainTab = 'messages'"
         >
+          <i class="pi pi-comments" style="font-size: 12px" />
           Messages
         </button>
+
+        <!-- Dynamic task tabs -->
+        <button
+          v-for="list in taskLists"
+          :key="list.id"
+          class="channel-tab"
+          :class="{ active: activeMainTab === `task-${list.id}` }"
+          type="button"
+          @click="activeMainTab = `task-${list.id}`"
+        >
+          <i class="pi pi-check-square" style="font-size: 12px" />
+          {{ list.name || 'Untitled list' }}
+        </button>
+
+        <!-- + Button dropdown -->
+        <div class="channel-tab-add" ref="channelTabAddRef">
+          <button
+            class="channel-tab-add-btn"
+            type="button"
+            @click="showAddTabMenu = !showAddTabMenu"
+          >
+            <i class="pi pi-plus" style="font-size: 12px" />
+          </button>
+
+          <div v-if="showAddTabMenu" class="channel-tab-dropdown">
+            <button
+              class="channel-tab-dropdown-item"
+              type="button"
+              @click="addTaskTab"
+            >
+              <i class="pi pi-check-square" />
+              Tasks
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
     <MessageTabView
-      v-if="selectedChannel"
+      v-if="selectedChannel && activeMainTab === 'messages'"
       @add-people-to-channel="openInviteTeammatesModal"
+    />
+
+    <TaskTabView
+      v-if="selectedChannel && activeTaskListId"
+      :workspace-id="workspaceId"
+      :task-list-id="activeTaskListId"
+      :list-name="taskLists.find(l => l.id === activeTaskListId)?.name"
+      @update-name="(name) => handleUpdateListName(activeTaskListId, name)"
     />
 
     <div
@@ -565,9 +670,10 @@ onBeforeUnmount(() => {
               </div>
               <div
                 v-if="isMembersLoading"
-                class="channel-members-empty"
+                class="d-flex justify-content-center align-items-center"
+                style="height: 100%"
               >
-                Loading members...
+                <AppLoading :active="true" variant="inline" min-height="220px" />
               </div>
               <div
                 v-else-if="!filteredChannelMembers.length"
@@ -718,9 +824,10 @@ onBeforeUnmount(() => {
 
               <div
                 v-else
-                class="channel-members-empty"
+                class="d-flex justify-content-center align-items-center"
+                style="height: 100%"
               >
-                Loading permissions...
+                <AppLoading :active="true" variant="inline" min-height="220px" />
               </div>
             </template>
   
