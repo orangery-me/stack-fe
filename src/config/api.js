@@ -31,6 +31,8 @@ export const API_ENDPOINTS = {
       `/workspaces/${workspaceId}/channels/${channelId}/members`,
     KICK_MEMBER: (workspaceId, channelId, userId) =>
       `/workspaces/${workspaceId}/channels/${channelId}/members/${userId}`,
+    UPDATE_PERMISSIONS: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/settings/permissions`,
   },
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,

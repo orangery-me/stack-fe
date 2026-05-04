@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
@@ -29,10 +29,9 @@ const isChannelDetailModalOpen = ref(false);
 const channelMenuRef = ref(null);
 const selectedChannelAction = ref(null);
 const channelActions = ref([
-  { name: "Open channel details", code: "open-details" },
-  { name: "Search in channel", code: "search-channel" },
-  { name: "Edit settings", code: "edit-settings" },
-  { name: "Leave channel", code: "leave-channel" },
+  { name: "Settings", code: "settings", icon: "pi pi-cog" },
+  { name: "Search in channel", code: "search-channel", icon: "pi pi-search" },
+  { name: "Leave channel", code: "leave-channel", icon: "pi pi-sign-out" },
 ]);
 const activeDetailTab = ref("about");
 
@@ -52,12 +51,86 @@ const canKickMember = computed(
   () => selectedChannel.value?.permissions?.canKick === true
 );
 
+const isPermissionsTabAvailable = computed(() => canKickMember.value === true);
+
+const permissionDraft = ref({
+  invitePolicy: "manager_only",
+  postPolicy: "all_members",
+  pinMessagePolicy: "manager_only",
+  threadPolicy: "all_members",
+});
+
+const isSubmittingPermissions = ref(false);
+
+const initPermissionDraft = () => {
+  const p = selectedChannel.value?.settings?.permissions;
+  if (!p) return;
+
+  permissionDraft.value = {
+    invitePolicy: p.invitePolicy || "manager_only",
+    postPolicy: p.postPolicy || "all_members",
+    pinMessagePolicy: p.pinMessagePolicy || "manager_only",
+    threadPolicy: p.threadPolicy || "all_members",
+  };
+};
+
+const hasPermissionChanges = computed(() => {
+  const p = selectedChannel.value?.settings?.permissions;
+  if (!p) return false;
+  return (
+    permissionDraft.value.invitePolicy !== p.invitePolicy ||
+    permissionDraft.value.postPolicy !== p.postPolicy ||
+    permissionDraft.value.pinMessagePolicy !== p.pinMessagePolicy ||
+    permissionDraft.value.threadPolicy !== p.threadPolicy
+  );
+});
+
+watch(isPermissionsTabAvailable, (available) => {
+  if (!available && activeDetailTab.value === "permissions") {
+    activeDetailTab.value = "about";
+  }
+});
+
+watch(activeDetailTab, (tabKey) => {
+  if (tabKey === "permissions") {
+    initPermissionDraft();
+  }
+});
+
+watch(
+  () => selectedChannel.value?.settings?.permissions,
+  () => {
+    if (activeDetailTab.value === "permissions") {
+      initPermissionDraft();
+    }
+  }
+);
+
+const saveChannelPermissions = async () => {
+  if (!selectedChannel.value?.id || !workspaceId.value) return;
+  if (!hasPermissionChanges.value) return;
+
+  isSubmittingPermissions.value = true;
+  try {
+    await channelStore.updateChannelPermissions(workspaceId.value, selectedChannel.value.id, {
+      invitePolicy: permissionDraft.value.invitePolicy,
+      postPolicy: permissionDraft.value.postPolicy,
+      pinMessagePolicy: permissionDraft.value.pinMessagePolicy,
+      threadPolicy: permissionDraft.value.threadPolicy,
+    });
+    success("Channel permissions updated successfully.");
+    initPermissionDraft();
+  } finally {
+    isSubmittingPermissions.value = false;
+  }
+};
+
 const channelDetailTabs = computed(() => [
   { key: "about", label: "About" },
   { key: "members", label: "Members" },
-  { key: "tabs", label: "Tabs" },
-  { key: "integrations", label: "Integrations" },
-  { key: "settings", label: "Settings" },
+  // { key: "tabs", label: "Tabs" },
+  // { key: "integrations", label: "Integrations" },
+  ...(isPermissionsTabAvailable.value ? [{ key: "permissions", label: "Permissions" }] : []),
 ]);
 
 const filteredChannelMembers = computed(() => {
@@ -215,7 +288,7 @@ const leaveChannel = () => {
 
 const onChannelActionChange = (action) => {
   switch (action?.code) {
-    case "open-details":
+    case "settings":
       openChannelDetailsModal();
       break;
     case "search-channel":
@@ -303,7 +376,14 @@ onBeforeUnmount(() => {
                 option-label="name"
                 class="channel-actions-listbox"
                 @change="onChannelActionChange($event.value)"
-              />
+              >
+                <template #option="{ option }">
+                  <div class="channel-actions-option">
+                    <i :class="option.icon" />
+                    <span>{{ option.name }}</span>
+                  </div>
+                </template>
+              </Listbox>
             </div>
           </div>
         </div>
@@ -413,7 +493,9 @@ onBeforeUnmount(() => {
               <div class="channel-detail-group">
                 <div class="channel-detail-row">
                   <div class="channel-detail-row__content">
-                    <span class="channel-detail-section__label">Topic</span>
+                    <span class="channel-detail-section__label">
+                      <i class="pi pi-tag" /> Topic
+                    </span>
                     <span class="channel-detail-section__value">{{ selectedChannel?.topic || "Add a topic" }}</span>
                   </div>
                   <button
@@ -426,7 +508,9 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="channel-detail-row">
                   <div class="channel-detail-row__content">
-                    <span class="channel-detail-section__label">Description</span>
+                    <span class="channel-detail-section__label">
+                      <i class="pi pi-align-left" /> Description
+                    </span>
                     <span class="channel-detail-section__value">{{ selectedChannel?.description || "No description yet." }}</span>
                   </div>
                   <button
@@ -439,7 +523,9 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="channel-detail-row">
                   <div class="channel-detail-row__content">
-                    <span class="channel-detail-section__label">Created by</span>
+                    <span class="channel-detail-section__label">
+                      <i class="pi pi-user" /> Created by
+                    </span>
                     <span class="channel-detail-section__value">
                       {{ createdByDisplay }}{{ createdAtDisplay ? ` on ${createdAtDisplay}` : "" }}
                     </span>
@@ -516,6 +602,125 @@ onBeforeUnmount(() => {
                     Remove
                   </button>
                 </div>
+              </div>
+            </template>
+
+            <template v-else-if="activeDetailTab === 'permissions'">
+              <div
+                v-if="selectedChannel?.settings?.permissions"
+                class="channel-detail-permissions-wrap"
+              >
+                <div class="channel-detail-group">
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can invite members?</span>
+                      <span class="channel-detail-section__value">
+                        Managers can control who can invite.
+                      </span>
+                    </div>
+                    <div>
+                      <select
+                        v-model="permissionDraft.invitePolicy"
+                        class="channel-permissions-select"
+                        :disabled="isSubmittingPermissions"
+                      >
+                        <option value="manager_only">
+                          Managers only
+                        </option>
+                        <option value="all_members">
+                          All members
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can post messages?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can write in this channel.
+                      </span>
+                    </div>
+                    <div>
+                      <select
+                        v-model="permissionDraft.postPolicy"
+                        class="channel-permissions-select"
+                        :disabled="isSubmittingPermissions"
+                      >
+                        <option value="manager_only">
+                          Managers only
+                        </option>
+                        <option value="all_members">
+                          All members
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can pin messages?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can pin messages.
+                      </span>
+                    </div>
+                    <div>
+                      <select
+                        v-model="permissionDraft.pinMessagePolicy"
+                        class="channel-permissions-select"
+                        :disabled="isSubmittingPermissions"
+                      >
+                        <option value="manager_only">
+                          Managers only
+                        </option>
+                        <option value="all_members">
+                          All members
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can create threads?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can open new threads.
+                      </span>
+                    </div>
+                    <div>
+                      <select
+                        v-model="permissionDraft.threadPolicy"
+                        class="channel-permissions-select"
+                        :disabled="isSubmittingPermissions"
+                      >
+                        <option value="manager_only">
+                          Managers only
+                        </option>
+                        <option value="all_members">
+                          All members
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="channel-permissions-actions">
+                  <button
+                    type="button"
+                    class="channel-invite-btn channel-invite-btn--primary"
+                    :disabled="isSubmittingPermissions || !hasPermissionChanges"
+                    @click="saveChannelPermissions"
+                  >
+                    {{ isSubmittingPermissions ? "Saving..." : "Save permissions" }}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                v-else
+                class="channel-members-empty"
+              >
+                Loading permissions...
               </div>
             </template>
   

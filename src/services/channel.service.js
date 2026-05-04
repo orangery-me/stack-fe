@@ -95,6 +95,18 @@ class ChannelService {
     );
     return response.data.data;
   }
+
+  /**
+   * Update channel dynamic permissions settings (manager only).
+   * Payload shape mirrors BE UpdateChannelPermissionsDto.
+   */
+  async updateChannelPermissions(workspaceId, channelId, payload) {
+    const response = await apiHelper.patch(
+      API_ENDPOINTS.CHANNELS.UPDATE_PERMISSIONS(workspaceId, channelId),
+      payload
+    );
+    return response.data.data;
+  }
 }
 
 export default new ChannelService();

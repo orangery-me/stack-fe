@@ -212,25 +212,26 @@ watch(
 );
 
 watch(
-  () => selectedChannel.value,
-  async (newChannel, oldChannel) => {
+  () => selectedChannel.value?.id,
+  async (newChannelId, oldChannelId) => {
     // Cleanup listeners for old channel when switching channels
-    if (oldChannel?.id && oldChannel.id !== newChannel?.id) {
-      chatStore.cleanupChannelListeners(oldChannel.id);
+    if (oldChannelId && oldChannelId !== newChannelId) {
+      chatStore.cleanupChannelListeners(oldChannelId);
     }
 
-    if (newChannel?.id) {
+    // Only refetch when channel ID changes (avoid reload when selecting Settings)
+    if (newChannelId && newChannelId !== oldChannelId) {
       try {
         await chatStore.fetchMessages(
           workspace.value.id,
-          newChannel.id,
+          newChannelId,
           members.value
         );
 
         // Force scroll to bottom once on initial load per channel
-        if (!initialScrolledChannelIds.has(newChannel.id)) {
+        if (!initialScrolledChannelIds.has(newChannelId)) {
           await scrollToBottom();
-          initialScrolledChannelIds.add(newChannel.id);
+          initialScrolledChannelIds.add(newChannelId);
         }
       } catch {
         // Toast is shown by the global axios interceptor

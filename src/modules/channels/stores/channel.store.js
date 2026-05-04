@@ -138,5 +138,10 @@ export const useChannelStore = defineStore('channel', {
       }
       return result;
     },
+
+    async updateChannelPermissions(workspaceId, channelId, payload) {
+      await channelService.updateChannelPermissions(workspaceId, channelId, payload);
+      return this.fetchChannelById(workspaceId, channelId);
+    },
   },
 });
