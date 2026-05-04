@@ -1,8 +1,8 @@
 import { defineStore } from "pinia";
-import chatService from "../../../services/chat.service";
 import socketHelper from "../../../helpers/socket.helper";
 import { CHAT_EVENTS, CHAT_NAMESPACE } from "../constants";
 import { useAuthStore } from "../../auth/stores/auth.store";
+import { queryClient } from "@/config/queryClient";
 import type {
   MessageStatus,
   ChatMessage,
@@ -26,105 +26,21 @@ function generateTempId(): string {
 
 export const useChatStore = defineStore("chat", {
   state: () => ({
-    messagesByChannel: {} as Record<string, ChatMessage[]>,
-    messagesLoading: false,
-    messagesError: null as Error | null,
     socketListeners: {} as Record<string, { members: any[] } | boolean>,
     pendingMessages: {} as Record<string, PendingMessageInfo>,
-    currentPage: {} as Record<string, number>,
-    hasMoreByChannel: {} as Record<string, boolean>,
-    isLoadingMoreByChannel: {} as Record<string, boolean>,
   }),
 
-  getters: {
-    getMessagesByChannelId: (state) => (channelId: string) => {
-      return state.messagesByChannel[channelId] || [];
-    },
-    hasMoreForChannel: (state) => (channelId: string) => {
-      const value = state.hasMoreByChannel[channelId];
-      return typeof value === "boolean" ? value : true;
-    },
-  },
-
   actions: {
-    // ==================== Message Fetching ====================
+    // Helper to mutate Vue Query Cache
+    updateQueryCache(channelId: string, updater: (oldData: any) => any) {
+      queryClient.setQueryData(['messages', channelId], updater);
+    },
 
-    async fetchMessages(
-      workspaceId: string,
-      channelId: string,
-      members: any[] = [],
-      options: { appendOlder?: boolean } = {}
-    ) {
-      const { appendOlder = false } = options;
-      this.messagesError = null;
-
-      if (appendOlder) {
-        // If no more messages or already loading more for this channel, skip
-        if (this.hasMoreByChannel[channelId] === false) {
-          return;
-        }
-        if (this.isLoadingMoreByChannel[channelId]) {
-          return;
-        }
-        this.isLoadingMoreByChannel[channelId] = true;
-      } else {
-        this.messagesLoading = true;
-      }
-
-      try {
-        const nextPage = appendOlder
-          ? (this.currentPage[channelId] || 1) + 1
-          : 1;
-
-        const result: any = await chatService.getMessages(
-          workspaceId,
-          channelId,
-          nextPage
-        );
-
-        // Support both wrapped and unwrapped API responses
-        const payload = result?.data ?? result ?? {};
-        const messages = payload.messages || [];
-        const hasMore = typeof payload.hasMore === "boolean" ? payload.hasMore : false;
-
-        const formattedMessages = this.formatMessages(messages, members, "sent");
-
-        this.ensureChannelExists(channelId);
-
-        if (appendOlder) {
-          const existingIds = new Set(
-            this.messagesByChannel[channelId].map((m) => m.id)
-          );
-          const newMessages = formattedMessages.filter(
-            (m) => !existingIds.has(m.id)
-          );
-          this.messagesByChannel[channelId] = [
-            ...newMessages,
-            ...this.messagesByChannel[channelId],
-          ];
-          this.currentPage[channelId] = nextPage;
-        } else {
-          this.messagesByChannel[channelId] = formattedMessages;
-          this.currentPage[channelId] = nextPage;
-        }
-
-        this.hasMoreByChannel[channelId] = hasMore;
-
-        if (!this.socketListeners[channelId]) {
-          await this.setupSocketListeners(channelId, members);
-        }
-
-        await this.joinChannel(channelId);
-      } catch (error) {
-        this.messagesError = error as Error;
-        throw error;
-      } finally {
-        if (appendOlder) {
-          this.isLoadingMoreByChannel[channelId] = false;
-        } else {
-          this.messagesLoading = false;
-        }
-      }
+    getMessagesFromCache(channelId: string): ChatMessage[] {
+      const data: any = queryClient.getQueryData(['messages', channelId]);
+      if (!data) return [];
+      // Combine all pages
+      return data.pages?.flatMap((page: any) => page.messages || []) || [];
     },
 
     // ==================== Message Sending ====================
@@ -136,7 +52,6 @@ export const useChatStore = defineStore("chat", {
       const authStore = useAuthStore();
       const tempId = generateTempId();
 
-      // Create optimistic message
       const user = authStore.user as { id?: string; name?: string } | null;
       const optimisticMessage: ChatMessage = {
         id: tempId,
@@ -148,30 +63,30 @@ export const useChatStore = defineStore("chat", {
         status: "pending",
       };
 
-      // Add message immediately to UI
-      this.ensureChannelExists(channelId);
-      this.messagesByChannel[channelId].push(optimisticMessage);
-
-      console.log("[Chat Store] Sending message optimistic:", {
-        tempId,
-        channelId,
-        content: this.truncateContent(trimmedContent),
-        workspaceId,
+      // Add optimistic message to cache (append to first page assuming latest messages are there)
+      this.updateQueryCache(channelId, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        const newPages = [...oldData.pages];
+        if (!newPages[0]) newPages[0] = { messages: [] };
+        newPages[0] = {
+          ...newPages[0],
+          messages: [...(newPages[0].messages || []), optimisticMessage]
+        };
+        return { ...oldData, pages: newPages };
       });
 
-      // Set timeout to mark as failed
+      console.log("[Chat Store] Sending message optimistic:", { tempId, channelId });
+
       const timeoutId = window.setTimeout(() => {
         this.markMessageAsFailed(channelId, tempId);
       }, PENDING_MESSAGE_TIMEOUT);
 
-      // Track pending message
       this.pendingMessages[tempId] = {
         timeoutId,
         channelId,
         content: trimmedContent,
       };
 
-      // Emit socket event
       await socketHelper.emit(CHAT_EVENTS.SEND_CHANNEL_MESSAGE, {
         workspaceId,
         channelId,
@@ -180,16 +95,23 @@ export const useChatStore = defineStore("chat", {
     },
 
     retryMessage(channelId: string, messageId: string, workspaceId: string) {
-      const messages = this.messagesByChannel[channelId];
-      if (!messages) return;
-
-      const index = messages.findIndex(
+      const messages = this.getMessagesFromCache(channelId);
+      const failedMessage = messages.find(
         (m) => m.id === messageId && m.status === "failed"
       );
 
-      if (index >= 0) {
-        const failedMessage = messages[index];
-        messages.splice(index, 1);
+      if (failedMessage) {
+        // Remove from cache
+        this.updateQueryCache(channelId, (oldData: any) => {
+          if (!oldData || !oldData.pages) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: any) => ({
+              ...page,
+              messages: (page.messages || []).filter((m: any) => m.id !== messageId)
+            }))
+          };
+        });
 
         this.sendMessage({
           workspaceId,
@@ -202,52 +124,59 @@ export const useChatStore = defineStore("chat", {
     // ==================== Message Status Management ====================
 
     markMessageAsFailed(channelId: string, tempId: string) {
-      const messages = this.messagesByChannel[channelId];
-      if (!messages) return;
-
-      const index = messages.findIndex((m) => m.id === tempId);
-      if (index >= 0 && messages[index].status === "pending") {
-        console.log(
-          "[Chat Store] Message timed out, marking as failed:",
-          tempId
-        );
-        messages[index].status = "failed";
-      }
+      this.updateQueryCache(channelId, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            messages: (page.messages || []).map((m: any) => 
+              m.id === tempId && m.status === "pending" ? { ...m, status: "failed" } : m
+            )
+          }))
+        };
+      });
 
       this.cleanupPendingMessage(tempId);
     },
 
     confirmPendingMessage(channelId: string, serverMessage: any): boolean {
-      const messages = this.messagesByChannel[channelId];
-      if (!messages) return false;
-
-      // Find the pending message in the local messages
-      const pendingIndex = messages.findIndex(
+      const messages = this.getMessagesFromCache(channelId);
+      
+      const pendingMessage = messages.find(
         (m) =>
           m.status === "pending" &&
           m.content === serverMessage.content &&
           m.channelId === channelId
       );
 
-      if (pendingIndex < 0) return false;
+      if (!pendingMessage) return false;
 
-      const pendingMessage = messages[pendingIndex];
       const tempId = pendingMessage.id;
 
-      // Clear timeout and cleanup
       if (this.pendingMessages[tempId]) {
         window.clearTimeout(this.pendingMessages[tempId].timeoutId);
         this.cleanupPendingMessage(tempId);
       }
 
-      // Update message with server data
-      messages[pendingIndex] = {
-        ...pendingMessage,
-        id: serverMessage.id,
-        senderId: serverMessage.senderId,
-        createdAt: serverMessage.createdAt,
-        status: "sent",
-      };
+      this.updateQueryCache(channelId, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            messages: (page.messages || []).map((m: any) => 
+              m.id === tempId ? {
+                ...m,
+                id: serverMessage.id,
+                senderId: serverMessage.senderId,
+                createdAt: serverMessage.createdAt,
+                status: "sent",
+              } : m
+            )
+          }))
+        };
+      });
 
       return true;
     },
@@ -266,97 +195,74 @@ export const useChatStore = defineStore("chat", {
     async setupSocketListeners(channelId: string, members: any[] = []) {
       this.socketListeners[channelId] = { members };
 
-      // Setup global listeners only once
       if (this.socketListeners._globalSetup) {
-        // Wait for socket connection
         await socketHelper.waitForConnection();
         return;
       }
       this.socketListeners._globalSetup = true;
 
-      // Connect to chat namespace with logging enabled
       await socketHelper.connect(CHAT_NAMESPACE, { enableLogging: true });
 
-      socketHelper.on(
-        CHAT_EVENTS.NEW_MESSAGE,
-        this.handleNewMessage.bind(this)
-      );
-      socketHelper.on(
-        CHAT_EVENTS.MESSAGE_SENT,
-        this.handleMessageSent.bind(this)
-      );
+      socketHelper.on(CHAT_EVENTS.NEW_MESSAGE, this.handleNewMessage.bind(this));
+      socketHelper.on(CHAT_EVENTS.MESSAGE_SENT, this.handleMessageSent.bind(this));
       socketHelper.on(CHAT_EVENTS.ERROR, this.handleSocketError.bind(this));
     },
-    // Handle new message from server
+
     handleNewMessage(message: any) {
       const channelId = message.channelId;
       const channelData = this.socketListeners[channelId];
 
-      if (!channelId || !channelData || typeof channelData === "boolean")
-        return;
+      if (!channelId || !channelData || typeof channelData === "boolean") return;
 
-      console.log("[Chat Store] Received new_message:", {
-        messageId: message.id,
-        channelId,
-        senderId: message.senderId,
-        content: this.truncateContent(message.content),
-      });
+      const formattedMessage = this.formatMessage(message, channelData.members || [], "sent");
 
-      const formattedMessage = this.formatMessage(
-        message,
-        channelData.members || [],
-        "sent"
-      );
-
-      this.ensureChannelExists(channelId);
-
-      // Check for duplicates
-      const exists = this.messagesByChannel[channelId].some(
-        (m) =>
-          m.id === message.id ||
-          (m.status === "pending" && m.content === message.content)
+      const exists = this.getMessagesFromCache(channelId).some(
+        (m) => m.id === message.id || (m.status === "pending" && m.content === message.content)
       );
 
       if (!exists) {
-        this.messagesByChannel[channelId].push(formattedMessage);
-      } else {
-        console.log("[Chat Store] Message already exists, skipping duplicate");
+        this.updateQueryCache(channelId, (oldData: any) => {
+          if (!oldData || !oldData.pages) return oldData;
+          const newPages = [...oldData.pages];
+          if (!newPages[0]) newPages[0] = { messages: [] };
+          newPages[0] = {
+            ...newPages[0],
+            messages: [...(newPages[0].messages || []), formattedMessage]
+          };
+          return { ...oldData, pages: newPages };
+        });
       }
     },
-    // Handle message sent confirmation
+
     handleMessageSent(message: any) {
       const channelId = message.channelId;
       const channelData = this.socketListeners[channelId];
 
-      if (!channelId || !channelData || typeof channelData === "boolean")
-        return;
+      if (!channelId || !channelData || typeof channelData === "boolean") return;
 
-      // Confirm pending message first
       if (this.confirmPendingMessage(channelId, message)) return;
 
-      // Fallback: add as new message
-      const formattedMessage = this.formatMessage(
-        message,
-        channelData.members || [],
-        "sent"
-      );
+      const formattedMessage = this.formatMessage(message, channelData.members || [], "sent");
 
-      this.ensureChannelExists(channelId);
-      // Check for duplicates
-      const exists = this.messagesByChannel[channelId].some(
-        (m) => m.id === message.id
-      );
+      const exists = this.getMessagesFromCache(channelId).some((m) => m.id === message.id);
 
       if (!exists) {
-        this.messagesByChannel[channelId].push(formattedMessage);
+        this.updateQueryCache(channelId, (oldData: any) => {
+          if (!oldData || !oldData.pages) return oldData;
+          const newPages = [...oldData.pages];
+          if (!newPages[0]) newPages[0] = { messages: [] };
+          newPages[0] = {
+            ...newPages[0],
+            messages: [...(newPages[0].messages || []), formattedMessage]
+          };
+          return { ...oldData, pages: newPages };
+        });
       }
     },
 
     handleSocketError(error: any) {
       console.error("[Chat] Socket error:", error);
-      this.messagesError = error;
 
-      // Mark all pending messages as failed
       Object.keys(this.pendingMessages).forEach((tempId) => {
         const pending = this.pendingMessages[tempId];
         if (pending) {
@@ -374,23 +280,6 @@ export const useChatStore = defineStore("chat", {
       }
     },
 
-    cleanupChannelChat(channelId: string) {
-      // Clear pending message timeouts for this channel
-      Object.keys(this.pendingMessages).forEach((tempId) => {
-        const pending = this.pendingMessages[tempId];
-        if (pending?.channelId === channelId) {
-          window.clearTimeout(pending.timeoutId);
-          this.cleanupPendingMessage(tempId);
-        }
-      });
-
-      if (this.messagesByChannel[channelId]) {
-        delete this.messagesByChannel[channelId];
-      }
-
-      this.cleanupChannelListeners(channelId);
-    },
-
     cleanupPendingMessage(tempId: string) {
       if (this.pendingMessages[tempId]) {
         delete this.pendingMessages[tempId];
@@ -399,14 +288,9 @@ export const useChatStore = defineStore("chat", {
 
     // ==================== Message Formatting ====================
 
-    formatMessage(
-      message: any,
-      members: any[] = [],
-      status: MessageStatus = "sent"
-    ): ChatMessage {
+    formatMessage(message: any, members: any[] = [], status: MessageStatus = "sent"): ChatMessage {
       const author = members.find((m) => m.id === message.senderId);
-      const authorName =
-        author?.name || message.senderName || UNKNOWN_AUTHOR_NAME;
+      const authorName = author?.name || message.senderName || UNKNOWN_AUTHOR_NAME;
 
       return {
         id: message.id,
@@ -420,33 +304,15 @@ export const useChatStore = defineStore("chat", {
       };
     },
 
-    formatMessages(
-      messages: any[],
-      members: any[] = [],
-      status: MessageStatus = "sent"
-    ): ChatMessage[] {
-      return messages.map((message) =>
-        this.formatMessage(message, members, status)
-      );
+    formatMessages(messages: any[], members: any[] = [], status: MessageStatus = "sent"): ChatMessage[] {
+      return messages.map((message) => this.formatMessage(message, members, status));
     },
 
     // ==================== Utilities ====================
 
-    ensureChannelExists(channelId: string) {
-      if (!this.messagesByChannel[channelId]) {
-        this.messagesByChannel[channelId] = [];
-      }
-    },
-
-    initChannelChat(_workspaceId: string, channelId: string) {
-      this.ensureChannelExists(channelId);
-    },
-
     truncateContent(content: string | undefined, maxLength = 50): string {
       if (!content) return "";
-      return content.length > maxLength
-        ? `${content.substring(0, maxLength)}...`
-        : content;
+      return content.length > maxLength ? `${content.substring(0, maxLength)}...` : content;
     },
   },
 });

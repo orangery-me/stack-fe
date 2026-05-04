@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTaskStore, TaskSortField } from '@/modules/channels/stores/task.store.js';
-import { createLocalLoading } from '@/composables/useLoading.js';
+import { useQuery } from '@tanstack/vue-query';
+import taskService from '@/services/task.service.js';
 import TaskListView from './TaskListView.vue';
 import TaskCreateModal from './TaskCreateModal.vue';
 import TaskDetailPanel from './TaskDetailPanel.vue';
@@ -16,7 +17,6 @@ const props = defineProps({
 const emit = defineEmits(['update-name']);
 
 const taskStore = useTaskStore();
-const { isLoading, withLoading } = createLocalLoading();
 
 const isCreateModalOpen = ref(false);
 const statusFilter = ref('');
@@ -45,7 +45,13 @@ const sortIcon = (field) => {
 };
 
 // ─── Data ────────────────────────────────────────────────
-const tasks = computed(() => taskStore.getTasksByListId(props.taskListId));
+const { data: rawTasks, isFetching: isLoading } = useQuery({
+  queryKey: ['tasks', computed(() => props.workspaceId), computed(() => props.taskListId)],
+  queryFn: () => taskService.getTasksByList(props.workspaceId, props.taskListId),
+  enabled: computed(() => !!props.workspaceId && !!props.taskListId),
+});
+
+const tasks = computed(() => rawTasks.value?.tasks || []);
 const selectedTask = computed(() => taskStore.selectedTask);
 
 const filteredAndSortedTasks = computed(() => {
@@ -103,10 +109,7 @@ const saveTitle = async () => {
 };
 
 // ─── Actions ─────────────────────────────────────────────
-const loadTasks = async () => {
-  if (!props.workspaceId || !props.taskListId) return;
-  await withLoading(() => taskStore.fetchTasksByList(props.workspaceId, props.taskListId));
-};
+// Removed loadTasks as it's handled by useQuery
 
 const handleTaskCreated = () => {
   isCreateModalOpen.value = false;
@@ -127,11 +130,6 @@ const toggleSearch = () => {
 
 watch(() => props.taskListId, () => {
   taskStore.clearSelectedTask();
-  loadTasks();
-});
-
-onMounted(() => {
-  loadTasks();
 });
 </script>
 

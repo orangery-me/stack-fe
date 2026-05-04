@@ -1,8 +1,14 @@
+<script>
+// Cache scroll position per channel to restore when switching tabs
+const channelScrollPositions = new Map();
+</script>
 <script setup>
-import { computed, ref, nextTick, watch, onUnmounted } from "vue";
+import { computed, ref, nextTick, watch, onBeforeUnmount } from "vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useChatStore } from "@/modules/channels/stores/chat.store";
+import { useInfiniteQuery } from "@tanstack/vue-query";
+import chatService from "@/services/chat.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 
 const emit = defineEmits(["add-people-to-channel"]);
@@ -14,11 +20,27 @@ const chatStore = useChatStore();
 const workspace = computed(() => workspaceStore.workspaceDetail);
 const selectedChannel = computed(() => channelStore.selectedChannel);
 const members = computed(() => workspaceStore.members);
-const isLoadingMessages = computed(() => chatStore.messagesLoading);
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: isLoadingMessages } = useInfiniteQuery({
+  queryKey: ['messages', computed(() => selectedChannel.value?.id)],
+  queryFn: async ({ pageParam = 1 }) => {
+    const response = await chatService.getMessages(workspace.value.id, selectedChannel.value.id, pageParam);
+    const payload = response?.data ?? response ?? {};
+    return {
+      messages: chatStore.formatMessages(payload.messages || [], members.value, "sent"),
+      hasMore: typeof payload.hasMore === "boolean" ? payload.hasMore : false
+    };
+  },
+  initialPageParam: 1,
+  getNextPageParam: (lastPage, allPages) => {
+    return lastPage.hasMore ? allPages.length + 1 : undefined;
+  },
+  enabled: computed(() => !!workspace.value?.id && !!selectedChannel.value?.id)
+});
 
 const messages = computed(() => {
-  if (!selectedChannel.value) return [];
-  return chatStore.getMessagesByChannelId(selectedChannel.value.id);
+  if (!data.value) return [];
+  // Reverse pages so older pages (loaded later) come first, then flatten
+  return [...data.value.pages].reverse().flatMap(page => page.messages || []);
 });
 
 const messagesByDay = computed(() => {
@@ -64,7 +86,6 @@ const messagesByDay = computed(() => {
 
 const newMessage = ref("");
 const messagesContainerRef = ref(null);
-const isLoadingOlder = ref(false);
 const initialScrolledChannelIds = new Set();
 
 const shouldAutoScrollToBottom = () => {
@@ -75,12 +96,22 @@ const shouldAutoScrollToBottom = () => {
   return distanceFromBottom < autoScrollThreshold;
 };
 
+const restoreScrollPosition = async () => {
+  await nextTick();
+  requestAnimationFrame(() => {
+    if (!messagesContainerRef.value || !selectedChannel.value?.id) return;
+    const savedScroll = channelScrollPositions.get(selectedChannel.value.id);
+    if (savedScroll !== undefined) {
+      messagesContainerRef.value.scrollTop = savedScroll;
+    }
+  });
+};
+
 const scrollToBottom = async () => {
   await nextTick();
   requestAnimationFrame(() => {
     if (!messagesContainerRef.value) return;
-    messagesContainerRef.value.scrollTop =
-      messagesContainerRef.value.scrollHeight;
+    messagesContainerRef.value.scrollTop = messagesContainerRef.value.scrollHeight;
   });
 };
 
@@ -90,27 +121,20 @@ const handleScroll = async (event) => {
   if (
     !selectedChannel.value ||
     !workspace.value ||
-    isLoadingOlder.value ||
+    isFetchingNextPage.value ||
     element.scrollTop >= nearTop
   ) {
     return;
   }
 
-  if (!chatStore.hasMoreForChannel(selectedChannel.value.id)) {
+  if (!hasNextPage.value) {
     return;
   }
-
-  isLoadingOlder.value = true;
 
   const previousScrollHeight = element.scrollHeight;
 
   try {
-    await chatStore.fetchMessages(
-      workspace.value.id,
-      selectedChannel.value.id,
-      members.value,
-      { appendOlder: true }
-    );
+    await fetchNextPage();
 
     await nextTick();
 
@@ -118,8 +142,6 @@ const handleScroll = async (event) => {
     element.scrollTop = newScrollHeight - previousScrollHeight;
   } catch {
     // Toast is shown by the global axios interceptor
-  } finally {
-    isLoadingOlder.value = false;
   }
 };
 
@@ -203,46 +225,48 @@ const isMessageGroupStart = (dayMessages, index) => {
 
 watch(
   () => messages.value.length,
-  () => {
-    if (shouldAutoScrollToBottom()) {
+  (newLength, oldLength) => {
+    // If it's the first time we load messages for this channel, force scroll to bottom
+    if (selectedChannel.value?.id && !initialScrolledChannelIds.has(selectedChannel.value.id)) {
+      scrollToBottom();
+      initialScrolledChannelIds.add(selectedChannel.value.id);
+    } else if (newLength > 0 && (oldLength === 0 || oldLength === undefined)) {
+      // Data loaded from cache on remount, restore saved scroll position
+      restoreScrollPosition();
+    } else if (shouldAutoScrollToBottom()) {
       scrollToBottom();
     }
   },
-  { deep: false }
+  { immediate: true }
 );
 
 watch(
   () => selectedChannel.value?.id,
   async (newChannelId, oldChannelId) => {
+    // Save scroll position for the old channel
+    if (oldChannelId && messagesContainerRef.value) {
+      channelScrollPositions.set(oldChannelId, messagesContainerRef.value.scrollTop);
+    }
+
     // Cleanup listeners for old channel when switching channels
     if (oldChannelId && oldChannelId !== newChannelId) {
       chatStore.cleanupChannelListeners(oldChannelId);
     }
 
-    // Only refetch when channel ID changes (avoid reload when selecting Settings)
     if (newChannelId && newChannelId !== oldChannelId) {
-      try {
-        await chatStore.fetchMessages(
-          workspace.value.id,
-          newChannelId,
-          members.value
-        );
-
-        // Force scroll to bottom once on initial load per channel
-        if (!initialScrolledChannelIds.has(newChannelId)) {
-          await scrollToBottom();
-          initialScrolledChannelIds.add(newChannelId);
-        }
-      } catch {
-        // Toast is shown by the global axios interceptor
-      }
+      chatStore.setupSocketListeners(newChannelId, members.value);
+      chatStore.joinChannel(newChannelId);
     }
   },
   { immediate: true }
 );
 
 // Cleanup when rời hẳn khỏi ChannelDetailView
-onUnmounted(() => {
+onBeforeUnmount(() => {
+  if (selectedChannel.value?.id && messagesContainerRef.value) {
+    channelScrollPositions.set(selectedChannel.value.id, messagesContainerRef.value.scrollTop);
+  }
+  
   if (selectedChannel.value?.id) {
     chatStore.cleanupChannelListeners(selectedChannel.value.id);
   }
@@ -316,7 +340,7 @@ onUnmounted(() => {
 
           <div class="message-tab-messages">
             <div class="message-tab-messages-loading-older">
-              <div v-if="isLoadingOlder" class="d-flex justify-content-center">
+              <div v-if="isFetchingNextPage" class="d-flex justify-content-center">
                 <AppLoading
                   :active="true"
                   variant="inline"

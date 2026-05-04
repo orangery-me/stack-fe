@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import taskService from '@/services/task.service.js';
+import { queryClient } from '@/config/queryClient.js';
 
 /**
  * Sort field enum — avoids hardcoded string comparisons
@@ -127,8 +128,8 @@ export const useTaskStore = defineStore('task', {
       this.createTaskLoading = true;
       try {
         const result = await taskService.createTask(workspaceId, taskListId, data);
-        // Refresh list tasks
-        await this.fetchTasksByList(workspaceId, taskListId);
+        // Refresh list tasks using TanStack Query
+        queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId, taskListId] });
         return result;
       } catch (error) {
         throw error;
@@ -142,6 +143,12 @@ export const useTaskStore = defineStore('task', {
       try {
         const result = await taskService.updateTask(workspaceId, taskId, data);
         this.updateTaskInLocalState(result);
+        
+        // Also invalidate TanStack Query cache
+        // We might not know the taskListId here easily, so we invalidate all tasks just in case,
+        // or rely on the UI that knows the taskListId to invalidate. Let's invalidate all tasks.
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        
         return result;
       } catch (error) {
         throw error;
@@ -161,6 +168,9 @@ export const useTaskStore = defineStore('task', {
         if (this.selectedTask?.id === taskId) {
           this.selectedTask = null;
         }
+        
+        // Invalidate TanStack Query cache
+        queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId, taskListId] });
       } catch (error) {
         throw error;
       }
@@ -183,6 +193,7 @@ export const useTaskStore = defineStore('task', {
       try {
         const result = await taskService.assignTask(workspaceId, taskId, workspaceMemberId);
         this.updateTaskInLocalState(result);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
         return result;
       } catch (error) {
         throw error;
@@ -193,6 +204,7 @@ export const useTaskStore = defineStore('task', {
       try {
         const result = await taskService.unassignTask(workspaceId, taskId, memberId);
         this.updateTaskInLocalState(result);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
         return result;
       } catch (error) {
         throw error;
