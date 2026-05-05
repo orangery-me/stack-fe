@@ -12,6 +12,31 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import 'primeicons/primeicons.css';
 import './assets/styles/main.scss';
 
+import { OhVueIcon, addIcons } from "oh-vue-icons";
+import { 
+  FcBriefcase, 
+  FcSms, 
+  FcCollaboration, 
+  FcInfo, 
+  FcCheckmark, 
+  FcHighPriority, 
+  FcIdea,
+  FcSettings,
+  FcApproval
+} from "oh-vue-icons/icons";
+
+addIcons(
+  FcBriefcase, 
+  FcSms, 
+  FcCollaboration, 
+  FcInfo, 
+  FcCheckmark, 
+  FcHighPriority, 
+  FcIdea,
+  FcSettings,
+  FcApproval
+);
+
 const app = createApp(App);
 const pinia = createPinia();
 
@@ -23,6 +48,8 @@ app.use(PrimeVue, {
     preset: Aura,
   },
 });
+
+app.component("v-icon", OhVueIcon);
 
 // Initialize auth state on app start
 const authStore = useAuthStore();

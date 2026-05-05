@@ -8,6 +8,7 @@ import workspaceFilesService from "@/services/workspaceFiles.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu.vue";
+import NotificationPanel from "@/modules/notifications/components/NotificationPanel.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -478,39 +479,11 @@ onBeforeUnmount(() => {
 
     <AiChatSidebar v-model:open="uiStore.isAiOpen" />
 
-    <div
+    <NotificationPanel
       v-if="notificationStore.isPanelOpen"
-      class="notification-overlay"
-      @click.self="notificationStore.closePanel()"
-    >
-      <div class="notification-panel">
-        <div class="notification-panel-header">
-          <h3>Activity</h3>
-          <button type="button" @click="markAllNotificationsRead">
-            Mark all as read
-          </button>
-        </div>
-        <div v-if="notificationStore.loading" class="notification-empty">
-          Loading...
-        </div>
-        <div v-else-if="notifications.length === 0" class="notification-empty">
-          No notifications yet.
-        </div>
-        <div v-else class="notification-list">
-          <button
-            v-for="item in notifications"
-            :key="item.id"
-            class="notification-item"
-            :class="{ unread: !item.readAt }"
-            type="button"
-            @click="markNotificationRead(item.id)"
-          >
-            <div class="notification-item-title">{{ item.title || "Notification" }}</div>
-            <div class="notification-item-body">{{ item.body || "You have a new update." }}</div>
-          </button>
-        </div>
-      </div>
-    </div>
+      :workspace-id="workspaceId"
+      @close="notificationStore.closePanel()"
+    />
   </div>
 </template>
 
