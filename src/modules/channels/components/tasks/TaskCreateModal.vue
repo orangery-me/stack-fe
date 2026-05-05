@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useTaskStore } from '@/modules/channels/stores/task.store.js';
 import { useChannelStore } from '@/modules/channels/stores/channel.store.js';
 import { useToast } from '@/composables/useToast.js';
+import AutoComplete from 'primevue/autocomplete';
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
@@ -24,7 +25,40 @@ const selectedAssignees = ref([]);
 const isSubmitting = ref(false);
 
 const channelId = channelStore.selectedChannel?.id;
-const channelMembers = channelId ? channelStore.getChannelMembersById(channelId) : [];
+const channelMembers = computed(() => channelId ? channelStore.getChannelMembersById(channelId) : []);
+
+const filteredAssignees = ref([]);
+
+const searchAssignees = (event) => {
+  const query = event.query.toLowerCase().trim();
+  if (!query) {
+    filteredAssignees.value = channelMembers.value.map(member => ({
+      ...member,
+      display: `${member.name || member.email} (${member.email})`
+    }));
+    return;
+  }
+
+  filteredAssignees.value = channelMembers.value
+    .filter(member =>
+      (member.name || '').toLowerCase().includes(query) ||
+      (member.email || '').toLowerCase().includes(query)
+    )
+    .map(member => ({
+      ...member,
+      display: `${member.name || member.email} (${member.email})`
+    }));
+};
+
+onMounted(async () => {
+  if (channelId && props.workspaceId && channelMembers.value.length === 0) {
+    try {
+      await channelStore.fetchChannelMembers(props.workspaceId, channelId);
+    } catch (e) {
+      console.error('[TaskCreateModal] Failed to fetch channel members:', e);
+    }
+  }
+});
 
 const handleSubmit = async () => {
   if (!title.value.trim()) return;
@@ -52,77 +86,38 @@ const handleSubmit = async () => {
   }
 };
 
-const toggleAssignee = (member) => {
-  const idx = selectedAssignees.value.findIndex(
-    (m) => m.workspaceMemberId === member.workspaceMemberId
-  );
-  if (idx >= 0) {
-    selectedAssignees.value.splice(idx, 1);
-  } else {
-    selectedAssignees.value.push(member);
-  }
-};
 
-const isAssigneeSelected = (member) => {
-  return selectedAssignees.value.some(
-    (m) => m.workspaceMemberId === member.workspaceMemberId
-  );
-};
 </script>
 
 <template>
-  <div
-    class="task-create-overlay"
-    @click.self="emit('close')"
-  >
+  <div class="task-create-overlay" @click.self="emit('close')">
     <div class="task-create-modal">
       <div class="task-create-header">
         <h3>Create Task</h3>
-        <button
-          type="button"
-          class="task-create-close"
-          @click="emit('close')"
-        >
+        <button type="button" class="task-create-close" @click="emit('close')">
           <i class="pi pi-times" />
         </button>
       </div>
 
-      <form
-        class="task-create-body"
-        @submit.prevent="handleSubmit"
-      >
+      <form class="task-create-body" @submit.prevent="handleSubmit">
         <!-- Title -->
         <div class="task-form-group">
           <label class="task-form-label">Title *</label>
-          <input
-            v-model="title"
-            type="text"
-            class="task-form-input"
-            placeholder="What needs to be done?"
-            maxlength="500"
-            autofocus
-          >
+          <input v-model="title" type="text" class="task-form-input" placeholder="What needs to be done?"
+            maxlength="500" autofocus>
         </div>
 
         <!-- Description -->
         <div class="task-form-group">
           <label class="task-form-label">Description</label>
-          <textarea
-            v-model="description"
-            class="task-form-textarea"
-            placeholder="Add details..."
-            rows="3"
-          />
+          <textarea v-model="description" class="task-form-textarea" placeholder="Add details..." rows="3" />
         </div>
 
         <!-- Status + Priority row -->
         <div class="task-form-row">
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Status</label>
-            <select
-              v-model="status"
-              class="task-form-select"
-            >
+            <select v-model="status" class="task-form-select">
               <option value="todo">
                 Todo
               </option>
@@ -136,10 +131,7 @@ const isAssigneeSelected = (member) => {
           </div>
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Priority</label>
-            <select
-              v-model="priority"
-              class="task-form-select"
-            >
+            <select v-model="priority" class="task-form-select">
               <option value="low">
                 Low
               </option>
@@ -159,64 +151,36 @@ const isAssigneeSelected = (member) => {
         <!-- Due date -->
         <div class="task-form-group">
           <label class="task-form-label">Due date</label>
-          <input
-            v-model="dueDate"
-            type="datetime-local"
-            class="task-form-input"
-          >
+          <input v-model="dueDate" type="datetime-local" class="task-form-input">
         </div>
 
         <!-- Assignees -->
         <div class="task-form-group">
           <label class="task-form-label">Assignees</label>
-          <div
-            v-if="channelMembers.length > 0"
-            class="task-assignee-list"
-          >
-            <button
-              v-for="member in channelMembers"
-              :key="member.workspaceMemberId"
-              type="button"
-              class="task-assignee-chip"
-              :class="{ 'task-assignee-chip--selected': isAssigneeSelected(member) }"
-              @click="toggleAssignee(member)"
-            >
-              <span class="task-assignee-chip__avatar">
-                {{ (member.name || member.email || '?')[0].toUpperCase() }}
-              </span>
-              <span class="task-assignee-chip__name">
-                {{ member.name || member.email }}
-              </span>
-              <i
-                v-if="isAssigneeSelected(member)"
-                class="pi pi-check"
-              />
-            </button>
+          <div class="task-assignee-autocomplete">
+            <AutoComplete v-model="selectedAssignees" :suggestions="filteredAssignees" option-label="display"
+              multiple fluid @complete="searchAssignees">
+              <template #option="{ option }">
+                <div class="task-assignee-option">
+                  <span class="task-assignee-option__avatar">
+                    {{ (option.name || option.email || '?')[0].toUpperCase() }}
+                  </span>
+                  <span class="task-assignee-option__name">
+                    {{ option.name || option.email }}
+                  </span>
+                </div>
+              </template>
+            </AutoComplete>
           </div>
-          <span
-            v-else
-            class="task-form-hint"
-          >No channel members loaded</span>
         </div>
 
         <!-- Actions -->
         <div class="task-create-actions">
-          <button
-            type="button"
-            class="task-btn task-btn--secondary"
-            @click="emit('close')"
-          >
+          <button type="button" class="task-btn task-btn--secondary" @click="emit('close')">
             Cancel
           </button>
-          <button
-            type="submit"
-            class="task-btn task-btn--primary"
-            :disabled="!title.trim() || isSubmitting"
-          >
-            <i
-              v-if="isSubmitting"
-              class="pi pi-spin pi-spinner"
-            />
+          <button type="submit" class="task-btn task-btn--primary" :disabled="!title.trim() || isSubmitting">
+            <i v-if="isSubmitting" class="pi pi-spin pi-spinner" />
             Create Task
           </button>
         </div>
@@ -347,59 +311,81 @@ const isAssigneeSelected = (member) => {
   color: var(--ui-text-muted);
 }
 
-.task-assignee-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.task-assignee-autocomplete {
+  :deep(.p-autocomplete-multiple-container) {
+    width: 100%;
+    padding: 4px 10px;
+    border: 1px solid var(--ui-divider);
+    border-radius: 8px;
+    background: #fff;
+    min-height: 38px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-.task-assignee-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 4px;
-  border: 1px solid var(--ui-divider);
-  border-radius: 20px;
-  background: #fff;
-  font-size: 13px;
-  color: var(--ui-text);
-  cursor: pointer;
-  transition: all 0.12s ease;
+    &:not(.p-disabled):hover {
+      border-color: var(--ui-divider);
+    }
 
-  &:hover {
-    background: var(--gray-50);
-  }
-
-  &--selected {
-    background: #eff6ff;
-    border-color: var(--primary-300, #a5b4fc);
-    color: var(--primary-700, #4338ca);
-
-    i {
-      font-size: 10px;
-      color: var(--primary-600);
+    &.p-focus {
+      border-color: var(--primary-400, #818cf8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
   }
+
+  :deep(input.p-autocomplete-input) {
+    font-size: 14px !important;
+    font-family: inherit !important;
+    color: var(--ui-text);
+    padding: 4px 0 !important;
+    margin: 0 !important;
+    border: none;
+    outline: none;
+    background: transparent;
+    box-shadow: none !important;
+
+    &::placeholder {
+      color: var(--ui-text-muted) !important;
+      font-size: 13px !important;
+    }
+  }
+
+  :deep(.p-autocomplete-token) {
+    background: var(--gray-100, #f1f5f9);
+    border-radius: 16px;
+    padding: 2px 8px 2px 4px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+  }
 }
 
-.task-assignee-chip__avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #818cf8, #6366f1);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: inline-flex;
+.task-assignee-option {
+  display: flex;
   align-items: center;
-  justify-content: center;
-}
+  gap: 10px;
 
-.task-assignee-chip__name {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  &__avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary-100, #e0e7ff);
+    color: var(--primary-700, #4338ca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  &__name {
+    font-size: 13px;
+    color: var(--ui-text);
+  }
 }
 
 .task-create-actions {

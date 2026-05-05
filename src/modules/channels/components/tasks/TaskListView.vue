@@ -7,7 +7,7 @@ const props = defineProps({
 const emit = defineEmits(['taskClick']);
 
 const statusLabel = (status) => {
-  const map = { todo: 'Not started', in_progress: 'In progress', done: 'Done' };
+  const map = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
   return map[status] || status;
 };
 
