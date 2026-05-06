@@ -130,6 +130,7 @@ export const useTaskStore = defineStore('task', {
         const result = await taskService.createTask(workspaceId, taskListId, data);
         // Refresh list tasks using TanStack Query
         queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId, taskListId] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks', workspaceId] });
         return result;
       } catch (error) {
         throw error;
@@ -148,6 +149,7 @@ export const useTaskStore = defineStore('task', {
         // We might not know the taskListId here easily, so we invalidate all tasks just in case,
         // or rely on the UI that knows the taskListId to invalidate. Let's invalidate all tasks.
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks', workspaceId] });
         
         return result;
       } catch (error) {
@@ -171,6 +173,7 @@ export const useTaskStore = defineStore('task', {
         
         // Invalidate TanStack Query cache
         queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId, taskListId] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks', workspaceId] });
       } catch (error) {
         throw error;
       }
@@ -194,6 +197,7 @@ export const useTaskStore = defineStore('task', {
         const result = await taskService.assignTask(workspaceId, taskId, workspaceMemberId);
         this.updateTaskInLocalState(result);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks', workspaceId] });
         return result;
       } catch (error) {
         throw error;
@@ -205,6 +209,7 @@ export const useTaskStore = defineStore('task', {
         const result = await taskService.unassignTask(workspaceId, taskId, memberId);
         this.updateTaskInLocalState(result);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks', workspaceId] });
         return result;
       } catch (error) {
         throw error;

@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import { useTaskStore } from '@/modules/channels/stores/task.store.js';
 import { useToast } from '@/composables/useToast.js';
+import TaskCommentSection from './TaskCommentSection.vue';
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -321,6 +322,11 @@ watch(
         <span>Created by {{ task.creatorName || task.creatorEmail || '—' }}</span>
         <span>{{ formatDate(task.createdAt) }}</span>
       </div>
+
+      <TaskCommentSection
+        :workspace-id="workspaceId"
+        :task-id="task.id"
+      />
 
       <!-- Delete -->
       <div class="task-detail-danger">

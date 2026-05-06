@@ -10,10 +10,14 @@ import LoadingOverlayHost from "@/components/loading/LoadingOverlayHost.vue";
 const route = useRoute();
 const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
 const isWorkspaceFiles = computed(() => route.name === "workspaceFiles");
+const isMyTasks = computed(() => route.name === "myTasks");
 const isCanvasEdit = computed(() => route.name === "canvasEdit");
 const hideAppHeader = computed(
   () =>
-    isWorkspaceDetail.value || isWorkspaceFiles.value || isCanvasEdit.value
+    isWorkspaceDetail.value ||
+    isWorkspaceFiles.value ||
+    isMyTasks.value ||
+    isCanvasEdit.value
 );
 
 // Prevent body scroll when on workspace detail or canvas edit page

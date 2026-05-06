@@ -99,6 +99,36 @@ class TaskService {
     );
     return response.data.data;
   }
+
+  async getTaskComments(workspaceId, taskId) {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.TASKS.COMMENTS(workspaceId, taskId)
+    );
+    return response.data.data;
+  }
+
+  async createTaskComment(workspaceId, taskId, data) {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.TASKS.COMMENTS(workspaceId, taskId),
+      data
+    );
+    return response.data.data;
+  }
+
+  async updateTaskComment(workspaceId, taskId, commentId, data) {
+    const response = await apiHelper.patch(
+      API_ENDPOINTS.TASKS.COMMENT(workspaceId, taskId, commentId),
+      data
+    );
+    return response.data.data;
+  }
+
+  async deleteTaskComment(workspaceId, taskId, commentId) {
+    const response = await apiHelper.delete(
+      API_ENDPOINTS.TASKS.COMMENT(workspaceId, taskId, commentId)
+    );
+    return response.data.data;
+  }
 }
 
 export default new TaskService();

@@ -49,6 +49,12 @@ export default [
 		meta: { title: 'Workspace Files', requiresAuth: true },
 	},
 	{
+		path: '/workspaces/:id/my-tasks',
+		name: 'myTasks',
+		component: WorkspaceDetailView,
+		meta: { title: 'My Tasks', requiresAuth: true },
+	},
+	{
 		path: '/canvas/:canvasId/edit',
 		name: 'canvasEdit',
 		component: CanvasEditView,

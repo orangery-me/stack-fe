@@ -110,6 +110,15 @@
     background: rgba(191, 219, 254, 0.45);
     color: #1e40af;
   }
+
+  &.active {
+    background: #1e40af;
+    color: #eff6ff;
+
+    .sidebar-icon {
+      color: #dbeafe;
+    }
+  }
 }
 
 .sidebar-section-header {

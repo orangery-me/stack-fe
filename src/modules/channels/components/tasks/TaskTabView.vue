@@ -6,6 +6,7 @@ import taskService from '@/services/task.service.js';
 import TaskListView from './TaskListView.vue';
 import TaskCreateModal from './TaskCreateModal.vue';
 import TaskDetailPanel from './TaskDetailPanel.vue';
+import TaskKanbanView from './TaskKanbanView.vue';
 import AppLoading from '@/components/loading/AppLoading.vue';
 
 const props = defineProps({
@@ -22,6 +23,7 @@ const isCreateModalOpen = ref(false);
 const statusFilter = ref('');
 const searchQuery = ref('');
 const showSearch = ref(false);
+const viewType = ref('list');
 
 // ─── Sorting ─────────────────────────────────────────────
 const sortField = ref(TaskSortField.CREATED_AT);
@@ -209,6 +211,25 @@ watch(() => props.taskListId, () => {
         >
           <i class="pi pi-search" />
         </button>
+        <span class="task-toolbar-divider" />
+        <button
+          type="button"
+          class="task-icon-btn"
+          :class="{ 'task-icon-btn--active': viewType === 'list' }"
+          title="List view"
+          @click="viewType = 'list'"
+        >
+          <i class="pi pi-list" />
+        </button>
+        <button
+          type="button"
+          class="task-icon-btn"
+          :class="{ 'task-icon-btn--active': viewType === 'kanban' }"
+          title="Kanban view"
+          @click="viewType = 'kanban'"
+        >
+          <i class="pi pi-th-large" />
+        </button>
       </div>
 
       <div
@@ -247,7 +268,10 @@ watch(() => props.taskListId, () => {
         </div>
 
         <!-- Single table group -->
-        <div class="task-group">
+        <div
+          v-if="viewType === 'list'"
+          class="task-group"
+        >
           <!-- Table header (sortable) -->
           <div class="task-table-header">
             <div class="task-col task-col--check" />
@@ -330,6 +354,17 @@ watch(() => props.taskListId, () => {
               Add item
             </button>
           </div>
+        </div>
+
+        <div
+          v-else
+          class="task-group task-group--kanban"
+        >
+          <TaskKanbanView
+            :tasks="filteredAndSortedTasks"
+            :workspace-id="workspaceId"
+            @task-click="handleTaskClick"
+          />
         </div>
       </div>
 
@@ -570,6 +605,10 @@ watch(() => props.taskListId, () => {
   border: 1px solid var(--ui-divider);
   border-radius: 8px;
   overflow: hidden;
+}
+
+.task-group--kanban {
+  padding: 12px;
 }
 
 /* ─── Table header ─── */

@@ -13,6 +13,7 @@ import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
 import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import NotificationPanel from "@/modules/notifications/components/NotificationPanel.vue";
+import WorkspaceMyTasksContent from "@/modules/workspaces/components/WorkspaceMyTasksContent.vue";
 
 const { success } = useToast();
 const route = useRoute();
@@ -124,6 +125,7 @@ const getWorkspaceInitials = (name) => {
 const workspaceInitials = computed(() =>
   getWorkspaceInitials(workspace.value?.name)
 );
+const isMyTasksView = computed(() => route.name === "myTasks");
 
 // Get workspace display name (truncated if too long)
 const workspaceDisplayName = computed(() => {
@@ -141,6 +143,17 @@ const getUserInitials = (name) => {
 };
 
 const selectChannel = (channelId) => {
+  if (isMyTasksView.value) {
+    router
+      .push({
+        name: "workspaceDetail",
+        params: { id: workspaceId },
+      })
+      .finally(() => {
+        channelStore.selectChannel(channelId);
+      });
+    return;
+  }
   channelStore.selectChannel(channelId);
 };
 
@@ -169,6 +182,20 @@ const toggleDirectMessages = () => {
 const goToWorkspaceFiles = () => {
   router.push({
     name: "workspaceFiles",
+    params: { id: workspaceId },
+  });
+};
+
+const goToMyTasks = () => {
+  router.push({
+    name: "myTasks",
+    params: { id: workspaceId },
+  });
+};
+
+const goToMessages = () => {
+  router.push({
+    name: "workspaceDetail",
     params: { id: workspaceId },
   });
 };
@@ -293,6 +320,17 @@ onMounted(async () => {
               />
               <span>Directories</span>
             </button>
+            <button
+              class="sidebar-item"
+              :class="{ active: isMyTasksView }"
+              @click="goToMyTasks"
+            >
+              <i
+                class="pi pi-list-check sidebar-icon"
+                aria-hidden="true"
+              />
+              <span>My Tasks</span>
+            </button>
           </div>
 
           <!-- Channels -->
@@ -327,7 +365,7 @@ onMounted(async () => {
                   v-for="channel in channels"
                   :key="channel.id"
                   class="sidebar-channel-item"
-                  :class="{ active: selectedChannel?.id === channel.id }"
+                  :class="{ active: !isMyTasksView && selectedChannel?.id === channel.id }"
                   @click="selectChannel(channel.id)"
                 >
                   <i
@@ -448,6 +486,11 @@ onMounted(async () => {
       >
         <span>Workspace not found</span>
       </div>
+      <WorkspaceMyTasksContent
+        v-else-if="isMyTasksView"
+        :workspace-id="workspaceId"
+        @go-messages="goToMessages"
+      />
       <ChannelDetailView v-else />
     </div>
 
