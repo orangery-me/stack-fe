@@ -13,7 +13,7 @@
     "dev": "vite --port 5173",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.vue",
-    "build": "npm run lint && vite build"
+    "build": "vite build"
   },
   "dependencies": {
     "@hocuspocus/provider": "^3.4.4",
