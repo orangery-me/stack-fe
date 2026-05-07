@@ -59,13 +59,23 @@ const goToRegister = () => {
   <section class="auth-page">
     <div class="container-center">
       <div class="auth-page__container">
-        <CalmCard class="auth-card" padding="lg">
+        <CalmCard
+          class="auth-card"
+          padding="lg"
+        >
           <header class="auth-card__header">
-            <CalmHeading :level="2"> Sign in </CalmHeading>
-            <p class="ui-muted auth-card__subtitle">Welcome back.</p>
+            <CalmHeading :level="2">
+              Sign in
+            </CalmHeading>
+            <p class="ui-muted auth-card__subtitle">
+              Welcome back.
+            </p>
           </header>
 
-          <form class="auth-form" @submit.prevent="handleLogin">
+          <form
+            class="auth-form"
+            @submit.prevent="handleLogin"
+          >
             <CalmInput
               id="email"
               v-model="email"
@@ -114,13 +124,17 @@ const goToRegister = () => {
               src="/logos/google-logo.png"
               alt=""
               aria-hidden="true"
-            />
+            >
             Continue with Google
           </CalmButton>
 
           <div class="auth-footer ui-muted">
             Don’t have an account?
-            <button type="button" class="auth-link" @click="goToRegister">
+            <button
+              type="button"
+              class="auth-link"
+              @click="goToRegister"
+            >
               Create one
             </button>
           </div>

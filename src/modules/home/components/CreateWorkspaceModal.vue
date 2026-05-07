@@ -231,8 +231,12 @@ const handleCreateWorkspace = async () => {
 
       <div class="create-workspace__section">
         <div class="create-workspace__sectionHeader">
-          <h3 class="ui-h3 create-workspace__sectionTitle">Invite members</h3>
-          <p class="ui-hint">Search and invite members (optional).</p>
+          <h3 class="ui-h3 create-workspace__sectionTitle">
+            Invite members
+          </h3>
+          <p class="ui-hint">
+            Search and invite members (optional).
+          </p>
         </div>
 
         <div class="invite-search">
@@ -248,8 +252,11 @@ const handleCreateWorkspace = async () => {
                   showSuggestions = false;
                 }, 200)
               "
-            />
-            <div v-if="searchLoading" class="invite-search__loading ui-hint">
+            >
+            <div
+              v-if="searchLoading"
+              class="invite-search__loading ui-hint"
+            >
               Searching…
             </div>
           </div>
@@ -265,7 +272,10 @@ const handleCreateWorkspace = async () => {
               class="invite-search__item"
               @mousedown.prevent="selectUser(user)"
             >
-              <div class="invite-search__avatar" aria-hidden="true">
+              <div
+                class="invite-search__avatar"
+                aria-hidden="true"
+              >
                 {{ user.name.charAt(0).toUpperCase() }}
               </div>
               <div class="invite-search__info">
@@ -290,7 +300,10 @@ const handleCreateWorkspace = async () => {
             class="invites__row"
           >
             <div class="invites__user">
-              <div class="invites__avatar" aria-hidden="true">
+              <div
+                class="invites__avatar"
+                aria-hidden="true"
+              >
                 {{ invite.name.charAt(0).toUpperCase() }}
               </div>
               <div class="invites__meta">
@@ -320,7 +333,10 @@ const handleCreateWorkspace = async () => {
           </div>
         </div>
 
-        <p v-if="createWorkspaceErrors.invites" class="create-workspace__error">
+        <p
+          v-if="createWorkspaceErrors.invites"
+          class="create-workspace__error"
+        >
           {{ createWorkspaceErrors.invites }}
         </p>
       </div>

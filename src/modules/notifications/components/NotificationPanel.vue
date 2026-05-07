@@ -44,27 +44,54 @@ const getTypeLabel = (type) => {
 </script>
 
 <template>
-  <div class="notification-overlay" @click.self="emit('close')">
+  <div
+    class="notification-overlay"
+    @click.self="emit('close')"
+  >
     <div class="notification-panel">
       <div class="notification-panel-header">
         <h3>Notifications</h3>
-        <button class="settings-btn" type="button" @click="markAllNotificationsRead" title="Mark all as read">
-          <v-icon name="fc-check-mark" scale="1.2" />
+        <button
+          class="settings-btn"
+          type="button"
+          title="Mark all as read"
+          @click="markAllNotificationsRead"
+        >
+          <v-icon
+            name="fc-check-mark"
+            scale="1.2"
+          />
         </button>
       </div>
 
-      <div v-if="notificationStore.loading" class="notification-empty">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="notificationStore.loading"
+        class="notification-empty"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
       
-      <div v-else-if="notifications.length === 0" class="notification-empty">
-        <v-icon name="fc-info" scale="3" class="empty-icon" />
+      <div
+        v-else-if="notifications.length === 0"
+        class="notification-empty"
+      >
+        <v-icon
+          name="fc-info"
+          scale="3"
+          class="empty-icon"
+        />
         <p>No notifications yet.</p>
       </div>
       
-      <div v-else class="notification-list">
+      <div
+        v-else
+        class="notification-list"
+      >
         <div
           v-for="item in notifications"
           :key="item.id"
@@ -73,8 +100,14 @@ const getTypeLabel = (type) => {
           @click="markNotificationRead(item.id)"
         >
           <div class="notification-avatar">
-            <v-icon :name="item.payload?.icon || 'fc-info'" scale="1.5" />
-            <div v-if="!item.readAt" class="unread-dot"></div>
+            <v-icon
+              :name="item.payload?.icon || 'fc-info'"
+              scale="1.5"
+            />
+            <div
+              v-if="!item.readAt"
+              class="unread-dot"
+            />
           </div>
           <div class="notification-content">
             <!-- notification title -->
@@ -93,8 +126,11 @@ const getTypeLabel = (type) => {
             </div>
           </div>
           <div class="notification-actions">
-            <button class="more-btn" @click.stop>
-              <i class="pi pi-ellipsis-v"></i>
+            <button
+              class="more-btn"
+              @click.stop
+            >
+              <i class="pi pi-ellipsis-v" />
             </button>
           </div>
         </div>

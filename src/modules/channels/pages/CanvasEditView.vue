@@ -376,7 +376,10 @@ function handleMoveToTrash() {
         uiStore.isAiOpen ? { paddingRight: uiStore.aiSidebarWidth + 'px' } : {}
       "
     >
-      <div v-if="!isEditorReady" class="canvas-edit-view__blocker" />
+      <div
+        v-if="!isEditorReady"
+        class="canvas-edit-view__blocker"
+      />
       <div
         v-if="syncStatus === 'offline' && isEditorReady"
         class="canvas-edit-view__offline-banner"
@@ -407,7 +410,10 @@ function handleMoveToTrash() {
         @selection-icon-click="handleSelectionIconClick"
       />
     </div>
-    <AiChatSidebar v-model:open="uiStore.isAiOpen" :context="aiCanvasContext" />
+    <AiChatSidebar
+      v-model:open="uiStore.isAiOpen"
+      :context="aiCanvasContext"
+    />
   </div>
 </template>
 

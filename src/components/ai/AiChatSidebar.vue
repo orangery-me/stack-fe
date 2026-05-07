@@ -388,7 +388,7 @@ async function handleAcceptAllActions(messageId) {
   for (const action of msg.actions) {
     if (action.status === "pending") {
       // Keep sequential apply to avoid race conditions in server-side ordering.
-      // eslint-disable-next-line no-await-in-loop
+       
       await handleAcceptAction(messageId, action);
     }
   }
@@ -553,9 +553,15 @@ function handleHistorySelect(session) {
       <!-- Header -->
       <div class="ai-chat-header">
         <div class="ai-chat-header-title">
-          <Sparkles :size="16" class="ai-chat-header-icon" />
+          <Sparkles
+            :size="16"
+            class="ai-chat-header-icon"
+          />
           <span>AI Assistant</span>
-          <span v-if="isCanvasMode" class="ai-mode-chip">Canvas mode</span>
+          <span
+            v-if="isCanvasMode"
+            class="ai-mode-chip"
+          >Canvas mode</span>
         </div>
         <div class="ai-chat-header-actions">
           <!-- Session switcher -->
@@ -573,7 +579,10 @@ function handleHistorySelect(session) {
               }}</span>
               <ChevronDown :size="12" />
             </button>
-            <div v-if="showSessionDropdown" class="ai-session-dropdown">
+            <div
+              v-if="showSessionDropdown"
+              class="ai-session-dropdown"
+            >
               <button
                 type="button"
                 class="ai-session-dropdown-item ai-session-dropdown-item--new"
@@ -625,17 +634,30 @@ function handleHistorySelect(session) {
       </div>
 
       <!-- Loading state -->
-      <div v-if="isLoadingSession" class="ai-chat-loading">
+      <div
+        v-if="isLoadingSession"
+        class="ai-chat-loading"
+      >
         <span class="ai-chat-loading-dot" />
         <span class="ai-chat-loading-dot" />
         <span class="ai-chat-loading-dot" />
       </div>
 
       <!-- Messages list -->
-      <div v-else ref="messagesEl" class="ai-chat-messages">
-        <div v-if="messages.length === 0" class="ai-chat-empty">
-          <Bot :size="32" class="ai-chat-empty-icon" />
-          <p>Chào! Tôi là AI Assistant.<br />Hãy hỏi bất cứ điều gì.</p>
+      <div
+        v-else
+        ref="messagesEl"
+        class="ai-chat-messages"
+      >
+        <div
+          v-if="messages.length === 0"
+          class="ai-chat-empty"
+        >
+          <Bot
+            :size="32"
+            class="ai-chat-empty-icon"
+          />
+          <p>Chào! Tôi là AI Assistant.<br>Hãy hỏi bất cứ điều gì.</p>
         </div>
 
         <template v-else>
@@ -650,7 +672,10 @@ function handleHistorySelect(session) {
             }"
           >
             <div class="ai-chat-msg-avatar">
-              <Bot v-if="msg.role === 'assistant'" :size="14" />
+              <Bot
+                v-if="msg.role === 'assistant'"
+                :size="14"
+              />
               <span v-else>U</span>
             </div>
             <div class="ai-chat-msg-bubble">
@@ -658,12 +683,15 @@ function handleHistorySelect(session) {
                 class="ai-chat-msg-text"
                 v-html="formatContent(msg.content)"
               />
-              <span v-if="msg.streaming" class="ai-chat-cursor">▌</span>
+              <span
+                v-if="msg.streaming"
+                class="ai-chat-cursor"
+              >▌</span>
               <div
                 v-if="
                   msg.role === 'assistant' &&
-                  Array.isArray(msg.actions) &&
-                  msg.actions.length > 0
+                    Array.isArray(msg.actions) &&
+                    msg.actions.length > 0
                 "
                 class="ai-action-list"
               >
@@ -686,13 +714,15 @@ function handleHistorySelect(session) {
                     <span
                       class="ai-action-status"
                       :class="`is-${action.status}`"
-                      >{{ action.status }}</span
-                    >
+                    >{{ action.status }}</span>
                   </div>
                   <div class="ai-action-args">
                     {{ JSON.stringify(action.arguments || {}) }}
                   </div>
-                  <div v-if="action.error" class="ai-action-error">
+                  <div
+                    v-if="action.error"
+                    class="ai-action-error"
+                  >
                     {{ action.error }}
                   </div>
                   <div

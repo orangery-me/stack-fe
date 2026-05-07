@@ -40,8 +40,12 @@ onMounted(async () => {
   <section class="auth-status">
     <div class="container-center">
       <div class="auth-status__container">
-        <CalmHeading :level="3"> Processing sign in... </CalmHeading>
-        <p class="auth-status__message ui-muted">Please wait a moment</p>
+        <CalmHeading :level="3">
+          Processing sign in...
+        </CalmHeading>
+        <p class="auth-status__message ui-muted">
+          Please wait a moment
+        </p>
       </div>
     </div>
   </section>

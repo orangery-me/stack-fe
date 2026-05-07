@@ -248,15 +248,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="rte" :class="{ 'rte--readonly': readOnly }">
-    <div v-if="editor" class="toolbar-wrap">
+  <div
+    class="rte"
+    :class="{ 'rte--readonly': readOnly }"
+  >
+    <div
+      v-if="editor"
+      class="toolbar-wrap"
+    >
       <div class="toolbar-row toolbar-row--header">
         <img
           v-if="title !== undefined"
           src="/logos/stack-logo.jpg"
           class="rte-header-logo"
           alt="Stack"
-        />
+        >
         <div class="rte-header-title">
           <div class="rte-header-title-row">
             <input
@@ -266,15 +272,18 @@ onBeforeUnmount(() => {
               :value="title"
               placeholder="New page"
               @input="onTitleInput"
-            />
-            <div class="rte-save-status" :data-save-status="displaySaveStatus">
+            >
+            <div
+              class="rte-save-status"
+              :data-save-status="displaySaveStatus"
+            >
               <img
                 v-if="displaySaveStatus === 'saving'"
                 src="/icons/toolbar2/sync.svg"
                 alt=""
                 class="rte-save-status__sync"
                 aria-hidden="true"
-              />
+              >
               <svg
                 v-else
                 class="rte-save-status__check"
@@ -298,12 +307,20 @@ onBeforeUnmount(() => {
           <!-- Dãy function: File, Insert (hàng dưới) -->
           <div class="toolbar-row toolbar-row--menu">
             <details class="dd dd-menu-item">
-              <summary class="dd-btn dd-btn--menu">File</summary>
+              <summary class="dd-btn dd-btn--menu">
+                File
+              </summary>
               <div class="dd-menu">
-                <button type="button" @click="emit('download')">
+                <button
+                  type="button"
+                  @click="emit('download')"
+                >
                   Download
                 </button>
-                <button type="button" @click="emit('moveToTrash')">
+                <button
+                  type="button"
+                  @click="emit('moveToTrash')"
+                >
                   Move to trash
                 </button>
               </div>
@@ -313,7 +330,9 @@ onBeforeUnmount(() => {
               :class="{ 'dd-disabled': readOnly }"
               :aria-disabled="readOnly ? 'true' : 'false'"
             >
-              <summary class="dd-btn dd-btn--menu">Insert</summary>
+              <summary class="dd-btn dd-btn--menu">
+                Insert
+              </summary>
               <div class="dd-menu">
                 <button
                   type="button"
@@ -364,7 +383,7 @@ onBeforeUnmount(() => {
               :src="viewer.avatar"
               :alt="viewer.name"
               class="rte-viewer-avatar-img"
-            />
+            >
             <span v-else>{{ getUserInitials(viewer.name) }}</span>
           </div>
           <div
@@ -392,12 +411,11 @@ onBeforeUnmount(() => {
                       :src="selectedViewer.avatar"
                       :alt="selectedViewer.name"
                       class="rte-viewer-popup__avatar"
-                    />
+                    >
                     <span
                       v-else
                       class="rte-viewer-popup__avatar rte-viewer-popup__avatar-initials"
-                      >{{ getUserInitials(selectedViewer.name) }}</span
-                    >
+                    >{{ getUserInitials(selectedViewer.name) }}</span>
                   </div>
                   <div class="rte-viewer-popup__info">
                     <div class="rte-viewer-popup__name-row">
@@ -419,21 +437,38 @@ onBeforeUnmount(() => {
                           stroke-width="2"
                         >
                           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                          <circle cx="9" cy="7" r="4" />
-                          <line x1="19" y1="8" x2="19" y2="14" />
-                          <line x1="22" y1="11" x2="16" y2="11" />
+                          <circle
+                            cx="9"
+                            cy="7"
+                            r="4"
+                          />
+                          <line
+                            x1="19"
+                            y1="8"
+                            x2="19"
+                            y2="14"
+                          />
+                          <line
+                            x1="22"
+                            y1="11"
+                            x2="16"
+                            y2="11"
+                          />
                         </svg>
                       </button>
                     </div>
                     <p class="rte-viewer-popup__email">
                       {{ selectedViewer.email || "—" }}
                     </p>
-                    <button type="button" class="rte-viewer-popup__btn-mail">
+                    <button
+                      type="button"
+                      class="rte-viewer-popup__btn-mail"
+                    >
                       <img
                         src="/icons/mail.svg"
                         alt=""
                         class="rte-viewer-popup__btn-icon"
-                      />
+                      >
                       Gửi thư
                     </button>
                     <div class="rte-viewer-popup__actions">
@@ -448,7 +483,7 @@ onBeforeUnmount(() => {
                           alt=""
                           width="18"
                           height="18"
-                        />
+                        >
                       </button>
                       <button
                         type="button"
@@ -461,7 +496,7 @@ onBeforeUnmount(() => {
                           alt=""
                           width="18"
                           height="18"
-                        />
+                        >
                       </button>
                       <button
                         type="button"
@@ -474,7 +509,7 @@ onBeforeUnmount(() => {
                           alt=""
                           width="18"
                           height="18"
-                        />
+                        >
                       </button>
                     </div>
                     <a
@@ -495,7 +530,12 @@ onBeforeUnmount(() => {
                           d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
                         />
                         <polyline points="15 3 21 3 21 9" />
-                        <line x1="10" y1="14" x2="21" y2="3" />
+                        <line
+                          x1="10"
+                          y1="14"
+                          x2="21"
+                          y2="3"
+                        />
                       </svg>
                     </a>
                   </div>
@@ -516,7 +556,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/history.svg"
               alt=""
               class="rte-header-action-icon"
-            />
+            >
           </button>
           <button
             type="button"
@@ -528,7 +568,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/comment.svg"
               alt=""
               class="rte-header-action-icon rte-header-action-icon--comment"
-            />
+            >
           </button>
           <button
             type="button"
@@ -560,18 +600,22 @@ onBeforeUnmount(() => {
                 src="/icons/toolbar2/share.svg"
                 alt=""
                 class="rte-share-btn-icon"
-              />
+              >
               <span class="rte-share-btn-text">Share</span>
               <span class="rte-share-btn-sep" />
               <img
                 src="/icons/arrow-down.svg"
                 alt=""
                 class="rte-share-btn-caret"
-              />
+              >
             </summary>
             <div class="rte-share-menu">
-              <button type="button">Chia sẻ với mọi người</button>
-              <button type="button">Sao chép link</button>
+              <button type="button">
+                Chia sẻ với mọi người
+              </button>
+              <button type="button">
+                Sao chép link
+              </button>
             </div>
           </details>
           <!-- <button
@@ -588,7 +632,10 @@ onBeforeUnmount(() => {
           </button> -->
         </div>
         <!-- Current user avatar (top-right) -->
-        <div v-if="currentUser" class="rte-current-user">
+        <div
+          v-if="currentUser"
+          class="rte-current-user"
+        >
           <div
             class="rte-viewer-avatar rte-viewer-avatar--current"
             :title="currentUser.name"
@@ -598,25 +645,36 @@ onBeforeUnmount(() => {
               :src="currentUser.avatar"
               :alt="currentUser.name"
               class="rte-viewer-avatar-img"
-            />
+            >
             <span v-else>{{ getUserInitials(currentUser.name) }}</span>
           </div>
         </div>
-        <div v-if="readOnly" class="group group-actions">
-          <button class="icon btn-pill" type="button" @click="emit('edit')">
+        <div
+          v-if="readOnly"
+          class="group group-actions"
+        >
+          <button
+            class="icon btn-pill"
+            type="button"
+            @click="emit('edit')"
+          >
             <img
               src="../../../public/icons/edit.svg"
               class="icon-img"
               alt="Edit"
-            />
+            >
             Edit
           </button>
-          <button class="icon btn-pill" type="button" @click="emit('reload')">
+          <button
+            class="icon btn-pill"
+            type="button"
+            @click="emit('reload')"
+          >
             <img
               src="../../../public/icons/reload.svg"
               class="icon-img"
               alt="Reload"
-            />
+            >
             Reload
           </button>
         </div>
@@ -631,7 +689,11 @@ onBeforeUnmount(() => {
             title="Undo"
             @click="editor.chain().focus().undo().run()"
           >
-            <img src="/icons/toolbar2/undo.svg" class="icon-img" alt="Undo" />
+            <img
+              src="/icons/toolbar2/undo.svg"
+              class="icon-img"
+              alt="Undo"
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -639,7 +701,11 @@ onBeforeUnmount(() => {
             title="Redo"
             @click="editor.chain().focus().redo().run()"
           >
-            <img src="/icons/toolbar2/redo.svg" class="icon-img" alt="Redo" />
+            <img
+              src="/icons/toolbar2/redo.svg"
+              class="icon-img"
+              alt="Redo"
+            >
           </button>
         </div>
 
@@ -711,7 +777,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/bullet-list.svg"
               class="icon-img"
               alt="Bullet list"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -724,7 +790,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/numbered-list.svg"
               class="icon-img"
               alt="Numbered list"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -737,7 +803,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/quote-block.svg"
               class="icon-img"
               alt="Quote"
-            />
+            >
           </button>
         </div>
 
@@ -751,7 +817,11 @@ onBeforeUnmount(() => {
             title="Bold"
             @click="editor.chain().focus().toggleBold().run()"
           >
-            <img src="/icons/toolbar2/bold.svg" class="icon-img" alt="Bold" />
+            <img
+              src="/icons/toolbar2/bold.svg"
+              class="icon-img"
+              alt="Bold"
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -764,7 +834,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/italic.svg"
               class="icon-img"
               alt="Italic"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -777,7 +847,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/strike.svg"
               class="icon-img"
               alt="Strikethrough"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -786,7 +856,11 @@ onBeforeUnmount(() => {
             title="Code"
             @click="editor.chain().focus().toggleCode().run()"
           >
-            <img src="/icons/toolbar2/code.svg" class="icon-img" alt="Code" />
+            <img
+              src="/icons/toolbar2/code.svg"
+              class="icon-img"
+              alt="Code"
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -799,7 +873,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/underline.svg"
               class="icon-img"
               alt="Underline"
-            />
+            >
           </button>
         </div>
 
@@ -813,7 +887,11 @@ onBeforeUnmount(() => {
             title="Link"
             @click="setLink"
           >
-            <img src="/icons/toolbar2/link.svg" class="icon-img" alt="Link" />
+            <img
+              src="/icons/toolbar2/link.svg"
+              class="icon-img"
+              alt="Link"
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -826,7 +904,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/subscript.svg"
               class="icon-img"
               alt="Subscript"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -839,7 +917,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/superscript.svg"
               class="icon-img"
               alt="Superscript"
-            />
+            >
           </button>
         </div>
 
@@ -857,7 +935,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-left.svg"
               class="icon-img"
               alt="Align left"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -870,7 +948,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-center.svg"
               class="icon-img"
               alt="Align center"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -883,7 +961,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-right.svg"
               class="icon-img"
               alt="Align right"
-            />
+            >
           </button>
           <button
             class="icon icon-btn"
@@ -896,7 +974,7 @@ onBeforeUnmount(() => {
               src="/icons/toolbar2/align-justify.svg"
               class="icon-img"
               alt="Justify"
-            />
+            >
           </button>
         </div>
 
@@ -905,7 +983,10 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Editor -->
-    <EditorContent :editor="editor" class="content" />
+    <EditorContent
+      :editor="editor"
+      class="content"
+    />
   </div>
 
   <!-- Slash command popup (optional AI writer feature) -->

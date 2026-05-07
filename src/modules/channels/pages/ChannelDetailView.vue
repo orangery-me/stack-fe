@@ -458,7 +458,10 @@ onBeforeUnmount(() => {
           type="button"
           @click="activeMainTab = 'messages'"
         >
-          <i class="pi pi-comments" style="font-size: 12px" />
+          <i
+            class="pi pi-comments"
+            style="font-size: 12px"
+          />
           Messages
         </button>
 
@@ -471,21 +474,33 @@ onBeforeUnmount(() => {
           type="button"
           @click="activeMainTab = `task-${list.id}`"
         >
-          <i class="pi pi-check-square" style="font-size: 12px" />
+          <i
+            class="pi pi-check-square"
+            style="font-size: 12px"
+          />
           {{ list.name || 'Untitled list' }}
         </button>
 
         <!-- + Button dropdown -->
-        <div class="channel-tab-add" ref="channelTabAddRef">
+        <div
+          ref="channelTabAddRef"
+          class="channel-tab-add"
+        >
           <button
             class="channel-tab-add-btn"
             type="button"
             @click="showAddTabMenu = !showAddTabMenu"
           >
-            <i class="pi pi-plus" style="font-size: 12px" />
+            <i
+              class="pi pi-plus"
+              style="font-size: 12px"
+            />
           </button>
 
-          <div v-if="showAddTabMenu" class="channel-tab-dropdown">
+          <div
+            v-if="showAddTabMenu"
+            class="channel-tab-dropdown"
+          >
             <button
               class="channel-tab-dropdown-item"
               type="button"
@@ -673,7 +688,11 @@ onBeforeUnmount(() => {
                 class="d-flex justify-content-center align-items-center"
                 style="height: 100%"
               >
-                <AppLoading :active="true" variant="inline" min-height="220px" />
+                <AppLoading
+                  :active="true"
+                  variant="inline"
+                  min-height="220px"
+                />
               </div>
               <div
                 v-else-if="!filteredChannelMembers.length"
@@ -827,7 +846,11 @@ onBeforeUnmount(() => {
                 class="d-flex justify-content-center align-items-center"
                 style="height: 100%"
               >
-                <AppLoading :active="true" variant="inline" min-height="220px" />
+                <AppLoading
+                  :active="true"
+                  variant="inline"
+                  min-height="220px"
+                />
               </div>
             </template>
   

@@ -78,19 +78,28 @@ function formatDate(dateStr) {
           </div>
 
           <div class="ai-history-search">
-            <Search :size="14" class="ai-history-search-icon" />
+            <Search
+              :size="14"
+              class="ai-history-search-icon"
+            />
             <input
               v-model="searchQuery"
               type="text"
               class="ai-history-search-input"
               placeholder="Search by title..."
               autofocus
-            />
+            >
           </div>
 
           <div class="ai-history-list">
-            <div v-if="filteredSessions.length === 0" class="ai-history-empty">
-              <MessageSquare :size="28" class="ai-history-empty-icon" />
+            <div
+              v-if="filteredSessions.length === 0"
+              class="ai-history-empty"
+            >
+              <MessageSquare
+                :size="28"
+                class="ai-history-empty-icon"
+              />
               <p>No chats found</p>
             </div>
 

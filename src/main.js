@@ -49,7 +49,7 @@ app.use(PrimeVue, {
   },
 });
 
-app.component("v-icon", OhVueIcon);
+app.component("VIcon", OhVueIcon);
 
 // Initialize auth state on app start
 const authStore = useAuthStore();

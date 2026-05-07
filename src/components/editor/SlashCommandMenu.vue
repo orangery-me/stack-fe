@@ -49,7 +49,10 @@ const menuStyle = computed(() => {
         <span class="slash-menu__icon">{{ item.icon }}</span>
         <span class="slash-menu__text">
           <span class="slash-menu__label">{{ item.label }}</span>
-          <span v-if="item.description" class="slash-menu__desc">{{ item.description }}</span>
+          <span
+            v-if="item.description"
+            class="slash-menu__desc"
+          >{{ item.description }}</span>
         </span>
       </button>
     </div>

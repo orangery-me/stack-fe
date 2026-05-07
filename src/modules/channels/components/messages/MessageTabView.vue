@@ -280,19 +280,31 @@ onBeforeUnmount(() => {
       class="main-content-body"
       @scroll="handleScroll"
     >
-      <div v-if="!selectedChannel" class="content-placeholder">
-        <p class="placeholder-text">Workspace: {{ workspace?.name }}</p>
+      <div
+        v-if="!selectedChannel"
+        class="content-placeholder"
+      >
+        <p class="placeholder-text">
+          Workspace: {{ workspace?.name }}
+        </p>
         <p class="placeholder-description">
           Select a channel from the sidebar to start chatting.
         </p>
       </div>
-      <div v-else class="message-tab-content">
+      <div
+        v-else
+        class="message-tab-content"
+      >
         <div
           v-if="isLoadingMessages"
           class="d-flex justify-content-center align-items-center"
           style="height: 100vh"
         >
-          <AppLoading :active="true" variant="inline" min-height="220px" />
+          <AppLoading
+            :active="true"
+            variant="inline"
+            min-height="220px"
+          />
         </div>
         <div v-else>
           <div
@@ -308,11 +320,8 @@ onBeforeUnmount(() => {
               </span>
               created this channel on
               <span class="message-tab-date">
-                {{ formatDate(selectedChannel.createdAt) }} </span
-              >. This is the very beginning of the
-              <span class="message-tab-name-highlight"
-                >#{{ selectedChannel.name }}</span
-              >
+                {{ formatDate(selectedChannel.createdAt) }} </span>. This is the very beginning of the
+              <span class="message-tab-name-highlight">#{{ selectedChannel.name }}</span>
               channel.
             </p>
             <div class="message-tab-action-cards">
@@ -325,22 +334,32 @@ onBeforeUnmount(() => {
                   <img
                     src="/icons/message-circle-dot.svg"
                     alt="Add people icon"
-                  />
+                  >
                 </div>
-                <h3 class="action-card-title">Add people to channel</h3>
+                <h3 class="action-card-title">
+                  Add people to channel
+                </h3>
               </button>
               <div class="action-card action-card--blue">
                 <div class="action-card-icon">
-                  <img src="/icons/file.svg" alt="Channel description icon" />
+                  <img
+                    src="/icons/file.svg"
+                    alt="Channel description icon"
+                  >
                 </div>
-                <h3 class="action-card-title">Add channel description</h3>
+                <h3 class="action-card-title">
+                  Add channel description
+                </h3>
               </div>
             </div>
           </div>
 
           <div class="message-tab-messages">
             <div class="message-tab-messages-loading-older">
-              <div v-if="isFetchingNextPage" class="d-flex justify-content-center">
+              <div
+                v-if="isFetchingNextPage"
+                class="d-flex justify-content-center"
+              >
                 <AppLoading
                   :active="true"
                   variant="inline"
@@ -349,7 +368,10 @@ onBeforeUnmount(() => {
                 />
               </div>
             </div>
-            <div v-for="day in messagesByDay" :key="day.dateKey">
+            <div
+              v-for="day in messagesByDay"
+              :key="day.dateKey"
+            >
               <div class="message-tab-day-divider">
                 <span>
                   {{ day.label }}
@@ -414,7 +436,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="selectedChannel" class="message-input">
+    <div
+      v-if="selectedChannel"
+      class="message-input"
+    >
       <div class="message-input-inner">
         <textarea
           v-model="newMessage"
@@ -426,22 +451,46 @@ onBeforeUnmount(() => {
         />
         <div class="message-input-toolbar">
           <div class="message-input-actions">
-            <button class="message-input-action-btn" type="button" title="Add">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Add"
+            >
               <i class="pi pi-plus" />
             </button>
-            <button class="message-input-action-btn" type="button" title="Emoji">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Emoji"
+            >
               <i class="pi pi-face-smile" />
             </button>
-            <button class="message-input-action-btn" type="button" title="Mention">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Mention"
+            >
               <i class="pi pi-at" />
             </button>
-            <button class="message-input-action-btn" type="button" title="Video">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Video"
+            >
               <i class="pi pi-video" />
             </button>
-            <button class="message-input-action-btn" type="button" title="Voice message">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Voice message"
+            >
               <i class="pi pi-microphone" />
             </button>
-            <button class="message-input-action-btn" type="button" title="Note">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Note"
+            >
               <i class="pi pi-file-edit" />
             </button>
           </div>

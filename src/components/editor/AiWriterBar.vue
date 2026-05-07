@@ -132,7 +132,11 @@ function handleKeydown(e: KeyboardEvent) {
 
 <template>
   <Teleport to="body">
-    <div v-if="anchorRect" class="ai-bar" :style="barStyle">
+    <div
+      v-if="anchorRect"
+      class="ai-bar"
+      :style="barStyle"
+    >
       <!-- Idle: input + send/close -->
       <template v-if="phase === 'idle'">
         <span class="ai-bar__icon">✦</span>

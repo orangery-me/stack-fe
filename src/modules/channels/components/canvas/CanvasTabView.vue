@@ -276,7 +276,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="canvas-tab-root">
-    <div v-if="isLoading" class="canvas-tab-root__skeleton">
+    <div
+      v-if="isLoading"
+      class="canvas-tab-root__skeleton"
+    >
       <AppLoading
         :active="true"
         variant="inline"
@@ -284,8 +287,14 @@ onBeforeUnmount(() => {
         min-height="160px"
       />
     </div>
-    <div v-else class="canvas-editor">
-      <div v-if="!isEditorReady" class="canvas-tab-root__blocker" />
+    <div
+      v-else
+      class="canvas-editor"
+    >
+      <div
+        v-if="!isEditorReady"
+        class="canvas-tab-root__blocker"
+      />
       <div
         v-if="syncStatus === 'offline' && isEditorReady"
         class="canvas-tab-root__offline-banner"

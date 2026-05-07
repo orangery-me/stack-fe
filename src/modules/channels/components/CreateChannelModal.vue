@@ -125,7 +125,10 @@ const handleCreateChannel = async () => {
       Create a channel to organize conversations.
     </p>
 
-    <form class="create-channel__form" @submit.prevent="handleCreateChannel">
+    <form
+      class="create-channel__form"
+      @submit.prevent="handleCreateChannel"
+    >
       <CalmInput
         id="channelName"
         v-model="createChannelForm.name"

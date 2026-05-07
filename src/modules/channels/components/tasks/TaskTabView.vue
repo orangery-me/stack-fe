@@ -264,7 +264,11 @@ watch(() => props.taskListId, () => {
           v-if="isLoading"
           class="d-flex justify-content-center align-items-center task-tab-loading-overlay"
         >
-          <AppLoading :active="true" variant="inline" min-height="220px" />
+          <AppLoading
+            :active="true"
+            variant="inline"
+            min-height="220px"
+          />
         </div>
 
         <!-- Single table group -->

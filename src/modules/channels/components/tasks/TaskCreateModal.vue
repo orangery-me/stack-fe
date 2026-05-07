@@ -90,34 +90,58 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="task-create-overlay" @click.self="emit('close')">
+  <div
+    class="task-create-overlay"
+    @click.self="emit('close')"
+  >
     <div class="task-create-modal">
       <div class="task-create-header">
         <h3>Create Task</h3>
-        <button type="button" class="task-create-close" @click="emit('close')">
+        <button
+          type="button"
+          class="task-create-close"
+          @click="emit('close')"
+        >
           <i class="pi pi-times" />
         </button>
       </div>
 
-      <form class="task-create-body" @submit.prevent="handleSubmit">
+      <form
+        class="task-create-body"
+        @submit.prevent="handleSubmit"
+      >
         <!-- Title -->
         <div class="task-form-group">
           <label class="task-form-label">Title *</label>
-          <input v-model="title" type="text" class="task-form-input" placeholder="What needs to be done?"
-            maxlength="500" autofocus>
+          <input
+            v-model="title"
+            type="text"
+            class="task-form-input"
+            placeholder="What needs to be done?"
+            maxlength="500"
+            autofocus
+          >
         </div>
 
         <!-- Description -->
         <div class="task-form-group">
           <label class="task-form-label">Description</label>
-          <textarea v-model="description" class="task-form-textarea" placeholder="Add details..." rows="3" />
+          <textarea
+            v-model="description"
+            class="task-form-textarea"
+            placeholder="Add details..."
+            rows="3"
+          />
         </div>
 
         <!-- Status + Priority row -->
         <div class="task-form-row">
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Status</label>
-            <select v-model="status" class="task-form-select">
+            <select
+              v-model="status"
+              class="task-form-select"
+            >
               <option value="todo">
                 Todo
               </option>
@@ -131,7 +155,10 @@ const handleSubmit = async () => {
           </div>
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Priority</label>
-            <select v-model="priority" class="task-form-select">
+            <select
+              v-model="priority"
+              class="task-form-select"
+            >
               <option value="low">
                 Low
               </option>
@@ -151,15 +178,25 @@ const handleSubmit = async () => {
         <!-- Due date -->
         <div class="task-form-group">
           <label class="task-form-label">Due date</label>
-          <input v-model="dueDate" type="datetime-local" class="task-form-input">
+          <input
+            v-model="dueDate"
+            type="datetime-local"
+            class="task-form-input"
+          >
         </div>
 
         <!-- Assignees -->
         <div class="task-form-group">
           <label class="task-form-label">Assignees</label>
           <div class="task-assignee-autocomplete">
-            <AutoComplete v-model="selectedAssignees" :suggestions="filteredAssignees" option-label="display"
-              multiple fluid @complete="searchAssignees">
+            <AutoComplete
+              v-model="selectedAssignees"
+              :suggestions="filteredAssignees"
+              option-label="display"
+              multiple
+              fluid
+              @complete="searchAssignees"
+            >
               <template #option="{ option }">
                 <div class="task-assignee-option">
                   <span class="task-assignee-option__avatar">
@@ -176,11 +213,22 @@ const handleSubmit = async () => {
 
         <!-- Actions -->
         <div class="task-create-actions">
-          <button type="button" class="task-btn task-btn--secondary" @click="emit('close')">
+          <button
+            type="button"
+            class="task-btn task-btn--secondary"
+            @click="emit('close')"
+          >
             Cancel
           </button>
-          <button type="submit" class="task-btn task-btn--primary" :disabled="!title.trim() || isSubmitting">
-            <i v-if="isSubmitting" class="pi pi-spin pi-spinner" />
+          <button
+            type="submit"
+            class="task-btn task-btn--primary"
+            :disabled="!title.trim() || isSubmitting"
+          >
+            <i
+              v-if="isSubmitting"
+              class="pi pi-spin pi-spinner"
+            />
             Create Task
           </button>
         </div>

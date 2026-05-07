@@ -504,7 +504,10 @@ onMounted(async () => {
       @created="handleChannelCreated"
     />
 
-    <AiChatSidebar v-model:open="uiStore.isAiOpen" :context="aiWorkspaceContext" />
+    <AiChatSidebar
+      v-model:open="uiStore.isAiOpen"
+      :context="aiWorkspaceContext"
+    />
 
     <NotificationPanel
       v-if="notificationStore.isPanelOpen"
