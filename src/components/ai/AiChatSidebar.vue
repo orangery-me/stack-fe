@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
 import {
   Sparkles,
   X,
@@ -18,11 +19,14 @@ import {
   getSessionMessages,
   sendMessageStream,
   sendCanvasSessionMessageStream,
+  sendTaskSessionMessageStream,
   updateSession,
   applyCanvasAction,
+  applyTaskAction,
 } from "@/services/agent.service.js";
 
 const uiStore = useUiStore();
+const queryClient = useQueryClient();
 
 const props = defineProps({
   open: {
@@ -60,6 +64,7 @@ let msgIdCounter = 0;
 const DEFAULT_PROVIDER = "openai";
 const DEFAULT_MODEL = "gpt-5.3-codex";
 const isCanvasMode = computed(() => props.context?.kind === "canvas");
+const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
 
 // ======== Session loading ========
 
@@ -237,7 +242,47 @@ async function sendMessage() {
     abortController = null;
   };
 
-  if (isCanvasMode.value) {
+  const useTaskFlow = shouldUseTaskFlow(text);
+  if (useTaskFlow) {
+    const ctx = props.context || {};
+    await sendTaskSessionMessageStream(activeSession.value.id, {
+      workspaceId: ctx.workspaceId,
+      channelId: ctx.channelId,
+      taskListId: ctx.taskListId,
+      canvasId: ctx.canvasId,
+      canvasContent: ctx.canvasPlainText ?? "",
+      message: text,
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      signal: abortController.signal,
+      onChunk: (chunk) => {
+        const msg = messages.value.find((m) => m.id === assistantId);
+        if (msg) {
+          msg.content += chunk;
+          scrollToBottom();
+        }
+      },
+      onEvent: (event) => {
+        const msg = messages.value.find((m) => m.id === assistantId);
+        if (!msg || !event?.type) return;
+        if (event.type === "status" && event.message) {
+          msg.content += `${msg.content ? "\n" : ""}[${event.message}]`;
+        }
+        if (event.type === "assistant" && event.content) {
+          msg.content += `${msg.content ? "\n" : ""}${event.content}`;
+        }
+        if (event.type === "actions" && Array.isArray(event.actions)) {
+          msg.actions = event.actions.map((a) => ({
+            ...a,
+            status: a.status || "pending",
+          }));
+        }
+        scrollToBottom();
+      },
+      onDone: onDoneCommon,
+      onError: onErrorCommon,
+    });
+  } else if (isCanvasMode.value) {
     const ctx = props.context || {};
     await sendCanvasSessionMessageStream(activeSession.value.id, {
       canvasId: ctx.canvasId,
@@ -293,23 +338,59 @@ async function sendMessage() {
 }
 
 async function handleAcceptAction(messageId, action) {
-  if (!props.context?.canvasId || !action?.name) return;
+  if (!action?.name) return;
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions) return;
   action.status = "applying";
   try {
-    const result = await applyCanvasAction({
-      canvasId: props.context.canvasId,
-      actionName: action.name,
-      actionArgs: action.arguments || {},
-    });
+    const isTaskAction =
+      action.name === "create_task" ||
+      action.name === "create_tasks_batch" ||
+      action.name === "list_task_lists" ||
+      action.name === "search_workspace_members";
+    const result = isTaskAction
+      ? await applyTaskAction({
+          workspaceId: props.context?.workspaceId,
+          channelId: props.context?.channelId,
+          taskListId: props.context?.taskListId,
+          actionName: action.name,
+          actionArgs: action.arguments || {},
+        })
+      : await applyCanvasAction({
+          canvasId: props.context?.canvasId,
+          actionName: action.name,
+          actionArgs: action.arguments || {},
+        });
     action.status = result?.ok ? "accepted" : "failed";
     if (!result?.ok) {
       action.error = result?.error || "Apply thất bại";
     }
+    if (result?.ok && isTaskAction && props.context?.workspaceId) {
+      const workspaceId = props.context.workspaceId;
+      queryClient.invalidateQueries({ queryKey: ["my-tasks", workspaceId] });
+      if (props.context?.taskListId) {
+        queryClient.invalidateQueries({
+          queryKey: ["tasks", workspaceId, props.context.taskListId],
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      }
+    }
   } catch (err) {
     action.status = "failed";
     action.error = err?.message || "Apply thất bại";
+  }
+}
+
+async function handleAcceptAllActions(messageId) {
+  const msg = messages.value.find((m) => m.id === messageId);
+  if (!msg?.actions?.length) return;
+  for (const action of msg.actions) {
+    if (action.status === "pending") {
+      // Keep sequential apply to avoid race conditions in server-side ordering.
+      // eslint-disable-next-line no-await-in-loop
+      await handleAcceptAction(messageId, action);
+    }
   }
 }
 
@@ -412,6 +493,23 @@ function sessionLabel(session) {
 }
 
 const recentSessions = computed(() => sessions.value.slice(0, 5));
+
+function shouldUseTaskFlow(text) {
+  if (!hasTaskContext.value) return false;
+  if (isCanvasMode.value && !hasTaskKeywords(text)) return false;
+  return hasTaskKeywords(text) || props.context?.kind === "task-list";
+}
+
+function hasTaskKeywords(text) {
+  const normalized = String(text || "").toLowerCase();
+  return (
+    normalized.includes("task") ||
+    normalized.includes("todo") ||
+    normalized.includes("to-do") ||
+    normalized.includes("action item") ||
+    normalized.includes("việc cần làm")
+  );
+}
 
 function parseStoredAssistantMessage(content) {
   if (typeof content !== "string") return { content: "", actions: [] };
@@ -569,6 +667,15 @@ function handleHistorySelect(session) {
                 "
                 class="ai-action-list"
               >
+                <div class="ai-action-batch-controls">
+                  <button
+                    type="button"
+                    class="ai-action-btn ai-action-btn--accept"
+                    @click="handleAcceptAllActions(msg.id)"
+                  >
+                    Accept all
+                  </button>
+                </div>
                 <div
                   v-for="action in msg.actions"
                   :key="action.id"

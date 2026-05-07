@@ -279,3 +279,64 @@ export async function applyCanvasAction({ canvasId, actionName, actionArgs }) {
   );
   return response.data?.data ?? response.data;
 }
+
+/**
+ * Task chat stream with persisted session history.
+ * Streams assistant text + task action events for Accept/Reject UI.
+ */
+export async function sendTaskSessionMessageStream(
+  sessionId,
+  {
+    workspaceId,
+    channelId,
+    taskListId,
+    canvasId,
+    canvasContent,
+    message,
+    provider,
+    model,
+    signal,
+    onChunk,
+    onEvent,
+    onDone,
+    onError,
+  },
+) {
+  await _fetchSSEStream(
+    API_ENDPOINTS.AGENT.SESSION_TASK_SEND_STREAM(sessionId),
+    {
+      workspaceId,
+      channelId,
+      taskListId,
+      canvasId,
+      canvasContent: canvasContent ?? "",
+      message,
+      ...(provider && { provider }),
+      ...(model && { model }),
+    },
+    { signal, onChunk, onEvent, onDone, onError },
+  );
+}
+
+/**
+ * Apply one approved task action.
+ */
+export async function applyTaskAction({
+  workspaceId,
+  channelId,
+  taskListId,
+  actionName,
+  actionArgs,
+}) {
+  const response = await apiHelper.post(
+    API_ENDPOINTS.AGENT.TASK_APPLY_ACTION,
+    {
+      workspaceId,
+      channelId,
+      taskListId,
+      actionName,
+      actionArgsJson: JSON.stringify(actionArgs ?? {}),
+    },
+  );
+  return response.data?.data ?? response.data;
+}

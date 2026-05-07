@@ -35,6 +35,10 @@ const channels = computed(() => channelStore.channels);
 const selectedChannel = computed(() => channelStore.selectedChannel);
 const notifications = computed(() => notificationStore.items);
 const unreadCount = computed(() => notificationStore.unreadCount);
+const aiWorkspaceContext = computed(() => ({
+  kind: "workspace",
+  workspaceId: workspaceId,
+}));
 
 const shouldFullscreenLoading = computed(() => {
   return (
@@ -500,7 +504,7 @@ onMounted(async () => {
       @created="handleChannelCreated"
     />
 
-    <AiChatSidebar v-model:open="uiStore.isAiOpen" />
+    <AiChatSidebar v-model:open="uiStore.isAiOpen" :context="aiWorkspaceContext" />
 
     <NotificationPanel
       v-if="notificationStore.isPanelOpen"

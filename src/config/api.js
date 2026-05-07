@@ -107,8 +107,10 @@ export const API_ENDPOINTS = {
     SESSION_SEND: (sessionId) => `/agent/sessions/${sessionId}/messages`,
     SESSION_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/messages/stream`,
     SESSION_CANVAS_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/canvas/messages/stream`,
+    SESSION_TASK_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/tasks/messages/stream`,
     CANVAS_WRITE_STREAM: '/agent/canvas/write/stream',
     CANVAS_APPLY_ACTION: '/agent/canvas/actions/apply',
+    TASK_APPLY_ACTION: '/agent/tasks/actions/apply',
   },
 };
 

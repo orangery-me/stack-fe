@@ -43,6 +43,8 @@ const { showFullscreen, hideFullscreen } = useLoading();
 const canvasId = computed(() => route.params.canvasId as string);
 const aiCanvasContext = computed(() => ({
   kind: "canvas",
+  workspaceId: selectedCanvas.value?.workspaceId,
+  channelId: selectedCanvas.value?.channelId,
   canvasId: canvasId.value,
   canvasTitle: displayTitle.value,
   canvasPlainText: canvasPlainText.value,
