@@ -25,10 +25,56 @@ export const API_ENDPOINTS = {
     GET_ALL_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     CREATE: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
+    GET_MEMBERS: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/members`,
+    ADD_MEMBER: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/members`,
+    KICK_MEMBER: (workspaceId, channelId, userId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/members/${userId}`,
+    UPDATE_PERMISSIONS: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/settings/permissions`,
+  },
+  TASK_LISTS: {
+    LIST: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/task-lists`,
+    CREATE: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/task-lists`,
+    UPDATE: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}`,
+    DELETE: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}`,
+  },
+  TASKS: {
+    LIST_BY_LIST: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}/tasks`,
+    CREATE: (workspaceId, taskListId) =>
+      `/workspaces/${workspaceId}/task-lists/${taskListId}/tasks`,
+    MY_TASKS: (workspaceId) =>
+      `/workspaces/${workspaceId}/tasks/my`,
+    GET_BY_ID: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
+    UPDATE: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
+    DELETE: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
+    ASSIGN: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/assignees`,
+    UNASSIGN: (workspaceId, taskId, memberId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/assignees/${memberId}`,
+    COMMENTS: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/comments`,
+    COMMENT: (workspaceId, taskId, commentId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/comments/${commentId}`,
   },
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
     SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+  },
+  NOTIFICATIONS: {
+    LIST: "/notifications",
+    UNREAD_COUNT: "/notifications/unread-count",
+    MARK_READ: (id) => `/notifications/${id}/read`,
+    MARK_READ_ALL: "/notifications/read-all",
   },
   CANVAS: {
     // List & create (query channelId)
@@ -44,6 +90,27 @@ export const API_ENDPOINTS = {
     CREATE_VERSION: (canvasId) => `/canvases/${canvasId}/versions`,
     REVERT_VERSION: (canvasId, version) =>
       `/canvases/${canvasId}/versions/${version}/revert`,
+  },
+  CANVAS_WORKSPACE: {
+    CREATE: (workspaceId) => `/workspaces/${workspaceId}/canvases`,
+    MY: (workspaceId) => `/workspaces/${workspaceId}/canvases/my`,
+    RECENT: (workspaceId) => `/workspaces/${workspaceId}/canvases/recent`,
+    SHARED_WITH_ME: (workspaceId) => `/workspaces/${workspaceId}/canvases/shared-with-me`,
+  },
+  AGENT: {
+    ASK: '/agent/ask',
+    ASK_STREAM: '/agent/ask/stream',
+    SESSIONS_ACTIVE: '/agent/sessions/active',
+    SESSIONS: '/agent/sessions',
+    SESSION_MESSAGES: (sessionId) => `/agent/sessions/${sessionId}/messages`,
+    SESSION_UPDATE: (sessionId) => `/agent/sessions/${sessionId}`,
+    SESSION_SEND: (sessionId) => `/agent/sessions/${sessionId}/messages`,
+    SESSION_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/messages/stream`,
+    SESSION_CANVAS_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/canvas/messages/stream`,
+    SESSION_TASK_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/tasks/messages/stream`,
+    CANVAS_WRITE_STREAM: '/agent/canvas/write/stream',
+    CANVAS_APPLY_ACTION: '/agent/canvas/actions/apply',
+    TASK_APPLY_ACTION: '/agent/tasks/actions/apply',
   },
 };
 

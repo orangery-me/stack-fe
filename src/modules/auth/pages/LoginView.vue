@@ -40,8 +40,7 @@ const handleLogin = async () => {
     const redirect = route.query.redirect || "/";
     router.push(redirect);
   } catch (err) {
-    const errorMessage = err.message || "Sign in failed. Please try again.";
-    showErrorToast(errorMessage);
+    showErrorToast(err?.message);
   } finally {
     loading.value = false;
   }

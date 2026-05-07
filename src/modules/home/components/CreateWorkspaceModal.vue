@@ -184,9 +184,7 @@ const handleCreateWorkspace = async () => {
     isCreateWorkspaceModalOpen.value = false;
     router.push(`/workspaces/${workspace.id}`);
   } catch (error) {
-    const message = error?.message || "Unable to create workspace";
-    toast.error(message);
-
+    // Toast is shown by the global axios interceptor
     if (error?.errors && typeof error.errors === "object") {
       createWorkspaceErrors.value = {
         ...createWorkspaceErrors.value,
@@ -294,10 +292,7 @@ const handleCreateWorkspace = async () => {
 
         <div
           v-if="invites.length > 0"
-          :class="[
-            'invites',
-            { 'invites--scrollable': invites.length > 3 },
-          ]"
+          :class="['invites', { 'invites--scrollable': invites.length > 3 }]"
         >
           <div
             v-for="(invite, index) in invites"
@@ -370,5 +365,3 @@ const handleCreateWorkspace = async () => {
 </template>
 
 <style scoped lang="scss" src="./CreateWorkspaceModal.scss"></style>
-
-

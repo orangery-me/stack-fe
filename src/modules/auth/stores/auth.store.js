@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { getMessageFromApiError } from '@/helpers/api.helper.js';
 import authService from '@/services/auth.service.js';
 
 export const useAuthStore = defineStore('auth', {
@@ -85,7 +86,8 @@ export const useAuthStore = defineStore('auth', {
         this.setAuth(tokenData.accessToken, tokenData.refreshToken, user);
         return { success: true };
       } catch (error) {
-        const message = error.message || 'Sign in failed';
+        const message = getMessageFromApiError(error, 'Sign in failed');
+        console.error('Login error:', message);
         throw { success: false, message };
       }
     },
@@ -105,7 +107,7 @@ export const useAuthStore = defineStore('auth', {
             'Registration successful. Please check your email to verify your account.',
         };
       } catch (error) {
-        const message = error.message || 'Registration failed';
+        const message = getMessageFromApiError(error, 'Registration failed');
         throw { success: false, message };
       }
     },
@@ -159,7 +161,7 @@ export const useAuthStore = defineStore('auth', {
         this.setAuth(tokenData.accessToken, tokenData.refreshToken, user);
         return { success: true };
       } catch (error) {
-        const message = error.message || 'Google sign in failed';
+        const message = getMessageFromApiError(error, 'Google sign in failed');
         throw { success: false, message };
       }
     },

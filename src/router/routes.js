@@ -7,6 +7,7 @@ import VerifyEmailView from '@/modules/auth/pages/VerifyEmailView.vue';
 import CreateWorkspaceView from '@/modules/workspaces/pages/CreateWorkspaceView.vue';
 import InviteMemberView from '@/modules/workspaces/pages/InviteMemberView.vue';
 import WorkspaceDetailView from '@/modules/workspaces/pages/WorkspaceDetailView.vue';
+import WorkspaceFilesView from '@/modules/workspaces/pages/WorkspaceFilesView.vue';
 import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
 import CanvasEditView from '@/modules/channels/pages/CanvasEditView.vue';
 
@@ -40,6 +41,18 @@ export default [
 		name: 'workspaceDetail',
 		component: WorkspaceDetailView,
 		meta: { title: 'Workspace', requiresAuth: true },
+	},
+	{
+		path: '/workspaces/:id/files',
+		name: 'workspaceFiles',
+		component: WorkspaceFilesView,
+		meta: { title: 'Workspace Files', requiresAuth: true },
+	},
+	{
+		path: '/workspaces/:id/my-tasks',
+		name: 'myTasks',
+		component: WorkspaceDetailView,
+		meta: { title: 'My Tasks', requiresAuth: true },
 	},
 	{
 		path: '/canvas/:canvasId/edit',

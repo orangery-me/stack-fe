@@ -66,7 +66,7 @@ const handleDismiss = () => {
 
 <template>
   <div
-    :class="['toast', `toast--${type}`]"
+    :class="['toast', `toast--${type}`, 'show']"
     :style="{
       '--toast-accent': typeConfig.accentColor,
     }"
@@ -90,50 +90,55 @@ const handleDismiss = () => {
 <style scoped lang="scss">
 .toast {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--ui-divider);
+  padding: 1rem 1rem 1rem 1.25rem;
+  padding-right: 2.75rem;
+  border: none;
   border-left: 4px solid var(--toast-accent);
-  border-radius: var(--ui-radius-card);
-  background: #ffffff;
+  border-radius: 12px;
+  background: var(--ui-bg-surface);
   color: var(--ui-text);
-  min-width: 300px;
-  max-width: 500px;
+  min-width: 320px;
+  max-width: 420px;
   animation: slideIn 0.3s ease-out;
   position: relative;
-  box-shadow: var(--ui-shadow-modal);
-  transition: transform var(--ui-duration) var(--ui-ease);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transition: transform var(--ui-duration) var(--ui-ease), box-shadow var(--ui-duration) var(--ui-ease);
   pointer-events: auto;
 
-  // &::before {
-  // content: "";
-  // position: absolute;
-  // top: 0;
-  // left: 0;
-  // right: 0;
-  // height: 1px;
-  // background: linear-gradient(90deg, transparent, currentColor, transparent);
-  // opacity: 0.5;
-  // }
-
   &:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow:
+      0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -4px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
   }
 }
 
 .toast__content {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   flex: 1;
+  min-width: 0;
 }
 
 .toast__icon {
-  font-size: 1.25rem;
-  font-weight: bold;
+  font-size: 1.125rem;
+  font-weight: 600;
   flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
   color: var(--toast-accent);
 }
 
@@ -141,28 +146,29 @@ const handleDismiss = () => {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
+  flex: 1;
 }
 
 .toast__close {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 1px solid var(--ui-divider);
-  background: #ffffff;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
   color: var(--ui-text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: background var(--ui-duration) var(--ui-ease),
-    border-color var(--ui-duration) var(--ui-ease),
-    color var(--ui-duration) var(--ui-ease),
-    box-shadow var(--ui-duration) var(--ui-ease);
+  font-size: 1.125rem;
+  line-height: 1;
+  transition: background var(--ui-duration) var(--ui-ease), color var(--ui-duration) var(--ui-ease);
 
   &:hover {
-    background: var(--gray-50);
-    border-color: var(--ui-border);
+    background: rgba(0, 0, 0, 0.06);
     color: var(--ui-text);
   }
 
@@ -187,7 +193,8 @@ const handleDismiss = () => {
   .toast {
     min-width: 280px;
     max-width: calc(100vw - 2rem);
-    padding: 0.75rem 0.9rem;
+    padding: 1rem 1rem 1rem 1.25rem;
+    padding-right: 2.75rem;
   }
 
   .toast__message {

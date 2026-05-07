@@ -39,11 +39,11 @@ class CanvasService {
   }
 
   /** PATCH /canvases/:canvasId – cập nhật canvas (title, không gắn content) */
-  async updateCanvas(
+  async updateCanvasTitle(
     canvasId: string,
     data: { title?: string }
   ): Promise<Canvas> {
-    const response = await apiHelper.patch(
+    const response = await apiHelper.post(
       API_ENDPOINTS.CANVAS.UPDATE(canvasId),
       data
     );

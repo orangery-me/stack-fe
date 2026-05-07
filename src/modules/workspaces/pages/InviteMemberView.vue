@@ -8,6 +8,7 @@ import CalmInput from "@/components/calm/CalmInput.vue";
 import CalmSelect from "@/components/calm/CalmSelect.vue";
 import { useToast } from "@/composables/useToast.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
+import AppLoading from "@/components/loading/AppLoading.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -48,9 +49,8 @@ const fetchWorkspaceData = async () => {
       form.value.roleId =
         roles.value.find((r) => r.name === "member")?.id || roles.value[0].id;
     }
-  } catch (error) {
-    toast.error("Unable to load workspace information");
-    console.error(error);
+  } catch {
+    // Toast is shown by the global axios interceptor
     router.back();
   }
 };
@@ -82,9 +82,8 @@ const handleSubmit = async () => {
     toast.success("Invitation sent successfully!");
     form.value = { email: "", roleId: roles.value[0]?.id || "" };
   } catch (error) {
-    const message = error.message || "Unable to send invitation";
-    toast.error(message);
-    if (error.errors) {
+    // Toast is shown by the global axios interceptor
+    if (error?.errors) {
       errors.value = error.errors;
     }
   }
@@ -126,9 +125,12 @@ onMounted(() => {
         v-if="loadingData"
         class="loading-state"
       >
-        <p class="ui-muted">
-          Loading...
-        </p>
+        <AppLoading
+          :active="true"
+          variant="inline"
+          label="Loading…"
+          min-height="200px"
+        />
       </div>
 
       <div

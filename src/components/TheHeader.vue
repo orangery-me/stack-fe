@@ -55,7 +55,7 @@ const goToRegister = () => router.push("/register");
           <span class="app-header__name">Stack</span>
         </router-link>
 
-        <div class="app-header__nav">
+        <!-- <div class="app-header__nav">
           <router-link
             class="app-header__navLink"
             :to="{ name: 'home', hash: '#features' }"
@@ -74,7 +74,7 @@ const goToRegister = () => router.push("/register");
           >
             Integrations
           </router-link>
-        </div>
+        </div> -->
 
         <div class="app-header__actions">
           <template v-if="isAuthenticated">

@@ -16,6 +16,11 @@ export const useChannelStore = defineStore('channel', {
     // Create channel state
     createChannelLoading: false,
     createChannelError: null,
+
+    // Channel members cache by channelId
+    channelMembersById: {},
+    channelMembersLoadingById: {},
+    channelMembersErrorById: {},
   }),
 
   getters: {
@@ -24,6 +29,9 @@ export const useChannelStore = defineStore('channel', {
      */
     getChannelById: (state) => (channelId) => {
       return state.channels.find((channel) => channel.id === channelId);
+    },
+    getChannelMembersById: (state) => (channelId) => {
+      return state.channelMembersById[channelId] || [];
     },
   },
 
@@ -86,6 +94,54 @@ export const useChannelStore = defineStore('channel', {
       } finally {
         this.selectedChannelLoading = false;
       }
+    },
+
+    async fetchChannelMembers (workspaceId, channelId, options = {}) {
+      const { force = false } = options;
+      if (!workspaceId || !channelId) {
+        return [];
+      }
+
+      if (!force && Array.isArray(this.channelMembersById[channelId])) {
+        return this.channelMembersById[channelId];
+      }
+
+      this.channelMembersLoadingById[channelId] = true;
+      this.channelMembersErrorById[channelId] = null;
+
+      try {
+        const members = await channelService.getMembers(workspaceId, channelId);
+        this.channelMembersById[channelId] = members;
+        return members;
+      } catch (error) {
+        this.channelMembersErrorById[channelId] = error;
+        throw error;
+      } finally {
+        this.channelMembersLoadingById[channelId] = false;
+      }
+    },
+
+    async addMemberToChannel (workspaceId, channelId, payload) {
+      const result = await channelService.addMember(workspaceId, channelId, payload);
+      if (Array.isArray(this.channelMembersById[channelId])) {
+        await this.fetchChannelMembers(workspaceId, channelId, { force: true });
+      }
+      return result;
+    },
+
+    async kickMemberFromChannel (workspaceId, channelId, userId) {
+      const result = await channelService.kickMember(workspaceId, channelId, userId);
+      if (Array.isArray(this.channelMembersById[channelId])) {
+        this.channelMembersById[channelId] = this.channelMembersById[channelId].filter(
+          (member) => member.userId !== userId
+        );
+      }
+      return result;
+    },
+
+    async updateChannelPermissions(workspaceId, channelId, payload) {
+      await channelService.updateChannelPermissions(workspaceId, channelId, payload);
+      return this.fetchChannelById(workspaceId, channelId);
     },
   },
 });

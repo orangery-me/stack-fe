@@ -1,0 +1,366 @@
+// Styles for WorkspaceFilesView
+.loading-container,
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--ui-bg-page);
+  color: var(--ui-text);
+  font-size: 14px;
+}
+
+.workspace-files-page {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background: var(--ui-bg-page);
+}
+
+// Files main layout
+.files-main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  padding: 24px 32px;
+  overflow: hidden;
+}
+
+.files-sidebar {
+  border-right: 1px solid var(--ui-divider);
+  padding-right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.files-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.files-nav-item {
+  width: 100%;
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ui-text);
+  transition: background var(--ui-duration) var(--ui-ease),
+    color var(--ui-duration) var(--ui-ease);
+
+  &.active {
+    background: var(--primary-50);
+    color: var(--primary-700);
+  }
+
+  &.primary {
+    background: var(--primary-600);
+    color: #ffffff;
+  }
+
+  &.is-muted {
+    color: var(--ui-text-muted);
+  }
+
+  &:hover:not(.active):not(.primary) {
+    background: var(--gray-100);
+  }
+}
+
+.files-nav-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ui-text-hint);
+  margin-bottom: 4px;
+}
+
+.files-content {
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.files-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+  }
+}
+
+.files-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.files-btn {
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 14px;
+  border: 1px solid var(--ui-divider);
+  background: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--ui-duration) var(--ui-ease),
+    border-color var(--ui-duration) var(--ui-ease),
+    color var(--ui-duration) var(--ui-ease);
+
+  &:hover {
+    background: var(--gray-50);
+  }
+}
+
+.files-btn-primary {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+  color: #ffffff;
+
+  &:hover {
+    background: var(--primary-500);
+  }
+}
+
+.files-filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.files-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.files-tab {
+  border-radius: 999px;
+  border: none;
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ui-text-muted);
+  transition: background var(--ui-duration) var(--ui-ease),
+    color var(--ui-duration) var(--ui-ease);
+
+  &.active {
+    background: var(--gray-100);
+    color: var(--ui-text);
+  }
+}
+
+.files-table {
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-divider);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.files-table-header,
+.files-row {
+  display: grid;
+  // minmax(0, …) lets columns shrink so header/body tracks stay aligned (valid cells use span, not div inside button)
+  grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  column-gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.files-table-header {
+  background: var(--gray-50);
+  color: var(--ui-text-hint);
+  font-weight: 500;
+}
+
+.files-row {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--ui-duration) var(--ui-ease);
+
+  &:hover {
+    background: var(--gray-50);
+  }
+}
+
+.files-table-body {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+
+.files-table-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--ui-text-hint);
+  font-size: 13px;
+}
+
+.col-name,
+.col-location,
+.col-owner,
+.col-updated {
+  min-width: 0;
+}
+
+.col-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-icon-img {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.file-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.col-inline-icon {
+  flex-shrink: 0;
+  display: block;
+  opacity: 0.75;
+}
+
+.col-location,
+.col-owner,
+.col-updated {
+  font-size: 13px;
+  color: var(--ui-text-muted);
+}
+
+.col-owner,
+.col-updated {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Responsive
+@media (max-width: 1024px) {
+  .files-main {
+    grid-template-columns: 1fr;
+  }
+
+  .files-sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .files-content {
+    padding-left: 0;
+  }
+}
+
+.notification-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.24);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1200;
+}
+
+.notification-panel {
+  width: min(420px, 100%);
+  background: #fff;
+  height: 100%;
+  border-left: 1px solid var(--ui-divider);
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--ui-divider);
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  button {
+    border: none;
+    background: transparent;
+    color: var(--primary-600);
+    cursor: pointer;
+  }
+}
+
+.notification-empty {
+  padding: 20px 16px;
+  color: var(--ui-text-hint);
+  font-size: 14px;
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.notification-item {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-divider);
+  cursor: pointer;
+
+  &.unread {
+    background: var(--primary-50);
+  }
+}
+
+.notification-item-title {
+  font-size: 14px;
+  color: var(--ui-text);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.notification-item-body {
+  font-size: 13px;
+  color: var(--ui-text-muted);
+}
+

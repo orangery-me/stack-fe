@@ -11,6 +11,7 @@ export interface ChatMessage {
   senderId: string;
   authorName: string;
   content: string;
+  messageType?: string;
   createdAt: string;
   channelId: string;
   status: MessageStatus;

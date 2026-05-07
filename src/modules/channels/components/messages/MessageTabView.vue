@@ -1,8 +1,17 @@
+<script>
+// Cache scroll position per channel to restore when switching tabs
+const channelScrollPositions = new Map();
+</script>
 <script setup>
-import { computed, ref, nextTick, watch, onUnmounted } from "vue";
+import { computed, ref, nextTick, watch, onBeforeUnmount } from "vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useChatStore } from "@/modules/channels/stores/chat.store";
+import { useInfiniteQuery } from "@tanstack/vue-query";
+import chatService from "@/services/chat.service";
+import AppLoading from "@/components/loading/AppLoading.vue";
+
+const emit = defineEmits(["add-people-to-channel"]);
 
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
@@ -11,11 +20,27 @@ const chatStore = useChatStore();
 const workspace = computed(() => workspaceStore.workspaceDetail);
 const selectedChannel = computed(() => channelStore.selectedChannel);
 const members = computed(() => workspaceStore.members);
-const isLoadingMessages = computed(() => chatStore.messagesLoading);
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: isLoadingMessages } = useInfiniteQuery({
+  queryKey: ['messages', computed(() => selectedChannel.value?.id)],
+  queryFn: async ({ pageParam = 1 }) => {
+    const response = await chatService.getMessages(workspace.value.id, selectedChannel.value.id, pageParam);
+    const payload = response?.data ?? response ?? {};
+    return {
+      messages: chatStore.formatMessages(payload.messages || [], members.value, "sent"),
+      hasMore: typeof payload.hasMore === "boolean" ? payload.hasMore : false
+    };
+  },
+  initialPageParam: 1,
+  getNextPageParam: (lastPage, allPages) => {
+    return lastPage.hasMore ? allPages.length + 1 : undefined;
+  },
+  enabled: computed(() => !!workspace.value?.id && !!selectedChannel.value?.id)
+});
 
 const messages = computed(() => {
-  if (!selectedChannel.value) return [];
-  return chatStore.getMessagesByChannelId(selectedChannel.value.id);
+  if (!data.value) return [];
+  // Reverse pages so older pages (loaded later) come first, then flatten
+  return [...data.value.pages].reverse().flatMap(page => page.messages || []);
 });
 
 const messagesByDay = computed(() => {
@@ -61,7 +86,6 @@ const messagesByDay = computed(() => {
 
 const newMessage = ref("");
 const messagesContainerRef = ref(null);
-const isLoadingOlder = ref(false);
 const initialScrolledChannelIds = new Set();
 
 const shouldAutoScrollToBottom = () => {
@@ -72,12 +96,22 @@ const shouldAutoScrollToBottom = () => {
   return distanceFromBottom < autoScrollThreshold;
 };
 
+const restoreScrollPosition = async () => {
+  await nextTick();
+  requestAnimationFrame(() => {
+    if (!messagesContainerRef.value || !selectedChannel.value?.id) return;
+    const savedScroll = channelScrollPositions.get(selectedChannel.value.id);
+    if (savedScroll !== undefined) {
+      messagesContainerRef.value.scrollTop = savedScroll;
+    }
+  });
+};
+
 const scrollToBottom = async () => {
   await nextTick();
   requestAnimationFrame(() => {
     if (!messagesContainerRef.value) return;
-    messagesContainerRef.value.scrollTop =
-      messagesContainerRef.value.scrollHeight;
+    messagesContainerRef.value.scrollTop = messagesContainerRef.value.scrollHeight;
   });
 };
 
@@ -87,36 +121,27 @@ const handleScroll = async (event) => {
   if (
     !selectedChannel.value ||
     !workspace.value ||
-    isLoadingOlder.value ||
+    isFetchingNextPage.value ||
     element.scrollTop >= nearTop
   ) {
     return;
   }
 
-  if (!chatStore.hasMoreForChannel(selectedChannel.value.id)) {
+  if (!hasNextPage.value) {
     return;
   }
-
-  isLoadingOlder.value = true;
 
   const previousScrollHeight = element.scrollHeight;
 
   try {
-    await chatStore.fetchMessages(
-      workspace.value.id,
-      selectedChannel.value.id,
-      members.value,
-      { appendOlder: true }
-    );
+    await fetchNextPage();
 
     await nextTick();
 
     const newScrollHeight = element.scrollHeight;
     element.scrollTop = newScrollHeight - previousScrollHeight;
-  } catch (error) {
-    console.error("Failed to load older messages:", error);
-  } finally {
-    isLoadingOlder.value = false;
+  } catch {
+    // Toast is shown by the global axios interceptor
   }
 };
 
@@ -143,6 +168,10 @@ const handleRetryMessage = (message) => {
   );
 };
 
+const handleAddPeopleToChannel = () => {
+  emit("add-people-to-channel");
+};
+
 const getChannelCreator = (channel) => {
   if (!channel || !channel.createdById) return null;
   const creator = members.value.find((m) => m.id === channel.createdById);
@@ -165,47 +194,79 @@ const formatTime = (dateString) => {
   });
 };
 
+const normalizeAuthorName = (message) =>
+  String(message?.authorName || "")
+    .trim()
+    .toLowerCase();
+
+const isSameSender = (currentMessage, previousMessage) => {
+  const currentSenderId = String(currentMessage?.senderId || "").trim();
+  const previousSenderId = String(previousMessage?.senderId || "").trim();
+
+  if (currentSenderId && previousSenderId) {
+    return currentSenderId === previousSenderId;
+  }
+
+  const currentAuthorName = normalizeAuthorName(currentMessage);
+  const previousAuthorName = normalizeAuthorName(previousMessage);
+
+  return Boolean(currentAuthorName) && currentAuthorName === previousAuthorName;
+};
+
+const isMessageGroupStart = (dayMessages, index) => {
+  const currentMessage = dayMessages[index];
+  if (!currentMessage || currentMessage.messageType === "system") return true;
+  if (index === 0) return true;
+
+  const previousMessage = dayMessages[index - 1];
+  if (!previousMessage || previousMessage.messageType === "system") return true;
+  return !isSameSender(currentMessage, previousMessage);
+};
+
 watch(
   () => messages.value.length,
-  () => {
-    if (shouldAutoScrollToBottom()) {
+  (newLength, oldLength) => {
+    // If it's the first time we load messages for this channel, force scroll to bottom
+    if (selectedChannel.value?.id && !initialScrolledChannelIds.has(selectedChannel.value.id)) {
+      scrollToBottom();
+      initialScrolledChannelIds.add(selectedChannel.value.id);
+    } else if (newLength > 0 && (oldLength === 0 || oldLength === undefined)) {
+      // Data loaded from cache on remount, restore saved scroll position
+      restoreScrollPosition();
+    } else if (shouldAutoScrollToBottom()) {
       scrollToBottom();
     }
   },
-  { deep: false }
+  { immediate: true }
 );
 
 watch(
-  () => selectedChannel.value,
-  async (newChannel, oldChannel) => {
-    // Cleanup listeners for old channel when switching channels
-    if (oldChannel?.id && oldChannel.id !== newChannel?.id) {
-      chatStore.cleanupChannelListeners(oldChannel.id);
+  () => selectedChannel.value?.id,
+  async (newChannelId, oldChannelId) => {
+    // Save scroll position for the old channel
+    if (oldChannelId && messagesContainerRef.value) {
+      channelScrollPositions.set(oldChannelId, messagesContainerRef.value.scrollTop);
     }
 
-    if (newChannel?.id) {
-      try {
-        await chatStore.fetchMessages(
-          workspace.value.id,
-          newChannel.id,
-          members.value
-        );
+    // Cleanup listeners for old channel when switching channels
+    if (oldChannelId && oldChannelId !== newChannelId) {
+      chatStore.cleanupChannelListeners(oldChannelId);
+    }
 
-        // Force scroll to bottom once on initial load per channel
-        if (!initialScrolledChannelIds.has(newChannel.id)) {
-          await scrollToBottom();
-          initialScrolledChannelIds.add(newChannel.id);
-        }
-      } catch (error) {
-        console.error("Error fetching messages:", error);
-      }
+    if (newChannelId && newChannelId !== oldChannelId) {
+      chatStore.setupSocketListeners(newChannelId, members.value);
+      chatStore.joinChannel(newChannelId);
     }
   },
   { immediate: true }
 );
 
 // Cleanup when rời hẳn khỏi ChannelDetailView
-onUnmounted(() => {
+onBeforeUnmount(() => {
+  if (selectedChannel.value?.id && messagesContainerRef.value) {
+    channelScrollPositions.set(selectedChannel.value.id, messagesContainerRef.value.scrollTop);
+  }
+  
   if (selectedChannel.value?.id) {
     chatStore.cleanupChannelListeners(selectedChannel.value.id);
   }
@@ -239,12 +300,11 @@ onUnmounted(() => {
           class="d-flex justify-content-center align-items-center"
           style="height: 100vh"
         >
-          <div
-            class="spinner-border"
-            role="status"
-          >
-            <span class="visually-hidden">Loading...</span>
-          </div>
+          <AppLoading
+            :active="true"
+            variant="inline"
+            min-height="220px"
+          />
         </div>
         <div v-else>
           <div
@@ -265,7 +325,11 @@ onUnmounted(() => {
               channel.
             </p>
             <div class="message-tab-action-cards">
-              <div class="action-card action-card--purple">
+              <button
+                class="action-card action-card--purple"
+                type="button"
+                @click="handleAddPeopleToChannel"
+              >
                 <div class="action-card-icon">
                   <img
                     src="/icons/message-circle-dot.svg"
@@ -275,7 +339,7 @@ onUnmounted(() => {
                 <h3 class="action-card-title">
                   Add people to channel
                 </h3>
-              </div>
+              </button>
               <div class="action-card action-card--blue">
                 <div class="action-card-icon">
                   <img
@@ -289,19 +353,19 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
-  
+
           <div class="message-tab-messages">
             <div class="message-tab-messages-loading-older">
               <div
-                v-if="isLoadingOlder"
+                v-if="isFetchingNextPage"
                 class="d-flex justify-content-center"
               >
-                <div
-                  class="spinner-border"
-                  role="status"
-                >
-                  <span class="visually-hidden">Loading...</span>
-                </div>
+                <AppLoading
+                  :active="true"
+                  variant="inline"
+                  size="sm"
+                  min-height="64px"
+                />
               </div>
             </div>
             <div
@@ -313,23 +377,32 @@ onUnmounted(() => {
                   {{ day.label }}
                 </span>
               </div>
-  
+
               <div
-                v-for="message in day.messages"
+                v-for="(message, messageIndex) in day.messages"
                 :key="message.id"
                 class="message-item"
                 :class="{
+                  'message-item--system': message.messageType === 'system',
                   'message-item--pending': message.status === 'pending',
                   'message-item--failed': message.status === 'failed',
+                  'message-item--grouped': message.messageType !== 'system' && !isMessageGroupStart(day.messages, messageIndex),
                 }"
               >
-                <div class="message-item-avatar">
+                <div
+                  v-if="message.messageType !== 'system'"
+                  class="message-item-avatar"
+                  :class="{ 'message-item-avatar--hidden': !isMessageGroupStart(day.messages, messageIndex) }"
+                >
                   <span>
                     {{ message.authorName?.charAt(0).toUpperCase() || "U" }}
                   </span>
                 </div>
                 <div class="message-item-body">
-                  <div class="message-item-header">
+                  <div
+                    v-if="message.messageType !== 'system' && isMessageGroupStart(day.messages, messageIndex)"
+                    class="message-item-header"
+                  >
                     <span class="message-item-author">
                       {{ message.authorName }}
                     </span>
@@ -337,19 +410,22 @@ onUnmounted(() => {
                       {{ formatTime(message.createdAt) }}
                     </span>
                   </div>
-                  <div class="message-item-content">
+                  <div
+                    class="message-item-content"
+                    :class="{ 'message-item-content--system': message.messageType === 'system' }"
+                  >
                     {{ message.content }}
                   </div>
                   <div
                     v-if="message.status === 'failed'"
                     class="message-item-error"
                   >
-                    Gửi thất bại.
+                    Sent failed
                     <button
                       class="message-item-retry"
                       @click="handleRetryMessage(message)"
                     >
-                      Thử lại
+                      Retry
                     </button>
                   </div>
                 </div>
@@ -359,7 +435,7 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-  
+
     <div
       v-if="selectedChannel"
       class="message-input"
@@ -373,17 +449,63 @@ onUnmounted(() => {
           @keydown.enter.exact.prevent="handleSendMessage"
           @keydown.shift.enter.stop
         />
-        <button
-          class="message-input-send"
-          type="button"
-          @click="handleSendMessage"
-        >
-          Send
-        </button>
+        <div class="message-input-toolbar">
+          <div class="message-input-actions">
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Add"
+            >
+              <i class="pi pi-plus" />
+            </button>
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Emoji"
+            >
+              <i class="pi pi-face-smile" />
+            </button>
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Mention"
+            >
+              <i class="pi pi-at" />
+            </button>
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Video"
+            >
+              <i class="pi pi-video" />
+            </button>
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Voice message"
+            >
+              <i class="pi pi-microphone" />
+            </button>
+            <button
+              class="message-input-action-btn"
+              type="button"
+              title="Note"
+            >
+              <i class="pi pi-file-edit" />
+            </button>
+          </div>
+          <button
+            class="message-input-send"
+            type="button"
+            :disabled="!newMessage.trim()"
+            @click="handleSendMessage"
+          >
+            <i class="pi pi-send" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss" src="./MessageTabView.scss"></style>
-

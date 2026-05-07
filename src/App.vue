@@ -5,12 +5,19 @@ import { RouterView } from "vue-router";
 import TheFooter from "@/components/TheFooter.vue";
 import TheHeader from "@/components/TheHeader.vue";
 import ToastContainer from "@/components/ToastContainer.vue";
+import LoadingOverlayHost from "@/components/loading/LoadingOverlayHost.vue";
 
 const route = useRoute();
 const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
+const isWorkspaceFiles = computed(() => route.name === "workspaceFiles");
+const isMyTasks = computed(() => route.name === "myTasks");
 const isCanvasEdit = computed(() => route.name === "canvasEdit");
 const hideAppHeader = computed(
-  () => isWorkspaceDetail.value || isCanvasEdit.value
+  () =>
+    isWorkspaceDetail.value ||
+    isWorkspaceFiles.value ||
+    isMyTasks.value ||
+    isCanvasEdit.value
 );
 
 // Prevent body scroll when on workspace detail or canvas edit page
@@ -36,6 +43,7 @@ watch(
 
   <TheFooter v-if="!hideAppHeader" />
   <ToastContainer />
+  <LoadingOverlayHost />
 </template>
 
 <style scoped lang="scss">

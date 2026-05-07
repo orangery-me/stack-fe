@@ -104,9 +104,7 @@ const handleCreateChannel = async () => {
     emit("created", channel);
     isCreateChannelModalOpen.value = false;
   } catch (error) {
-    const message = error?.message || "Unable to create channel";
-    toast.error(message);
-
+    // Toast is shown by the global axios interceptor
     if (error?.errors && typeof error.errors === "object") {
       createChannelErrors.value = {
         ...createChannelErrors.value,
