@@ -19,6 +19,7 @@ import { requestCanvas } from "@/modules/channels/queries/canvas.queries";
 import { useQueryClient } from "@tanstack/vue-query";
 
 const SYNC_READY_TIMEOUT_MS = 10_000;
+const canvasCollabUrl = import.meta.env.VITE_CANVAS_COLLAB_URL;
 
 const router = useRouter();
 const canvasStore = useCanvasStore();
@@ -154,7 +155,7 @@ function destroyCollabResources() {
 function setupForCanvas(id: string) {
   const doc = new Y.Doc();
   const p = new HocuspocusProvider({
-    url: "ws://localhost:1234",
+    url: canvasCollabUrl,
     name: id,
     document: doc,
     token: jwtToken.value,
