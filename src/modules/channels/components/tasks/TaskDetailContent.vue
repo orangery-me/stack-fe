@@ -2,6 +2,8 @@
 import { ref, watch, computed } from 'vue';
 import { useTaskStore } from '@/modules/channels/stores/task.store.js';
 import { useToast } from '@/composables/useToast.js';
+import { getMessageFromApiError } from '@/helpers/api.helper.js';
+import taskService from '@/services/task.service.js';
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -81,10 +83,6 @@ const formatDate = (date) => {
   });
 };
 
-const newAttachmentId = () =>
-  globalThis.crypto?.randomUUID?.() ||
-  `att-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
 const startEditing = (field) => {
   editingField.value = field;
   if (field === 'description') editDescription.value = props.task.description || '';
@@ -140,20 +138,29 @@ const persistAttachments = async (next) => {
   }
 };
 
-const buildFileMeta = (file) => ({
-  id: newAttachmentId(),
-  type: 'file',
-  name: file.name,
-  size: file.size,
-  lastModified: file.lastModified,
-});
-
 const addFilesFromFileList = async (fileList) => {
   const files = Array.from(fileList || []);
   if (!files.length) return;
-  const current = Array.isArray(props.task.attachments) ? [...props.task.attachments] : [];
-  const next = [...current, ...files.map(buildFileMeta)].slice(0, 50);
-  await persistAttachments(next);
+  const currentCount = attachmentsList.value.length;
+  const slot = Math.max(0, 50 - currentCount);
+  const toUpload = files.slice(0, slot);
+  if (!toUpload.length) {
+    toastError('Maximum 50 attachments per task.');
+    return;
+  }
+  isAttachBusy.value = true;
+  try {
+    for (const file of toUpload) {
+      await taskService.uploadTaskAttachment(props.workspaceId, props.task.id, file);
+    }
+    await taskStore.fetchTaskById(props.workspaceId, props.task.id);
+    success(toUpload.length > 1 ? 'Files uploaded' : 'File uploaded');
+  } catch (e) {
+    console.error('[TaskDetailContent] Upload failed:', e);
+    toastError(getMessageFromApiError(e.response?.data, 'Upload failed'));
+  } finally {
+    isAttachBusy.value = false;
+  }
 };
 
 const onFileInputChange = (e) => {
@@ -345,7 +352,17 @@ watch(
             :key="item.id || item.name + '-' + idx"
           >
             <span class="task-attachment-type">{{ item.type || 'file' }}</span>
-            <span class="task-attachment-name">{{ item.name }}</span>
+            <a
+              v-if="item.url"
+              class="task-attachment-name task-attachment-link"
+              :href="item.url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ item.name }}</a>
+            <span
+              v-else
+              class="task-attachment-name"
+            >{{ item.name }}</span>
             <button
               type="button"
               class="task-attach-remove"
@@ -554,7 +571,17 @@ watch(
                 :key="item.id || item.name + '-' + idx"
               >
                 <span class="task-attachment-type">{{ item.type || 'file' }}</span>
-                <span class="task-attachment-name">{{ item.name }}</span>
+                <a
+                  v-if="item.url"
+                  class="task-attachment-name task-attachment-link"
+                  :href="item.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ item.name }}</a>
+                <span
+                  v-else
+                  class="task-attachment-name"
+                >{{ item.name }}</span>
                 <button
                   type="button"
                   class="task-attach-remove"
@@ -937,6 +964,17 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.task-attachment-link {
+  color: var(--primary-600, #4f46e5);
+  text-decoration: none;
+  word-break: break-all;
+  white-space: normal;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .task-attach-remove {

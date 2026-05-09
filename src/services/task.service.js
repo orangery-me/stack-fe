@@ -70,6 +70,22 @@ class TaskService {
     return response.data.data;
   }
 
+  /**
+   * Upload one file; appends attachment on server. Use FormData (do not set JSON Content-Type).
+   */
+  async uploadTaskAttachment(workspaceId, taskId, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiHelper.post(
+      API_ENDPOINTS.TASKS.UPLOAD_ATTACHMENT(workspaceId, taskId),
+      formData,
+      {
+        headers: { 'Content-Type': false },
+      }
+    );
+    return response.data.data;
+  }
+
   async deleteTask(workspaceId, taskId) {
     const response = await apiHelper.delete(
       API_ENDPOINTS.TASKS.DELETE(workspaceId, taskId)
