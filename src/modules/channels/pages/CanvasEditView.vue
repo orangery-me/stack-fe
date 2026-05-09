@@ -30,7 +30,7 @@ import { useLoading } from "@/composables/useLoading.js";
 import { useUiStore } from "@/stores/ui.store.js";
 
 const uiStore = useUiStore();
-
+const canvasCollabUrl = import.meta.env.VITE_CANVAS_COLLAB_URL;
 const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
 
@@ -233,7 +233,7 @@ function generateColorFromName(name: string) {
 function setupForCanvas(id: string) {
   const doc = new Y.Doc();
   const p = new HocuspocusProvider({
-    url: "ws://localhost:1234",
+    url: canvasCollabUrl,
     name: id,
     document: doc,
     token: jwtToken.value,
