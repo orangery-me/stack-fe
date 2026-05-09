@@ -17,10 +17,14 @@ const columns = [
   { key: 'done', label: 'Done' },
 ];
 
+const rootTasksOnly = computed(() =>
+  props.tasks.filter((task) => !task.parentTaskId)
+);
+
 const groupedTasks = computed(() => {
   return columns.map((column) => ({
     ...column,
-    tasks: props.tasks.filter((task) => task.status === column.key),
+    tasks: rootTasksOnly.value.filter((task) => task.status === column.key),
   }));
 });
 

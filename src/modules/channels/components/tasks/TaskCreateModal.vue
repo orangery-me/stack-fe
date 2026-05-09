@@ -8,6 +8,7 @@ import AutoComplete from 'primevue/autocomplete';
 const props = defineProps({
   workspaceId: { type: String, required: true },
   taskListId: { type: String, required: true },
+  parentTaskId: { type: String, default: null },
 });
 
 const emit = defineEmits(['close', 'created']);
@@ -23,6 +24,8 @@ const priority = ref('medium');
 const dueDate = ref('');
 const selectedAssignees = ref([]);
 const isSubmitting = ref(false);
+
+const modalTitle = computed(() => (props.parentTaskId ? 'Create sub-task' : 'Create Task'));
 
 const channelId = channelStore.selectedChannel?.id;
 const channelMembers = computed(() => channelId ? channelStore.getChannelMembersById(channelId) : []);
@@ -74,6 +77,7 @@ const handleSubmit = async () => {
       assigneeIds: selectedAssignees.value.length
         ? selectedAssignees.value.map((m) => m.workspaceMemberId)
         : undefined,
+      parentTaskId: props.parentTaskId || undefined,
     };
 
     await taskStore.createTask(props.workspaceId, props.taskListId, data);
@@ -96,7 +100,7 @@ const handleSubmit = async () => {
   >
     <div class="task-create-modal">
       <div class="task-create-header">
-        <h3>Create Task</h3>
+        <h3>{{ modalTitle }}</h3>
         <button
           type="button"
           class="task-create-close"
