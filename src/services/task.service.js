@@ -70,6 +70,22 @@ class TaskService {
     return response.data.data;
   }
 
+  /**
+   * Upload one file; appends attachment on server. Use FormData (do not set JSON Content-Type).
+   */
+  async uploadTaskAttachment(workspaceId, taskId, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiHelper.post(
+      API_ENDPOINTS.TASKS.UPLOAD_ATTACHMENT(workspaceId, taskId),
+      formData,
+      {
+        headers: { 'Content-Type': false },
+      }
+    );
+    return response.data.data;
+  }
+
   async deleteTask(workspaceId, taskId) {
     const response = await apiHelper.delete(
       API_ENDPOINTS.TASKS.DELETE(workspaceId, taskId)
@@ -96,36 +112,6 @@ class TaskService {
   async unassignTask(workspaceId, taskId, memberId) {
     const response = await apiHelper.delete(
       API_ENDPOINTS.TASKS.UNASSIGN(workspaceId, taskId, memberId)
-    );
-    return response.data.data;
-  }
-
-  async getTaskComments(workspaceId, taskId) {
-    const response = await apiHelper.get(
-      API_ENDPOINTS.TASKS.COMMENTS(workspaceId, taskId)
-    );
-    return response.data.data;
-  }
-
-  async createTaskComment(workspaceId, taskId, data) {
-    const response = await apiHelper.post(
-      API_ENDPOINTS.TASKS.COMMENTS(workspaceId, taskId),
-      data
-    );
-    return response.data.data;
-  }
-
-  async updateTaskComment(workspaceId, taskId, commentId, data) {
-    const response = await apiHelper.patch(
-      API_ENDPOINTS.TASKS.COMMENT(workspaceId, taskId, commentId),
-      data
-    );
-    return response.data.data;
-  }
-
-  async deleteTaskComment(workspaceId, taskId, commentId) {
-    const response = await apiHelper.delete(
-      API_ENDPOINTS.TASKS.COMMENT(workspaceId, taskId, commentId)
     );
     return response.data.data;
   }

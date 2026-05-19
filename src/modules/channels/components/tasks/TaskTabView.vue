@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useTaskStore, TaskSortField } from '@/modules/channels/stores/task.store.js';
 import { useQuery } from '@tanstack/vue-query';
 import taskService from '@/services/task.service.js';
@@ -18,6 +19,7 @@ const props = defineProps({
 const emit = defineEmits(['update-name']);
 
 const taskStore = useTaskStore();
+const router = useRouter();
 
 const isCreateModalOpen = ref(false);
 const statusFilter = ref('');
@@ -57,21 +59,38 @@ const tasks = computed(() => rawTasks.value?.tasks || []);
 const selectedTask = computed(() => taskStore.selectedTask);
 
 const filteredAndSortedTasks = computed(() => {
-  let result = tasks.value;
+  const all = tasks.value;
+  if (!all.length) return [];
 
-  // Filter by status
+  let matched = all;
   if (statusFilter.value) {
-    result = result.filter((t) => t.status === statusFilter.value);
+    matched = matched.filter((t) => t.status === statusFilter.value);
   }
-  // Filter by search
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase();
-    result = result.filter((t) => t.title.toLowerCase().includes(q));
+    matched = matched.filter((t) => t.title.toLowerCase().includes(q));
   }
 
-  // Sort
+  const matchedIds = new Set(matched.map((t) => t.id));
+
+  for (const t of all) {
+    if (matchedIds.has(t.id) && t.parentTaskId) {
+      matchedIds.add(t.parentTaskId);
+    }
+  }
+
+  for (const t of all) {
+    if (matchedIds.has(t.id) && !t.parentTaskId) {
+      for (const c of all) {
+        if (c.parentTaskId === t.id) matchedIds.add(c.id);
+      }
+    }
+  }
+
+  const filtered = all.filter((t) => matchedIds.has(t.id));
+
   const dir = sortDirection.value === 'asc' ? 1 : -1;
-  return [...result].sort((a, b) => {
+  const comparator = (a, b) => {
     switch (sortField.value) {
       case TaskSortField.DUE_DATE:
         return dir * ((a.dueDate || '9999') > (b.dueDate || '9999') ? 1 : -1);
@@ -85,7 +104,20 @@ const filteredAndSortedTasks = computed(() => {
       default:
         return dir * (new Date(a.createdAt) - new Date(b.createdAt));
     }
-  });
+  };
+
+  const roots = filtered.filter((t) => !t.parentTaskId).sort(comparator);
+
+  const out = [];
+  for (const r of roots) {
+    out.push(r);
+    const kids = filtered
+      .filter((t) => t.parentTaskId === r.id)
+      .sort(comparator);
+    out.push(...kids);
+  }
+
+  return out;
 });
 
 // ─── Editable title ──────────────────────────────────────
@@ -113,12 +145,33 @@ const saveTitle = async () => {
 // ─── Actions ─────────────────────────────────────────────
 // Removed loadTasks as it's handled by useQuery
 
-const handleTaskCreated = () => {
+const createModalParentTaskId = ref(null);
+
+const openCreateModal = (parentTask = null) => {
+  createModalParentTaskId.value = parentTask?.id ?? null;
+  isCreateModalOpen.value = true;
+};
+
+const closeCreateModal = () => {
   isCreateModalOpen.value = false;
+  createModalParentTaskId.value = null;
+};
+
+const handleTaskCreated = () => {
+  closeCreateModal();
 };
 
 const handleTaskClick = (task) => {
   taskStore.selectTask(task);
+};
+
+const openTaskDetailPage = (task) => {
+  if (!task?.id || !props.workspaceId) return;
+  const r = router.resolve({
+    name: 'taskDetail',
+    params: { workspaceId: props.workspaceId, taskId: task.id },
+  });
+  window.open(r.href, '_blank', 'noopener,noreferrer');
 };
 
 const handleCloseDetail = () => {
@@ -168,7 +221,7 @@ watch(() => props.taskListId, () => {
           type="button"
           class="task-icon-btn"
           title="Create task"
-          @click="isCreateModalOpen = true"
+          @click="openCreateModal()"
         >
           <i class="pi pi-plus" />
         </button>
@@ -257,7 +310,6 @@ watch(() => props.taskListId, () => {
     <div class="task-tab-body">
       <div
         class="task-tab-list-area"
-        :class="{ 'has-detail': !!selectedTask }"
       >
         <!-- Loading overlay (non-fullscreen) -->
         <div
@@ -337,6 +389,7 @@ watch(() => props.taskListId, () => {
             :tasks="filteredAndSortedTasks"
             :selected-task-id="selectedTask?.id"
             @task-click="handleTaskClick"
+            @open-task-page="openTaskDetailPage"
           />
 
           <!-- Empty state inside table -->
@@ -352,7 +405,7 @@ watch(() => props.taskListId, () => {
             <button
               type="button"
               class="task-add-item-btn"
-              @click="isCreateModalOpen = true"
+              @click="openCreateModal()"
             >
               <i class="pi pi-plus" />
               Add item
@@ -371,22 +424,24 @@ watch(() => props.taskListId, () => {
           />
         </div>
       </div>
-
-      <!-- Detail panel -->
-      <TaskDetailPanel
-        v-if="selectedTask"
-        :task="selectedTask"
-        :workspace-id="workspaceId"
-        @close="handleCloseDetail"
-      />
     </div>
+
+    <TaskDetailPanel
+      v-if="selectedTask"
+      :task="selectedTask"
+      :workspace-id="workspaceId"
+      @close="handleCloseDetail"
+      @add-subtask="openCreateModal($event)"
+    />
 
     <!-- Create modal -->
     <TaskCreateModal
       v-if="isCreateModalOpen"
       :workspace-id="workspaceId"
       :task-list-id="taskListId"
-      @close="isCreateModalOpen = false"
+      :parent-task-id="createModalParentTaskId"
+      :parent-task-options="tasks"
+      @close="closeCreateModal"
       @created="handleTaskCreated"
     />
   </div>
@@ -571,10 +626,6 @@ watch(() => props.taskListId, () => {
   padding: 0 28px 20px;
   position: relative;
 
-  &.has-detail {
-    flex: 0.6;
-    border-right: 1px solid var(--ui-divider);
-  }
 }
 
 /* ─── Loading overlay (non-fullscreen) ─── */

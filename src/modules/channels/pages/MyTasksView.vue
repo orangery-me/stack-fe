@@ -5,10 +5,17 @@ import { useQuery } from '@tanstack/vue-query';
 import taskService from '@/services/task.service.js';
 import TaskListView from '@/modules/channels/components/tasks/TaskListView.vue';
 import TaskDetailPanel from '@/modules/channels/components/tasks/TaskDetailPanel.vue';
+import TaskCreateModal from '@/modules/channels/components/tasks/TaskCreateModal.vue';
+import { useToast } from '@/composables/useToast.js';
 
 const route = useRoute();
 const router = useRouter();
 const workspaceId = computed(() => route.params.id);
+const { warning } = useToast();
+
+const isCreateModalOpen = ref(false);
+const createModalParentTaskId = ref(null);
+const createModalTaskListId = ref(null);
 
 const filters = ref({
   status: '',
@@ -34,6 +41,35 @@ const tasks = computed(() => payload.value?.tasks || []);
 
 const goBackWorkspace = () => {
   router.push({ name: 'workspaceDetail', params: { id: workspaceId.value } });
+};
+
+const openCreateSubtask = (parentTask) => {
+  if (!parentTask?.taskListId) {
+    warning('Cannot create sub-task: missing task list. Open this task from a channel task list.');
+    return;
+  }
+  createModalParentTaskId.value = parentTask.id;
+  createModalTaskListId.value = parentTask.taskListId;
+  isCreateModalOpen.value = true;
+};
+
+const closeCreateModal = () => {
+  isCreateModalOpen.value = false;
+  createModalParentTaskId.value = null;
+  createModalTaskListId.value = null;
+};
+
+const handleTaskCreated = () => {
+  closeCreateModal();
+};
+
+const openTaskDetailPage = (task) => {
+  if (!task?.id || !workspaceId.value) return;
+  const r = router.resolve({
+    name: 'taskDetail',
+    params: { workspaceId: workspaceId.value, taskId: task.id },
+  });
+  window.open(r.href, '_blank', 'noopener,noreferrer');
 };
 </script>
 
@@ -97,6 +133,7 @@ const goBackWorkspace = () => {
           :tasks="tasks"
           :selected-task-id="selectedTask?.id"
           @task-click="selectedTask = $event"
+          @open-task-page="openTaskDetailPage"
         />
       </div>
 
@@ -105,8 +142,18 @@ const goBackWorkspace = () => {
         :task="selectedTask"
         :workspace-id="workspaceId"
         @close="selectedTask = null"
+        @add-subtask="openCreateSubtask"
       />
     </div>
+
+    <TaskCreateModal
+      v-if="isCreateModalOpen && createModalTaskListId"
+      :workspace-id="workspaceId"
+      :task-list-id="createModalTaskListId"
+      :parent-task-id="createModalParentTaskId"
+      @close="closeCreateModal"
+      @created="handleTaskCreated"
+    />
   </div>
 </template>
 

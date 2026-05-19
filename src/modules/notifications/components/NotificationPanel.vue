@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from "vue";
+import { ref, watch } from "vue";
+import Drawer from "primevue/drawer";
 import { useNotificationStore } from "@/modules/notifications/stores/notification.store.js";
 import { formatDistanceToNow } from "date-fns";
 
@@ -13,7 +14,19 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const notificationStore = useNotificationStore();
-const notifications = computed(() => notificationStore.items);
+
+const drawerVisible = ref(true);
+
+watch(drawerVisible, (v) => {
+  if (!v) emit("close");
+});
+
+watch(
+  () => props.workspaceId,
+  () => {
+    drawerVisible.value = true;
+  }
+);
 
 const markAllNotificationsRead = async () => {
   await notificationStore.markAllRead(props.workspaceId);
@@ -23,7 +36,6 @@ const markNotificationRead = async (notificationId) => {
   await notificationStore.markRead(notificationId, props.workspaceId);
 };
 
-// Helper for relative time
 const formatTime = (dateString) => {
   if (!dateString) return "";
   try {
@@ -33,7 +45,6 @@ const formatTime = (dateString) => {
   }
 };
 
-// Helper to get a nicely formatted type label
 const getTypeLabel = (type) => {
   if (!type) return "System";
   if (type.startsWith("task.")) return "Task";
@@ -44,13 +55,14 @@ const getTypeLabel = (type) => {
 </script>
 
 <template>
-  <div
-    class="notification-overlay"
-    @click.self="emit('close')"
+  <Drawer
+    v-model:visible="drawerVisible"
+    header="Notifications"
+    position="right"
+    class="notification-drawer !w-full md:!min-w-[24rem] md:!w-[min(420px,100vw)]"
   >
-    <div class="notification-panel">
-      <div class="notification-panel-header">
-        <h3>Notifications</h3>
+    <div class="notification-panel-inner">
+      <div class="notification-panel-toolbar">
         <button
           class="settings-btn"
           type="button"
@@ -75,9 +87,9 @@ const getTypeLabel = (type) => {
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
-      
+
       <div
-        v-else-if="notifications.length === 0"
+        v-else-if="notificationStore.items.length === 0"
         class="notification-empty"
       >
         <v-icon
@@ -87,13 +99,13 @@ const getTypeLabel = (type) => {
         />
         <p>No notifications yet.</p>
       </div>
-      
+
       <div
         v-else
         class="notification-list"
       >
         <div
-          v-for="item in notifications"
+          v-for="item in notificationStore.items"
           :key="item.id"
           class="notification-item"
           :class="{ unread: !item.readAt }"
@@ -110,12 +122,11 @@ const getTypeLabel = (type) => {
             />
           </div>
           <div class="notification-content">
-            <!-- notification title -->
             <div class="notification-title">
               <strong>{{ item.title }}</strong>
             </div>
             <div class="notification-body">
-              <strong v-if="item.payload?.actorName">{{ item.payload.actorName }}</strong> 
+              <strong v-if="item.payload?.actorName">{{ item.payload.actorName }}</strong>
               <span v-if="item.payload?.actorName">&nbsp;</span>
               <span> {{ item.body }}</span>
             </div>
@@ -136,51 +147,36 @@ const getTypeLabel = (type) => {
         </div>
       </div>
     </div>
-  </div>
+  </Drawer>
 </template>
 
 <style scoped lang="scss">
-.notification-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.24);
-  display: flex;
-  justify-content: flex-end;
-  z-index: 1200;
-  backdrop-filter: blur(2px);
-}
-
-.notification-panel {
-  width: min(420px, 100%);
-  background: #ffffff;
-  height: 100%;
-  border-left: 1px solid rgba(0, 0, 0, 0.05);
+:deep(.p-drawer-content) {
+  padding: 0;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+  height: 100%;
 }
 
-.notification-panel-header {
+.notification-panel-inner {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 24px 16px 24px;
-  border-bottom: 1px solid #f1f5f9;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
 
-  h3 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
-    color: #0f172a;
-    letter-spacing: -0.01em;
-  }
+.notification-panel-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px 0;
+  flex-shrink: 0;
 
   .settings-btn {
     border: none;
     background: transparent;
     cursor: pointer;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -207,7 +203,7 @@ const getTypeLabel = (type) => {
     margin-bottom: 16px;
     opacity: 0.8;
   }
-  
+
   p {
     margin: 0;
   }
@@ -217,7 +213,9 @@ const getTypeLabel = (type) => {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 8px 0 24px;
+  flex: 1;
+  min-height: 0;
 }
 
 .notification-item {
@@ -236,7 +234,7 @@ const getTypeLabel = (type) => {
 
   &.unread {
     background: #f0fdf4;
-    
+
     &:hover {
       background: #e6fced;
     }
@@ -280,7 +278,7 @@ const getTypeLabel = (type) => {
   font-size: 14.5px;
   color: #334155;
   line-height: 1.4;
-  
+
   :deep(strong) {
     color: #0f172a;
     font-weight: 600;
@@ -293,7 +291,7 @@ const getTypeLabel = (type) => {
   gap: 8px;
   font-size: 13px;
   color: #64748b;
-  
+
   .meta-type {
     font-weight: 500;
   }
@@ -301,7 +299,7 @@ const getTypeLabel = (type) => {
 
 .notification-actions {
   flex-shrink: 0;
-  
+
   .more-btn {
     border: none;
     background: transparent;

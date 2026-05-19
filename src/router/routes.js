@@ -10,8 +10,11 @@ import WorkspaceDetailView from '@/modules/workspaces/pages/WorkspaceDetailView.
 import WorkspaceFilesView from '@/modules/workspaces/pages/WorkspaceFilesView.vue';
 import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
 import CanvasEditView from '@/modules/channels/pages/CanvasEditView.vue';
+import TaskDetailPage from '@/modules/channels/pages/TaskDetailPage.vue';
+
 
 export default [
+
 	{
 		path: '/',
 		name: 'home',
@@ -53,6 +56,12 @@ export default [
 		name: 'myTasks',
 		component: WorkspaceDetailView,
 		meta: { title: 'My Tasks', requiresAuth: true },
+	},
+	{
+		path: '/workspaces/:workspaceId/tasks/:taskId',
+		name: 'taskDetail',
+		component: TaskDetailPage,
+		meta: { title: 'Task', requiresAuth: true },
 	},
 	{
 		path: '/canvas/:canvasId/edit',

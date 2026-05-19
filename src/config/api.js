@@ -57,14 +57,12 @@ export const API_ENDPOINTS = {
       `/workspaces/${workspaceId}/tasks/${taskId}`,
     DELETE: (workspaceId, taskId) =>
       `/workspaces/${workspaceId}/tasks/${taskId}`,
+    UPLOAD_ATTACHMENT: (workspaceId, taskId) =>
+      `/workspaces/${workspaceId}/tasks/${taskId}/attachments/upload`,
     ASSIGN: (workspaceId, taskId) =>
       `/workspaces/${workspaceId}/tasks/${taskId}/assignees`,
     UNASSIGN: (workspaceId, taskId, memberId) =>
       `/workspaces/${workspaceId}/tasks/${taskId}/assignees/${memberId}`,
-    COMMENTS: (workspaceId, taskId) =>
-      `/workspaces/${workspaceId}/tasks/${taskId}/comments`,
-    COMMENT: (workspaceId, taskId, commentId) =>
-      `/workspaces/${workspaceId}/tasks/${taskId}/comments/${commentId}`,
   },
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,

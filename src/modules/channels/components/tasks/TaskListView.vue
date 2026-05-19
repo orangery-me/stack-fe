@@ -1,10 +1,60 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue';
+
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
   selectedTaskId: { type: String, default: null },
 });
 
-const emit = defineEmits(['taskClick']);
+const emit = defineEmits(['task-click', 'toggle-expand', 'open-task-page']);
+
+/** expanded parent task ids — parent may expand default when has children after first tasks load */
+const expandedIds = ref(new Set());
+
+const childrenByParent = computed(() => {
+  const map = new Map();
+  for (const t of props.tasks) {
+    const pid = t.parentTaskId;
+    if (!pid) continue;
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid).push(t);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }
+  return map;
+});
+
+const rootTasks = computed(() => props.tasks.filter((t) => !t.parentTaskId));
+
+/** Default: expand roots that already have children (matches table/tree UX). User can collapse. */
+onMounted(() => {
+  const next = new Set();
+  const map = childrenByParent.value;
+  for (const t of props.tasks) {
+    if (!t.parentTaskId && (map.get(t.id)?.length ?? 0) > 0) {
+      next.add(t.id);
+    }
+  }
+  if (next.size > 0) expandedIds.value = next;
+});
+
+function isExpanded(taskId) {
+  return expandedIds.value.has(taskId);
+}
+
+function toggleExpand(taskId, evt) {
+  evt?.stopPropagation?.();
+  const next = new Set(expandedIds.value);
+  if (next.has(taskId)) next.delete(taskId);
+  else next.add(taskId);
+  expandedIds.value = next;
+  emit('toggle-expand', taskId);
+}
+
+function childCount(taskId) {
+  return childrenByParent.value.get(taskId)?.length ?? 0;
+}
 
 const statusLabel = (status) => {
   const map = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
@@ -40,111 +90,231 @@ const truncateText = (text, max = 30) => {
   if (!text) return '';
   return text.length > max ? text.slice(0, max) + '...' : text;
 };
+
+const openTaskPage = (task, event) => {
+  event?.stopPropagation?.();
+  emit('open-task-page', task);
+};
 </script>
 
 <template>
   <div class="task-list-table">
-    <div
-      v-for="task in tasks"
+    <template
+      v-for="task in rootTasks"
       :key="task.id"
-      class="task-row"
-      :class="{
-        'task-row--selected': task.id === selectedTaskId,
-        'task-row--done': task.status === 'done',
-      }"
-      @click="emit('taskClick', task)"
     >
-      <!-- Check circle -->
-      <div class="task-col task-col--check">
-        <span
-          class="task-check-circle"
-          :class="{ 'task-check-circle--done': task.status === 'done' }"
-        >
-          <i
-            v-if="task.status === 'done'"
-            class="pi pi-check"
-          />
-        </span>
-      </div>
+      <div
+        class="task-row"
+        :class="{
+          'task-row--selected': task.id === selectedTaskId,
+          'task-row--done': task.status === 'done',
+        }"
+        @click="emit('task-click', task)"
+      >
+        <div class="task-col task-col--check">
+          <span
+            class="task-check-circle"
+            :class="{ 'task-check-circle--done': task.status === 'done' }"
+          >
+            <i
+              v-if="task.status === 'done'"
+              class="pi pi-check"
+            />
+          </span>
+        </div>
 
-      <!-- Name -->
-      <div class="task-col task-col--name">
-        <span class="task-row-title">{{ task.title }}</span>
-      </div>
-
-      <!-- Status -->
-      <div class="task-col task-col--status">
-        <span
-          class="task-status-chip"
-          :class="statusClass(task.status)"
-        >
-          {{ statusLabel(task.status) }}
-        </span>
-      </div>
-
-      <!-- Priority -->
-      <div class="task-col task-col--priority">
-        <span
-          class="task-priority-stars"
-          :class="priorityClass(task.priority)"
-        >
-          <i
-            v-for="n in priorityStars(task.priority)"
-            :key="'s' + n"
-            class="pi pi-star-fill task-star"
+        <div class="task-col task-col--name task-col--name-root">
+          <button
+            v-if="childCount(task.id) > 0"
+            type="button"
+            class="task-expand-toggle"
+            :aria-expanded="isExpanded(task.id)"
+            aria-label="Toggle subtasks"
+            @click="toggleExpand(task.id, $event)"
+          >
+            <i :class="isExpanded(task.id) ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" />
+          </button>
+          <span
+            v-else
+            class="task-expand-spacer"
           />
           <span
-            v-for="n in priorityDots(task.priority)"
-            :key="'d' + n"
-            class="task-star-dot"
-          >•</span>
-        </span>
-      </div>
-
-      <!-- Description -->
-      <div class="task-col task-col--desc">
-        <span class="task-row-desc">{{ truncateText(task.description) }}</span>
-      </div>
-
-      <!-- Assignee -->
-      <div class="task-col task-col--assignee">
-        <template v-if="task.assignees && task.assignees.length">
+            class="task-row-title task-row-title--link"
+            title="Open task in new tab"
+            @click="openTaskPage(task, $event)"
+          >{{ task.title }}</span>
           <span
-            v-for="assignee in task.assignees.slice(0, 2)"
-            :key="assignee.id"
-            class="task-avatar-sm"
-            :title="assignee.name || assignee.email"
+            v-if="childCount(task.id) > 0"
+            class="task-sub-count"
+          >{{ childCount(task.id) }}</span>
+        </div>
+
+        <div class="task-col task-col--status">
+          <span
+            class="task-status-chip"
+            :class="statusClass(task.status)"
           >
-            {{ (assignee.name || assignee.email || '?')[0].toUpperCase() }}
+            {{ statusLabel(task.status) }}
           </span>
+        </div>
+
+        <div class="task-col task-col--priority">
           <span
-            v-if="task.assignees.length > 2"
-            class="task-avatar-more"
-          >+{{ task.assignees.length - 2 }}</span>
-        </template>
-        <i
-          v-else
-          class="pi pi-user task-no-assignee-icon"
-        />
+            class="task-priority-stars"
+            :class="priorityClass(task.priority)"
+          >
+            <i
+              v-for="n in priorityStars(task.priority)"
+              :key="'s' + n"
+              class="pi pi-star-fill task-star"
+            />
+            <span
+              v-for="n in priorityDots(task.priority)"
+              :key="'d' + n"
+              class="task-star-dot"
+            >•</span>
+          </span>
+        </div>
+
+        <div class="task-col task-col--desc">
+          <span class="task-row-desc">{{ truncateText(task.description) }}</span>
+        </div>
+
+        <div class="task-col task-col--assignee">
+          <template v-if="task.assignees && task.assignees.length">
+            <span
+              v-for="assignee in task.assignees.slice(0, 2)"
+              :key="assignee.id"
+              class="task-avatar-sm"
+              :title="assignee.name || assignee.email"
+            >
+              {{ (assignee.name || assignee.email || '?')[0].toUpperCase() }}
+            </span>
+            <span
+              v-if="task.assignees.length > 2"
+              class="task-avatar-more"
+            >+{{ task.assignees.length - 2 }}</span>
+          </template>
+          <i
+            v-else
+            class="pi pi-user task-no-assignee-icon"
+          />
+        </div>
+
+        <div class="task-col task-col--due">
+          <template v-if="task.dueDate">
+            <span
+              class="task-due-text"
+              :class="{ 'task-due-text--overdue': isDueDateOverdue(task.dueDate, task.status) }"
+            >
+              <i class="pi pi-calendar" />
+              {{ formatDueDate(task.dueDate) }}
+            </span>
+          </template>
+          <i
+            v-else
+            class="pi pi-calendar task-no-due-icon"
+          />
+        </div>
       </div>
 
-      <!-- Due Date -->
-      <div class="task-col task-col--due">
-        <template v-if="task.dueDate">
+      <div
+        v-for="child in childrenByParent.get(task.id) ?? []"
+        v-show="isExpanded(task.id) && childCount(task.id) > 0"
+        :key="'sub-' + child.id"
+        class="task-row task-row--child"
+        :class="{
+          'task-row--selected': child.id === selectedTaskId,
+          'task-row--done': child.status === 'done',
+        }"
+        @click.stop="emit('task-click', child)"
+      >
+        <div class="task-col task-col--check">
           <span
-            class="task-due-text"
-            :class="{ 'task-due-text--overdue': isDueDateOverdue(task.dueDate, task.status) }"
+            class="task-check-circle"
+            :class="{ 'task-check-circle--done': child.status === 'done' }"
           >
-            <i class="pi pi-calendar" />
-            {{ formatDueDate(task.dueDate) }}
+            <i
+              v-if="child.status === 'done'"
+              class="pi pi-check"
+            />
           </span>
-        </template>
-        <i
-          v-else
-          class="pi pi-calendar task-no-due-icon"
-        />
+        </div>
+
+        <div class="task-col task-col--name task-col--child-indent">
+          <span class="task-expand-spacer" />
+          <span
+            class="task-row-title task-row-title--child task-row-title--link"
+            title="Open task in new tab"
+            @click="openTaskPage(child, $event)"
+          >{{ child.title }}</span>
+        </div>
+
+        <div class="task-col task-col--status">
+          <span
+            class="task-status-chip"
+            :class="statusClass(child.status)"
+          >
+            {{ statusLabel(child.status) }}
+          </span>
+        </div>
+
+        <div class="task-col task-col--priority">
+          <span
+            class="task-priority-stars"
+            :class="priorityClass(child.priority)"
+          >
+            <i
+              v-for="n in priorityStars(child.priority)"
+              :key="'cs' + n"
+              class="pi pi-star-fill task-star"
+            />
+            <span
+              v-for="n in priorityDots(child.priority)"
+              :key="'cd' + n"
+              class="task-star-dot"
+            >•</span>
+          </span>
+        </div>
+
+        <div class="task-col task-col--desc">
+          <span class="task-row-desc">{{ truncateText(child.description) }}</span>
+        </div>
+
+        <div class="task-col task-col--assignee">
+          <template v-if="child.assignees && child.assignees.length">
+            <span
+              v-for="assignee in child.assignees.slice(0, 2)"
+              :key="assignee.id"
+              class="task-avatar-sm"
+              :title="assignee.name || assignee.email"
+            >
+              {{ (assignee.name || assignee.email || '?')[0].toUpperCase() }}
+            </span>
+          </template>
+          <i
+            v-else
+            class="pi pi-user task-no-assignee-icon"
+          />
+        </div>
+
+        <div class="task-col task-col--due">
+          <template v-if="child.dueDate">
+            <span
+              class="task-due-text"
+              :class="{ 'task-due-text--overdue': isDueDateOverdue(child.dueDate, child.status) }"
+            >
+              <i class="pi pi-calendar" />
+              {{ formatDueDate(child.dueDate) }}
+            </span>
+          </template>
+          <i
+            v-else
+            class="pi pi-calendar task-no-due-icon"
+          />
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -186,12 +356,19 @@ const truncateText = (text, max = 30) => {
     }
   }
 
+  &--child {
+    background: #f3f4f6;
+
+    &:hover {
+      background: #eceef2;
+    }
+  }
+
   &:last-child {
     border-bottom: none;
   }
 }
 
-/* ─── Columns ─── */
 .task-col {
   padding: 10px 10px;
   font-size: 13px;
@@ -201,18 +378,91 @@ const truncateText = (text, max = 30) => {
   border-right: 1px solid var(--ui-divider);
   min-height: 40px;
 
-  &:last-child { border-right: none; }
+  &:last-child {
+    border-right: none;
+  }
 }
 
-.task-col--check  { width: 36px; flex-shrink: 0; justify-content: center; padding: 10px 4px; }
-.task-col--name   { flex: 1; min-width: 160px; }
-.task-col--status { width: 110px; flex-shrink: 0; }
-.task-col--priority { width: 100px; flex-shrink: 0; }
-.task-col--desc   { width: 180px; flex-shrink: 0; }
-.task-col--assignee { width: 80px; flex-shrink: 0; justify-content: center; gap: 2px; }
-.task-col--due    { width: 100px; flex-shrink: 0; }
+.task-col--check {
+  width: 36px;
+  flex-shrink: 0;
+  justify-content: center;
+  padding: 10px 4px;
+}
+.task-col--name {
+  flex: 1;
+  min-width: 160px;
+}
+.task-col--name-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.task-col--child-indent {
+  padding-left: 8px;
+}
+.task-col--status {
+  width: 110px;
+  flex-shrink: 0;
+}
+.task-col--priority {
+  width: 100px;
+  flex-shrink: 0;
+}
+.task-col--desc {
+  width: 180px;
+  flex-shrink: 0;
+}
+.task-col--assignee {
+  width: 80px;
+  flex-shrink: 0;
+  justify-content: center;
+  gap: 2px;
+}
+.task-col--due {
+  width: 100px;
+  flex-shrink: 0;
+}
 
-/* ─── Check circle ─── */
+.task-expand-toggle {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text-muted);
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--ui-text);
+  }
+
+  i {
+    font-size: 11px;
+  }
+}
+
+.task-expand-spacer {
+  width: 26px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.task-sub-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ui-text-muted);
+  background: var(--gray-100, #f1f5f9);
+  border-radius: 6px;
+  padding: 0 6px;
+  line-height: 18px;
+}
+
 .task-check-circle {
   width: 18px;
   height: 18px;
@@ -234,7 +484,6 @@ const truncateText = (text, max = 30) => {
   }
 }
 
-/* ─── Title ─── */
 .task-row-title {
   font-size: 13px;
   font-weight: 600;
@@ -242,9 +491,21 @@ const truncateText = (text, max = 30) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  &--child {
+    font-weight: 500;
+  }
+
+  &--link {
+    cursor: pointer;
+    color: var(--primary-600, #4f46e5);
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
-/* ─── Status chip ─── */
 .task-status-chip {
   display: inline-block;
   padding: 2px 8px;
@@ -271,7 +532,6 @@ const truncateText = (text, max = 30) => {
   }
 }
 
-/* ─── Priority stars ─── */
 .task-priority-stars {
   display: inline-flex;
   align-items: center;
@@ -287,13 +547,20 @@ const truncateText = (text, max = 30) => {
     color: #cbd5e1;
   }
 
-  &--low .task-star { color: #cbd5e1; }
-  &--medium .task-star { color: #f59e0b; }
-  &--high .task-star { color: #f59e0b; }
-  &--urgent .task-star { color: #ef4444; }
+  &--low .task-star {
+    color: #cbd5e1;
+  }
+  &--medium .task-star {
+    color: #f59e0b;
+  }
+  &--high .task-star {
+    color: #f59e0b;
+  }
+  &--urgent .task-star {
+    color: #ef4444;
+  }
 }
 
-/* ─── Description ─── */
 .task-row-desc {
   font-size: 12px;
   color: var(--ui-text-muted);
@@ -302,7 +569,6 @@ const truncateText = (text, max = 30) => {
   text-overflow: ellipsis;
 }
 
-/* ─── Assignee ─── */
 .task-avatar-sm {
   width: 22px;
   height: 22px;
@@ -318,7 +584,9 @@ const truncateText = (text, max = 30) => {
   margin-left: -3px;
   flex-shrink: 0;
 
-  &:first-child { margin-left: 0; }
+  &:first-child {
+    margin-left: 0;
+  }
 }
 
 .task-avatar-more {
@@ -332,7 +600,6 @@ const truncateText = (text, max = 30) => {
   color: #d1d5db;
 }
 
-/* ─── Due Date ─── */
 .task-due-text {
   display: inline-flex;
   align-items: center;
@@ -340,7 +607,9 @@ const truncateText = (text, max = 30) => {
   font-size: 12px;
   color: var(--ui-text-muted);
 
-  i { font-size: 11px; }
+  i {
+    font-size: 11px;
+  }
 
   &--overdue {
     color: #ef4444;
