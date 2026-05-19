@@ -12,7 +12,9 @@ import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
 import CanvasEditView from '@/modules/channels/pages/CanvasEditView.vue';
 import TaskDetailPage from '@/modules/channels/pages/TaskDetailPage.vue';
 
+
 export default [
+
 	{
 		path: '/',
 		name: 'home',

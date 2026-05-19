@@ -4,6 +4,8 @@ import { useTaskStore } from '@/modules/channels/stores/task.store.js';
 import { useToast } from '@/composables/useToast.js';
 import { getMessageFromApiError } from '@/helpers/api.helper.js';
 import taskService from '@/services/task.service.js';
+import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
+import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -26,6 +28,7 @@ const isSaving = ref(false);
 const isAttachBusy = ref(false);
 const dragActive = ref(false);
 const fileInputRef = ref(null);
+const canvasPickerOpen = ref(false);
 
 const statusOptions = [
   { value: 'todo', label: 'Todo' },
@@ -71,6 +74,10 @@ const attachmentsList = computed(() => {
   if (!Array.isArray(a) || !a.length) return [];
   return a.slice(0, 50);
 });
+
+const canvasIdsInTask = computed(() =>
+  attachmentsList.value.map((a) => a?.canvasId).filter(Boolean)
+);
 
 const formatDate = (date) => {
   if (!date) return 'Not set';
@@ -171,6 +178,37 @@ const onFileInputChange = (e) => {
 
 const openFilePicker = () => {
   fileInputRef.value?.click?.();
+};
+
+const openCanvasPicker = () => {
+  if (attachmentsList.value.length >= 50) {
+    toastError('Maximum 50 attachments per task.');
+    return;
+  }
+  canvasPickerOpen.value = true;
+};
+
+const onCanvasAttachedFromPicker = async (picked) => {
+  const current = Array.isArray(props.task.attachments) ? [...props.task.attachments] : [];
+  const seenCanvas = new Set(current.map((a) => a?.canvasId).filter(Boolean));
+  let merged = [...current];
+  let added = 0;
+  for (const a of picked || []) {
+    if (!a?.canvasId || seenCanvas.has(a.canvasId)) continue;
+    if (merged.length >= 50) break;
+    seenCanvas.add(a.canvasId);
+    merged.push({
+      id: a.id,
+      type: 'canvas',
+      name: a.name,
+      canvasId: a.canvasId,
+      url: a.url,
+      uploadedAt: a.uploadedAt,
+    });
+    added += 1;
+  }
+  if (!added) return;
+  await persistAttachments(merged);
 };
 
 const onDrop = (e) => {
@@ -317,7 +355,13 @@ watch(
       <!-- Attachments -->
       <div class="task-detail-field">
         <div class="task-detail-field__header">
-          <label class="task-detail-label">Attachments</label>
+          <label class="task-detail-label">
+            Attachments
+            <span
+              v-if="attachmentsList.length"
+              class="task-attachment-count"
+            >{{ attachmentsList.length }}</span>
+          </label>
         </div>
         <div
           class="task-attach-dropzone"
@@ -340,39 +384,22 @@ watch(
               @click.stop="openFilePicker"
             >
               browse
+            </button>, or
+            <button
+              type="button"
+              class="task-attach-browse"
+              @click.stop="openCanvasPicker"
+            >
+              attach canvas
             </button>.
           </span>
         </div>
-        <ul
+        <TaskAttachmentPreviewList
           v-if="attachmentsList.length"
-          class="task-attachment-list task-attachment-list--files"
-        >
-          <li
-            v-for="(item, idx) in attachmentsList"
-            :key="item.id || item.name + '-' + idx"
-          >
-            <span class="task-attachment-type">{{ item.type || 'file' }}</span>
-            <a
-              v-if="item.url"
-              class="task-attachment-name task-attachment-link"
-              :href="item.url"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ item.name }}</a>
-            <span
-              v-else
-              class="task-attachment-name"
-            >{{ item.name }}</span>
-            <button
-              type="button"
-              class="task-attach-remove"
-              title="Remove"
-              @click="removeAttachmentByKey(item, idx)"
-            >
-              <i class="pi pi-times" />
-            </button>
-          </li>
-        </ul>
+          :items="attachmentsList"
+          :disabled="isAttachBusy"
+          @remove="removeAttachmentByKey"
+        />
       </div>
 
       <!-- Status -->
@@ -536,7 +563,13 @@ watch(
 
           <div class="task-detail-field">
             <div class="task-detail-field__header">
-              <label class="task-detail-label">Attachments</label>
+              <label class="task-detail-label">
+                Attachments
+                <span
+                  v-if="attachmentsList.length"
+                  class="task-attachment-count"
+                >{{ attachmentsList.length }}</span>
+              </label>
             </div>
             <div
               class="task-attach-dropzone task-attach-dropzone--lg"
@@ -559,39 +592,22 @@ watch(
                   @click.stop="openFilePicker"
                 >
                   browse
+                </button>, or
+                <button
+                  type="button"
+                  class="task-attach-browse"
+                  @click.stop="openCanvasPicker"
+                >
+                  attach canvas
                 </button>.
               </span>
             </div>
-            <ul
+            <TaskAttachmentPreviewList
               v-if="attachmentsList.length"
-              class="task-attachment-list task-attachment-list--files"
-            >
-              <li
-                v-for="(item, idx) in attachmentsList"
-                :key="item.id || item.name + '-' + idx"
-              >
-                <span class="task-attachment-type">{{ item.type || 'file' }}</span>
-                <a
-                  v-if="item.url"
-                  class="task-attachment-name task-attachment-link"
-                  :href="item.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ item.name }}</a>
-                <span
-                  v-else
-                  class="task-attachment-name"
-                >{{ item.name }}</span>
-                <button
-                  type="button"
-                  class="task-attach-remove"
-                  title="Remove"
-                  @click="removeAttachmentByKey(item, idx)"
-                >
-                  <i class="pi pi-times" />
-                </button>
-              </li>
-            </ul>
+              :items="attachmentsList"
+              :disabled="isAttachBusy"
+              @remove="removeAttachmentByKey"
+            />
           </div>
         </div>
 
@@ -746,6 +762,13 @@ watch(
         Delete task
       </button>
     </div>
+
+    <TaskCanvasAttachmentPicker
+      v-model:open="canvasPickerOpen"
+      :workspace-id="workspaceId"
+      :exclude-canvas-ids="canvasIdsInTask"
+      @attach="onCanvasAttachedFromPicker"
+    />
   </div>
 </template>
 
@@ -835,11 +858,26 @@ watch(
 }
 
 .task-detail-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   font-weight: 800;
   color: var(--ui-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
+}
+
+.task-attachment-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
 }
 
 .task-detail-muted {

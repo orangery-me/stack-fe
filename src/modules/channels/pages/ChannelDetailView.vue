@@ -12,6 +12,7 @@ import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
 import AppLoading from "@/components/loading/AppLoading.vue";
 
+
 const route = useRoute();
 const { success, info } = useToast();
 const channelStore = useChannelStore();
@@ -369,6 +370,8 @@ const handleClickOutsideTabMenu = (event) => {
   }
 };
 
+
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutsideChannelMenu);
   document.addEventListener("click", handleClickOutsideTabMenu);
@@ -400,7 +403,8 @@ onBeforeUnmount(() => {
             >
           </span>
         </div>
-        <div class="channel-header-right">
+        <div class="channel-header-right flex items-center gap-2">
+
           <button
             v-if="selectedChannel"
             class="header-button"

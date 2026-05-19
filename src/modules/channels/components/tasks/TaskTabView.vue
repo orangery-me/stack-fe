@@ -440,6 +440,7 @@ watch(() => props.taskListId, () => {
       :workspace-id="workspaceId"
       :task-list-id="taskListId"
       :parent-task-id="createModalParentTaskId"
+      :parent-task-options="tasks"
       @close="closeCreateModal"
       @created="handleTaskCreated"
     />
