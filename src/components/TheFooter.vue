@@ -108,10 +108,8 @@
 
 <style scoped lang="scss">
 .app-footer {
-  margin-top: var(--space-48);
   padding: var(--space-32) 0;
   background: var(--ui-bg-page);
-  border-top: 1px solid var(--ui-divider);
 }
 
 .app-footer__top {

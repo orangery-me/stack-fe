@@ -11,6 +11,7 @@ import WorkspaceFilesView from '@/modules/workspaces/pages/WorkspaceFilesView.vu
 import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
 import CanvasEditView from '@/modules/channels/pages/CanvasEditView.vue';
 import TaskDetailPage from '@/modules/channels/pages/TaskDetailPage.vue';
+import NotebookDemoView from '@/pages/NotebookDemoView.vue';
 
 
 export default [
@@ -92,6 +93,12 @@ export default [
 		name: 'verifyEmail',
 		component: VerifyEmailView,
 		meta: { title: 'Email Verification' },
+	},
+	{
+		path: '/demo-notebook',
+		name: 'notebookDemo',
+		component: NotebookDemoView,
+		meta: { title: 'Notebook Demo', requiresAuth: false },
 	},
 	{
 		// 404 fallback

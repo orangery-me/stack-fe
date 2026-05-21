@@ -7,6 +7,7 @@ import CalmButton from "@/components/calm/CalmButton.vue";
 import CalmCard from "@/components/calm/CalmCard.vue";
 import CalmHeading from "@/components/calm/CalmHeading.vue";
 import CalmInput from "@/components/calm/CalmInput.vue";
+import NotebookBackground from "@/components/calm/NotebookBackground.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -136,21 +137,22 @@ const goToLogin = () => {
 </script>
 
 <template>
-  <section class="auth-page">
-    <div class="container-center">
-      <div class="auth-page__container">
-        <CalmCard
-          class="auth-card"
-          padding="lg"
-        >
-          <header class="auth-card__header">
-            <CalmHeading :level="2">
-              Create account
-            </CalmHeading>
-            <p class="ui-muted auth-card__subtitle">
-              Use your email to get started.
-            </p>
-          </header>
+  <NotebookBackground>
+    <section class="auth-page">
+      <div class="container-center">
+        <div class="auth-page__container">
+          <CalmCard
+            class="auth-card"
+            padding="lg"
+          >
+            <header class="auth-card__header">
+              <CalmHeading :level="2">
+                Create account
+              </CalmHeading>
+              <p class="ui-muted auth-card__subtitle">
+                Use your email to get started.
+              </p>
+            </header>
 
           <form
             class="auth-form"
@@ -242,6 +244,7 @@ const goToLogin = () => {
       </div>
     </div>
   </section>
+  </NotebookBackground>
 </template>
 
 <style scoped lang="scss">
