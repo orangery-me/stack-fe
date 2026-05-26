@@ -7,7 +7,7 @@ import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useNotificationStore } from "@/modules/notifications/stores/notification.store.js";
-import { useUiStore } from "@/stores/ui.store.js";
+import { useUiStore } from "@/stores/ui.store.js";  
 import CreateChannelModal from "@/modules/channels/components/CreateChannelModal.vue";
 import ChannelDetailView from "@/modules/channels/pages/ChannelDetailView.vue";
 import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu.vue";

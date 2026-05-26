@@ -452,7 +452,7 @@ const filteredAllTasks = computed(() => {
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  background: #f8fafc;
+  background: var(--gray-50);
 }
 
 .my-tasks-content__filters {
@@ -468,7 +468,7 @@ const filteredAllTasks = computed(() => {
     height: 32px;
     border: 1px solid var(--ui-divider);
     border-radius: 6px;
-    background: #fff;
+    background: var(--ui-bg-surface);
     font-size: 13px;
     color: var(--ui-text);
     padding: 0 10px;
@@ -482,7 +482,7 @@ const filteredAllTasks = computed(() => {
 .my-tasks-content__messages-btn {
   margin-left: auto;
   font-weight: 600;
-  color: #1d4ed8;
+  color: var(--primary-500);
 }
 
 .my-tasks-content__body {
@@ -510,7 +510,7 @@ const filteredAllTasks = computed(() => {
 
 .summary-panel,
 .table-panel {
-  background: #fff;
+  background: var(--ui-bg-surface);
   border: 1px solid var(--ui-divider);
   border-radius: 10px;
 }
@@ -521,7 +521,7 @@ const filteredAllTasks = computed(() => {
   h3 {
     margin: 0 0 10px;
     font-size: 15px;
-    color: #0f172a;
+    color: var(--gray-900);
   }
 }
 
@@ -532,24 +532,24 @@ const filteredAllTasks = computed(() => {
 }
 
 .summary-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-divider);
   border-radius: 8px;
   padding: 10px;
-  background: #f8fafc;
+  background: var(--gray-50);
 
   p {
     margin: 0;
     font-size: 12px;
-    color: #64748b;
+    color: var(--gray-500);
   }
 
   strong {
     font-size: 24px;
-    color: #0f172a;
+    color: var(--gray-900);
   }
 }
 
-.summary-card--todo strong { color: #475569; }
+.summary-card--todo strong { color: var(--gray-700); }
 .summary-card--in-progress strong { color: #0ea5e9; }
 .summary-card--done strong { color: #16a34a; }
 .summary-card--overdue strong { color: #dc2626; }
@@ -559,19 +559,19 @@ const filteredAllTasks = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #c7d2fe;
-  background: linear-gradient(90deg, #1d4ed8 0%, #4338ca 100%);
+  border-bottom: 1px solid var(--primary-200);
+  background: linear-gradient(90deg, var(--primary-500) 0%, var(--primary-600) 100%);
 
   h4 {
     margin: 0;
     font-size: 14px;
-    color: #eef2ff;
+    color: var(--primary-100);
     font-weight: 700;
   }
 
   span {
     font-size: 12px;
-    color: #dbeafe;
+    color: var(--primary-100);
     font-weight: 600;
   }
 }
@@ -582,7 +582,7 @@ const filteredAllTasks = computed(() => {
   gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--ui-divider);
-  background: #f8fafc;
+  background: var(--gray-50);
 
   label {
     display: flex;
@@ -591,7 +591,7 @@ const filteredAllTasks = computed(() => {
 
     span {
       font-size: 12px;
-      color: #475569;
+      color: var(--gray-700);
       font-weight: 600;
     }
   }
@@ -599,10 +599,10 @@ const filteredAllTasks = computed(() => {
   select,
   input {
     height: 28px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--ui-border);
     border-radius: 6px;
-    background: #fff;
-    color: #1f2937;
+    background: var(--ui-bg-surface);
+    color: var(--gray-900);
     font-size: 12px;
     padding: 0 8px;
   }
@@ -618,17 +618,17 @@ const filteredAllTasks = computed(() => {
 
   th,
   td {
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--ui-divider);
     padding: 9px 10px;
     font-size: 12px;
-    color: #334155;
+    color: var(--gray-700);
     text-align: left;
     white-space: nowrap;
   }
 
   th {
-    background: #f8fafc;
-    color: #475569;
+    background: var(--gray-50);
+    color: var(--gray-700);
     font-weight: 600;
   }
 
@@ -638,11 +638,11 @@ const filteredAllTasks = computed(() => {
   }
 
   tbody tr:hover {
-    background: #f8fafc;
+    background: var(--gray-50);
   }
 
   tbody tr.active {
-    background: #eff6ff;
+    background: var(--primary-100);
   }
 }
 
@@ -673,13 +673,13 @@ const filteredAllTasks = computed(() => {
 .priority-chip--urgent { background: #fee2e2; color: #b91c1c; }
 
 .due-overdue {
-  color: #dc2626 !important;
+  color: var(--error) !important;
   font-weight: 700;
 }
 
 .task-table__empty {
   text-align: center !important;
-  color: #94a3b8 !important;
+  color: var(--gray-300) !important;
 }
 
 @media (max-width: 1280px) {
