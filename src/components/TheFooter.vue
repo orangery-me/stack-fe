@@ -1,22 +1,15 @@
-<script setup></script>
+<script setup>
+import StackLogo from "@/components/StackLogo.vue";
+</script>
 
 <template>
   <footer class="app-footer">
     <div class="container-center">
       <div class="app-footer__top">
         <div class="app-footer__brand">
-          <img
-            class="app-footer__logo"
-            src="/logos/stack-logo.jpg"
-            alt="Stack"
-          >
-          <div class="app-footer__brandText">
-            <div class="app-footer__name">
-              Stack
-            </div>
-            <div class="app-footer__meta">
-              Minimal product interface.
-            </div>
+          <StackLogo :clickable="false" />
+          <div class="app-footer__meta">
+            Minimal product interface.
           </div>
         </div>
 
@@ -126,7 +119,7 @@
 .app-footer__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
+  flex-direction: column;
 }
 
 .app-footer__logo {

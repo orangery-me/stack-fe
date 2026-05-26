@@ -4,6 +4,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useToast } from "@/composables/useToast.js";
 import NotebookBackground from "@/components/calm/NotebookBackground.vue";
+import StackLogo from "@/components/StackLogo.vue";
 import { Eye, EyeOff } from "lucide-vue-next";
 
 const router = useRouter();
@@ -61,22 +62,17 @@ const goToRegister = () => {
       <!-- Form Content Wrapper -->
       <div class="flex-1 flex flex-col justify-center max-w-[360px] mx-auto w-full py-8">
         <!-- Premium Todoist-style Stack Logo -->
-        <div class="flex items-center gap-2.5 mb-10 cursor-pointer" @click="router.push('/')">
-          <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="24" height="24" rx="5" fill="#E95C47" />
-            <path d="M6 12L9 15L18 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M6 16L9 19L18 10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
-          </svg>
-          <span class="text-2xl font-black tracking-tight text-[#1F1A17] font-sans">stack</span>
+        <div class="mb-10">
+          <StackLogo />
         </div>
 
         <!-- Heading -->
-        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1F1A17] mb-8 font-sans">
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1F1A17] mb-8 font-sans mt-2">
           Welcome back!
-        </h1>
+        </h1> 
 
         <!-- Social Quick Login Options -->
-        <div class="flex flex-col gap-3 mb-6">
+        <div class="flex flex-col gap-3 mb-6 mt-2">
           <!-- Google -->
           <button
             type="button"

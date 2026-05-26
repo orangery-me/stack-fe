@@ -3,11 +3,7 @@ import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useToast } from "@/composables/useToast.js";
-import CalmButton from "@/components/calm/CalmButton.vue";
-import CalmCard from "@/components/calm/CalmCard.vue";
-import CalmHeading from "@/components/calm/CalmHeading.vue";
-import CalmInput from "@/components/calm/CalmInput.vue";
-import NotebookBackground from "@/components/calm/NotebookBackground.vue";
+import StackLogo from "@/components/StackLogo.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -137,178 +133,166 @@ const goToLogin = () => {
 </script>
 
 <template>
-  <NotebookBackground>
-    <section class="auth-page">
-      <div class="container-center">
-        <div class="auth-page__container">
-          <CalmCard
-            class="auth-card"
-            padding="lg"
-          >
-            <header class="auth-card__header">
-              <CalmHeading :level="2">
-                Create account
-              </CalmHeading>
-              <p class="ui-muted auth-card__subtitle">
-                Use your email to get started.
-              </p>
-            </header>
-
-          <form
-            class="auth-form"
-            @submit.prevent="handleRegister"
-          >
-            <CalmInput
-              id="email"
-              v-model="formData.email"
-              label="Email"
-              type="email"
-              placeholder="you@company.com"
-              autocomplete="email"
-              :required="true"
-              :error="fieldErrors.email"
-              @blur="handleFieldBlur('email')"
-            />
-
-            <CalmInput
-              id="phone"
-              v-model="formData.phone"
-              label="Phone"
-              type="tel"
-              placeholder="0123456789"
-              autocomplete="tel"
-              :required="true"
-              :error="fieldErrors.phone"
-              @blur="handleFieldBlur('phone')"
-            />
-
-            <CalmInput
-              id="name"
-              v-model="formData.name"
-              label="Full name"
-              type="text"
-              placeholder="John Doe"
-              autocomplete="name"
-              :required="true"
-              :error="fieldErrors.name"
-              @blur="handleFieldBlur('name')"
-            />
-
-            <CalmInput
-              id="password"
-              v-model="formData.password"
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              autocomplete="new-password"
-              :required="true"
-              :error="fieldErrors.password"
-              @blur="handleFieldBlur('password')"
-            />
-
-            <CalmInput
-              id="confirmPassword"
-              v-model="confirmPassword"
-              label="Confirm password"
-              type="password"
-              placeholder="••••••••"
-              autocomplete="new-password"
-              :required="true"
-              :error="fieldErrors.confirmPassword"
-              @blur="handleFieldBlur('confirmPassword')"
-            />
-
-            <CalmButton
-              type="submit"
-              variant="primary"
-              size="lg"
-              :disabled="!isValid || loading"
-              class="auth-form__submit"
-              :loading="loading"
-            >
-              Create account
-            </CalmButton>
-          </form>
-
-          <div class="auth-footer ui-muted">
-            Already have an account?
-            <button
-              type="button"
-              class="auth-link"
-              @click="goToLogin"
-            >
-              Sign in
-            </button>
-          </div>
-        </CalmCard>
+  <div class="flex flex-col md:flex-row w-full min-h-screen bg-white select-none">
+    <!-- Left Column (2/3 width, organic apricot conic-gradient decorative panel) -->
+    <div class="bg-[#fff9f3] hidden md:flex md:w-[62%] lg:w-[67%] xl:w-[70%] items-center justify-center relative overflow-hidden">
+      <!-- Center Illustration -->
+      <div class="w-full h-full overflow-hidden flex items-center justify-center">
+        <img
+          class="object-cover select-none pointer-events-none animate-fade-in scale-[1.1]"
+          src="/login-illustration.png"
+          alt="Minimalist Productivity Illustration"
+        >
       </div>
     </div>
-  </section>
-  </NotebookBackground>
+
+    <!-- Right Column (1/3 width, centered registration form) -->
+    <div class="w-full md:w-[38%] lg:w-[33%] xl:w-[30%] flex flex-col justify-between p-8 sm:p-12 md:p-10 lg:p-12 xl:p-16 bg-white overflow-y-auto">
+      <!-- Form Content Wrapper -->
+      <div class="flex-1 flex flex-col justify-center max-w-[360px] mx-auto w-full py-8">
+        <!-- Stack Logo -->
+        <div>
+          <StackLogo />
+        </div>
+
+        <!-- Heading -->
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1F1A17] mb-2 font-sans">
+          Create account
+        </h1>
+        <p class="text-sm text-[#5F5A56] mb-8 font-sans">
+          Use your email to get started.
+        </p>
+
+        <!-- Registration Form -->
+        <form @submit.prevent="handleRegister" class="flex flex-col gap-4 !mt-0">
+          <!-- Email -->
+          <div class="flex flex-col gap-1.5 w-full">
+            <label for="email" class="text-xs font-bold text-[#1F1A17]">Email</label>
+            <input
+              id="email"
+              type="email"
+              v-model="formData.email"
+              placeholder="you@company.com"
+              required
+              class="w-full h-10 px-3 rounded-md border border-[#E7E1DB] bg-white text-[#1F1A17] placeholder-[#8E8883] focus:outline-none focus:border-[#E95C47] focus:ring-2 focus:ring-[#E95C47]/10 transition duration-200 text-sm"
+              :disabled="loading"
+              @blur="handleFieldBlur('email')"
+            />
+            <span v-if="fieldErrors.email" class="text-xs text-red-500">{{ fieldErrors.email }}</span>
+          </div>
+
+          <!-- Full Name -->
+          <div class="flex flex-col gap-1.5 w-full">
+            <label for="name" class="text-xs font-bold text-[#1F1A17]">Full name</label>
+            <input
+              id="name"
+              type="text"
+              v-model="formData.name"
+              placeholder="John Doe"
+              required
+              class="w-full h-10 px-3 rounded-md border border-[#E7E1DB] bg-white text-[#1F1A17] placeholder-[#8E8883] focus:outline-none focus:border-[#E95C47] focus:ring-2 focus:ring-[#E95C47]/10 transition duration-200 text-sm"
+              :disabled="loading"
+              @blur="handleFieldBlur('name')"
+            />
+            <span v-if="fieldErrors.name" class="text-xs text-red-500">{{ fieldErrors.name }}</span>
+          </div>
+
+          <!-- Phone -->
+          <div class="flex flex-col gap-1.5 w-full">
+            <label for="phone" class="text-xs font-bold text-[#1F1A17]">Phone</label>
+            <input
+              id="phone"
+              type="tel"
+              v-model="formData.phone"
+              placeholder="0123456789"
+              required
+              class="w-full h-10 px-3 rounded-md border border-[#E7E1DB] bg-white text-[#1F1A17] placeholder-[#8E8883] focus:outline-none focus:border-[#E95C47] focus:ring-2 focus:ring-[#E95C47]/10 transition duration-200 text-sm"
+              :disabled="loading"
+              @blur="handleFieldBlur('phone')"
+            />
+            <span v-if="fieldErrors.phone" class="text-xs text-red-500">{{ fieldErrors.phone }}</span>
+          </div>
+
+          <!-- Password -->
+          <div class="flex flex-col gap-1.5 w-full">
+            <label for="password" class="text-xs font-bold text-[#1F1A17]">Password</label>
+            <input
+              id="password"
+              type="password"
+              v-model="formData.password"
+              placeholder="••••••••"
+              required
+              class="w-full h-10 px-3 rounded-md border border-[#E7E1DB] bg-white text-[#1F1A17] placeholder-[#8E8883] focus:outline-none focus:border-[#E95C47] focus:ring-2 focus:ring-[#E95C47]/10 transition duration-200 text-sm"
+              :disabled="loading"
+              @blur="handleFieldBlur('password')"
+            />
+            <span v-if="fieldErrors.password" class="text-xs text-red-500">{{ fieldErrors.password }}</span>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="flex flex-col gap-1.5 w-full">
+            <label for="confirmPassword" class="text-xs font-bold text-[#1F1A17]">Confirm password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              v-model="confirmPassword"
+              placeholder="••••••••"
+              required
+              class="w-full h-10 px-3 rounded-md border border-[#E7E1DB] bg-white text-[#1F1A17] placeholder-[#8E8883] focus:outline-none focus:border-[#E95C47] focus:ring-2 focus:ring-[#E95C47]/10 transition duration-200 text-sm"
+              :disabled="loading"
+              @blur="handleFieldBlur('confirmPassword')"
+            />
+            <span v-if="fieldErrors.confirmPassword" class="text-xs text-red-500">{{ fieldErrors.confirmPassword }}</span>
+          </div>
+
+          <!-- CTA primary Submit -->
+          <button
+            type="submit"
+            :disabled="!isValid || loading"
+            class="w-full h-10 bg-[#E95C47] hover:bg-[#D94B35] active:bg-[#C93B26] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-md transition duration-200 cursor-pointer shadow-xs flex items-center justify-center gap-2 mt-2"
+          >
+            <span v-if="loading" class="w-4 h-4 rounded-full border-2 border-white/50 border-t-transparent animate-spin"></span>
+            Create account
+          </button>
+        </form>
+
+        <!-- Privacy Terms Disclaimer -->
+        <p class="mt-6 text-[10px] text-[#5F5A56] leading-relaxed">
+          By signing up, you agree to Stack's <a href="#" class="text-[#E95C47] hover:underline hover:text-[#D94B35] font-semibold">Terms of Service</a> and <a href="#" class="text-[#E95C47] hover:underline hover:text-[#D94B35] font-semibold">Privacy Policy</a>.
+        </p>
+
+        <!-- Separator -->
+        <hr class="my-6 border-[#E7E1DB]" />
+
+        <!-- Router redirection footer -->
+        <p class="text-xs text-[#5F5A56] text-center">
+          Already have an account? 
+          <button
+            type="button"
+            class="text-[#E95C47] hover:underline hover:text-[#D94B35] font-bold cursor-pointer ml-1"
+            @click="goToLogin"
+          >
+            Sign in
+          </button>
+        </p>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
-.auth-page {
-  padding: var(--space-48) 0;
-  min-height: calc(100vh - 200px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.animate-fade-in {
+  animation: fadeIn 0.8s var(--ui-ease) forwards;
 }
 
-.auth-page__container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 520px;
-}
-
-.auth-card__header {
-  text-align: center;
-  margin-bottom: var(--space-24);
-
-  .auth-card__subtitle {
-    margin-top: var(--space-8);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
   }
-}
-
-.auth-form {
-  display: grid;
-  gap: var(--space-16);
-  margin-bottom: var(--space-16);
-}
-
-.auth-form__submit {
-  width: 100%;
-}
-
-.auth-footer {
-  margin-top: var(--space-16);
-  text-align: center;
-}
-
-.auth-link {
-  background: none;
-  border: none;
-  color: var(--primary-600);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0;
-  margin-left: 0.25rem;
-  text-decoration: underline;
-
-  &:hover {
-    color: var(--primary-500);
-  }
-}
-
-@media (max-width: 768px) {
-  .auth-page {
-    padding: var(--space-40) 0;
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 </style>
