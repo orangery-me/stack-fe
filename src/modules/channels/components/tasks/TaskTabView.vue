@@ -7,6 +7,7 @@ import taskService from '@/services/task.service.js';
 import TaskListView from './TaskListView.vue';
 import TaskCreateModal from './TaskCreateModal.vue';
 import TaskDetailPanel from './TaskDetailPanel.vue';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
 import TaskKanbanView from './TaskKanbanView.vue';
 import AppLoading from '@/components/loading/AppLoading.vue';
 
@@ -23,6 +24,12 @@ const router = useRouter();
 
 const isCreateModalOpen = ref(false);
 const statusFilter = ref('');
+const statusOptions = [
+  { value: '', label: 'All items' },
+  { value: 'todo', label: 'Todo' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' }
+];
 const searchQuery = ref('');
 const showSearch = ref(false);
 const viewType = ref('list');
@@ -231,27 +238,12 @@ watch(() => props.taskListId, () => {
     <!-- Toolbar -->
     <div class="task-tab-toolbar">
       <div class="task-tab-toolbar-left">
-        <div class="task-filter-dropdown">
-          <i class="pi pi-folder" />
-          <select
-            v-model="statusFilter"
-            class="task-filter-native-select"
-          >
-            <option value="">
-              All items
-            </option>
-            <option value="todo">
-              Todo
-            </option>
-            <option value="in_progress">
-              In Progress
-            </option>
-            <option value="done">
-              Done
-            </option>
-          </select>
-          <i class="pi pi-chevron-down task-filter-chevron" />
-        </div>
+        <CustomSelect
+          v-model="statusFilter"
+          :options="statusOptions"
+          size="sm"
+          width="130px"
+        />
 
         <span class="task-toolbar-divider" />
 

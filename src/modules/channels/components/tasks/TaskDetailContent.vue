@@ -6,6 +6,7 @@ import { getMessageFromApiError } from '@/helpers/api.helper.js';
 import taskService from '@/services/task.service.js';
 import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
 import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -406,19 +407,12 @@ watch(
       <div class="task-detail-field task-detail-field--inline">
         <label class="task-detail-label">Status</label>
         <template v-if="editingField === 'status'">
-          <select
+          <CustomSelect
             v-model="editStatus"
-            class="task-detail-select"
+            :options="statusOptions"
+            size="sm"
             @change="saveField('status')"
-          >
-            <option
-              v-for="opt in statusOptions"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
+          />
         </template>
         <button
           v-else
@@ -490,19 +484,12 @@ watch(
       <div class="task-detail-field task-detail-field--inline">
         <label class="task-detail-label">Priority</label>
         <template v-if="editingField === 'priority'">
-          <select
+          <CustomSelect
             v-model="editPriority"
-            class="task-detail-select"
+            :options="priorityOptions"
+            size="sm"
             @change="saveField('priority')"
-          >
-            <option
-              v-for="opt in priorityOptions"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
+          />
         </template>
         <span
           v-else
@@ -643,19 +630,12 @@ watch(
           <div class="task-detail-field task-detail-field--inline task-detail-field--aside">
             <label class="task-detail-label">Status</label>
             <template v-if="editingField === 'status'">
-              <select
+              <CustomSelect
                 v-model="editStatus"
-                class="task-detail-select"
+                :options="statusOptions"
+                size="sm"
                 @change="saveField('status')"
-              >
-                <option
-                  v-for="opt in statusOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </option>
-              </select>
+              />
             </template>
             <button
               v-else
@@ -724,19 +704,12 @@ watch(
           <div class="task-detail-field task-detail-field--inline task-detail-field--aside">
             <label class="task-detail-label">Priority</label>
             <template v-if="editingField === 'priority'">
-              <select
+              <CustomSelect
                 v-model="editPriority"
-                class="task-detail-select"
+                :options="priorityOptions"
+                size="sm"
                 @change="saveField('priority')"
-              >
-                <option
-                  v-for="opt in priorityOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </option>
-              </select>
+              />
             </template>
             <span
               v-else

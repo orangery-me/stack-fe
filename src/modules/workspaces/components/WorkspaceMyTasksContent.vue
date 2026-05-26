@@ -5,12 +5,20 @@ import taskService from "@/services/task.service.js";
 import TaskDetailPanel from "@/modules/channels/components/tasks/TaskDetailPanel.vue";
 import TaskCreateModal from "@/modules/channels/components/tasks/TaskCreateModal.vue";
 import { useToast } from "@/composables/useToast.js";
+import CustomSelect from "@/components/calm/CustomSelect.vue";
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
 });
 
 const { warning } = useToast();
+
+const statusOptions = [
+  { value: '', label: 'All status' },
+  { value: 'todo', label: 'To do' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'done', label: 'Done' }
+];
 
 const isCreateModalOpen = ref(false);
 const createModalParentTaskId = ref(null);
@@ -248,20 +256,12 @@ const filteredAllTasks = computed(() => {
             <div class="table-panel__filters">
               <label>
                 <span>Status</span>
-                <select v-model="tableOverdueFilters.status">
-                  <option value="">
-                    All status
-                  </option>
-                  <option value="todo">
-                    To do
-                  </option>
-                  <option value="in_progress">
-                    In progress
-                  </option>
-                  <option value="done">
-                    Done
-                  </option>
-                </select>
+                <CustomSelect
+                  v-model="tableOverdueFilters.status"
+                  :options="statusOptions"
+                  size="sm"
+                  width="110px"
+                />
               </label>
               <label>
                 <span>Due from</span>
@@ -341,32 +341,21 @@ const filteredAllTasks = computed(() => {
             <div class="table-panel__filters">
               <label>
                 <span>Status</span>
-                <select v-model="tableActiveFilters.status">
-                  <option value="">
-                    All status
-                  </option>
-                  <option value="todo">
-                    To do
-                  </option>
-                  <option value="in_progress">
-                    In progress
-                  </option>
-                  <option value="done">
-                    Done
-                  </option>
-                </select>
+                <CustomSelect
+                  v-model="tableActiveFilters.status"
+                  :options="statusOptions"
+                  size="sm"
+                  width="110px"
+                />
               </label>
               <label>
                 <span>Thời gian</span>
-                <select v-model="tableActiveFilters.monthKey">
-                  <option
-                    v-for="month in monthOptions"
-                    :key="month.value"
-                    :value="month.value"
-                  >
-                    {{ month.label }}
-                  </option>
-                </select>
+                <CustomSelect
+                  v-model="tableActiveFilters.monthKey"
+                  :options="monthOptions"
+                  size="sm"
+                  width="120px"
+                />
               </label>
             </div>
             <div class="task-table-wrap">

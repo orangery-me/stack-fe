@@ -11,6 +11,7 @@ import { useTaskStore } from "@/modules/channels/stores/task.store.js";
 import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
 import AppLoading from "@/components/loading/AppLoading.vue";
+import CustomSelect from "@/components/calm/CustomSelect.vue";
 
 
 const route = useRoute();
@@ -42,6 +43,11 @@ const channelActions = ref([
 const activeDetailTab = ref("about");
 const activeMainTab = ref("messages");
 const showAddTabMenu = ref(false);
+
+const permissionOptions = [
+  { value: "manager_only", label: "Managers only" },
+  { value: "all_members", label: "All members" }
+];
 
 const channelMembers = computed(() => {
   const channelId = selectedChannel.value?.id;
@@ -466,7 +472,7 @@ onBeforeUnmount(() => {
             class="pi pi-comments"
             style="font-size: 12px"
           />
-          Messages
+          <span class="channel-tab-text">Messages</span>
         </button>
 
         <!-- Dynamic task tabs -->
@@ -477,12 +483,13 @@ onBeforeUnmount(() => {
           :class="{ active: activeMainTab === `task-${list.id}` }"
           type="button"
           @click="activeMainTab = `task-${list.id}`"
+          :title="list.name || 'Untitled list'"
         >
           <i
             class="pi pi-check-square"
             style="font-size: 12px"
           />
-          {{ list.name || 'Untitled list' }}
+          <span class="channel-tab-text">{{ list.name || 'Untitled list' }}</span>
         </button>
 
         <!-- + Button dropdown -->
@@ -748,18 +755,13 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.invitePolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -771,18 +773,13 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.postPolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -794,18 +791,14 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.pinMessagePolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        open-up
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -817,18 +810,14 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.threadPolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        open-up
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
                 </div>
