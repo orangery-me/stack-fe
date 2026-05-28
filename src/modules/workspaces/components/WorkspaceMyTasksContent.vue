@@ -6,6 +6,7 @@ import TaskDetailPanel from "@/modules/channels/components/tasks/TaskDetailPanel
 import TaskCreateModal from "@/modules/channels/components/tasks/TaskCreateModal.vue";
 import { useToast } from "@/composables/useToast.js";
 import CustomSelect from "@/components/calm/CustomSelect.vue";
+import CustomDatePicker from "@/components/calm/CustomDatePicker.vue";
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
@@ -265,17 +266,21 @@ const filteredAllTasks = computed(() => {
               </label>
               <label>
                 <span>Due from</span>
-                <input
+                <CustomDatePicker
                   v-model="tableOverdueFilters.dueFrom"
-                  type="date"
-                >
+                  size="sm"
+                  placeholder="Select date"
+                  style="width: 120px;"
+                />
               </label>
               <label>
                 <span>Due to</span>
-                <input
+                <CustomDatePicker
                   v-model="tableOverdueFilters.dueTo"
-                  type="date"
-                >
+                  size="sm"
+                  placeholder="Select date"
+                  style="width: 120px;"
+                />
               </label>
             </div>
             <div class="task-table-wrap">

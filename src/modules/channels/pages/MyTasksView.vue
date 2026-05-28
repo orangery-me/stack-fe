@@ -8,6 +8,7 @@ import TaskDetailPanel from '@/modules/channels/components/tasks/TaskDetailPanel
 import TaskCreateModal from '@/modules/channels/components/tasks/TaskCreateModal.vue';
 import { useToast } from '@/composables/useToast.js';
 import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -107,14 +108,18 @@ const openTaskDetailPage = (task) => {
         type="text"
         placeholder="Channel ID"
       >
-      <input
+      <CustomDatePicker
         v-model="filters.dueFrom"
-        type="date"
-      >
-      <input
+        size="sm"
+        placeholder="Due from"
+        style="width: 120px;"
+      />
+      <CustomDatePicker
         v-model="filters.dueTo"
-        type="date"
-      >
+        size="sm"
+        placeholder="Due to"
+        style="width: 120px;"
+      />
       <button
         type="button"
         @click="refetch"

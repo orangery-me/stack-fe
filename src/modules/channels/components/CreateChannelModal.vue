@@ -2,8 +2,6 @@
 import { ref, computed, watch } from "vue";
 import CalmModal from "@/components/calm/CalmModal.vue";
 import CalmButton from "@/components/calm/CalmButton.vue";
-import CalmInput from "@/components/calm/CalmInput.vue";
-import CalmSelect from "@/components/calm/CalmSelect.vue";
 import { useToast } from "@/composables/useToast.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 
@@ -40,10 +38,6 @@ const createChannelForm = ref({
 const createChannelErrors = ref({});
 
 const createChannelLoading = computed(() => channelStore.createChannelLoading);
-const typeOptions = [
-  { value: "public", label: "Public — anyone in the workspace can join" },
-  { value: "private", label: "Private — invite only" },
-];
 
 const resetCreateChannelForm = () => {
   createChannelForm.value = {
@@ -121,7 +115,7 @@ const handleCreateChannel = async () => {
     title="Create channel"
     :busy="createChannelLoading"
   >
-    <p class="create-channel__description ui-muted">
+    <p class="create-channel__description">
       Create a channel to organize conversations.
     </p>
 
@@ -129,23 +123,66 @@ const handleCreateChannel = async () => {
       class="create-channel__form"
       @submit.prevent="handleCreateChannel"
     >
-      <CalmInput
-        id="channelName"
-        v-model="createChannelForm.name"
-        label="Channel name"
-        placeholder="e.g. general, marketing, engineering"
-        :required="true"
-        :error="createChannelErrors.name"
-      />
+      <div class="calm-field">
+        <label for="channelName" class="calm-field__label">
+          Channel name <span class="calm-field__required">*</span>
+        </label>
+        <div class="channel-name-input-wrapper">
+          <span class="channel-hashtag-prefix">#</span>
+          <input
+            id="channelName"
+            type="text"
+            v-model="createChannelForm.name"
+            class="premium-channel-input"
+            :class="{ 'calm-input--error': !!createChannelErrors.name }"
+            placeholder="e.g. general, marketing, engineering"
+            required
+            :disabled="createChannelLoading"
+            :aria-invalid="!!createChannelErrors.name"
+          />
+        </div>
+        <p v-if="createChannelErrors.name" class="calm-field__error">
+          {{ createChannelErrors.name }}
+        </p>
+      </div>
 
-      <CalmSelect
-        id="channelType"
-        v-model="createChannelForm.type"
-        label="Channel type"
-        :required="true"
-        :options="typeOptions"
-        :error="createChannelErrors.type"
-      />
+      <div class="calm-field">
+        <label class="calm-field__label">Channel visibility</label>
+        <div class="channel-type-cards">
+          <div
+            class="type-card"
+            :class="{ active: createChannelForm.type === 'public' }"
+            @click="!createChannelLoading ? createChannelForm.type = 'public' : undefined"
+          >
+            <div class="card-icon-wrapper public">
+              <i class="pi pi-globe" />
+            </div>
+            <div class="card-info">
+              <div class="card-title">Public Channel</div>
+              <div class="card-desc">Anyone in the workspace can view, search, and join this channel.</div>
+            </div>
+            <div class="card-badge">Default</div>
+          </div>
+
+          <div
+            class="type-card"
+            :class="{ active: createChannelForm.type === 'private' }"
+            @click="!createChannelLoading ? createChannelForm.type = 'private' : undefined"
+          >
+            <div class="card-icon-wrapper private">
+              <i class="pi pi-lock" />
+            </div>
+            <div class="card-info">
+              <div class="card-title">Private Channel</div>
+              <div class="card-desc">Only invited members can view or join. Completely search-hidden.</div>
+            </div>
+            <div class="card-badge shadow-only">Invite Only</div>
+          </div>
+        </div>
+        <p v-if="createChannelErrors.type" class="calm-field__error">
+          {{ createChannelErrors.type }}
+        </p>
+      </div>
     </form>
 
     <template #actions>

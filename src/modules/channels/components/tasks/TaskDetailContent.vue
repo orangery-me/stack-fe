@@ -7,6 +7,7 @@ import taskService from '@/services/task.service.js';
 import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
 import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
 import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -429,13 +430,12 @@ watch(
       <div class="task-detail-field task-detail-field--inline">
         <label class="task-detail-label">Due date</label>
         <template v-if="editingField === 'dueDate'">
-          <input
+          <CustomDatePicker
             v-model="editDueDate"
-            type="datetime-local"
-            class="task-detail-input task-detail-input--sm"
-            @change="saveField('dueDate')"
-            @keydown.escape="cancelEditing"
-          >
+            size="sm"
+            showTime
+            @hide="saveField('dueDate')"
+          />
         </template>
         <span
           v-else
@@ -651,13 +651,12 @@ watch(
           <div class="task-detail-field task-detail-field--inline task-detail-field--aside">
             <label class="task-detail-label">Due date</label>
             <template v-if="editingField === 'dueDate'">
-              <input
+              <CustomDatePicker
                 v-model="editDueDate"
-                type="datetime-local"
-                class="task-detail-input task-detail-input--sm"
-                @change="saveField('dueDate')"
-                @keydown.escape="cancelEditing"
-              >
+                size="sm"
+                showTime
+                @hide="saveField('dueDate')"
+              />
             </template>
             <span
               v-else

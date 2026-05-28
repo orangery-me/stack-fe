@@ -11,6 +11,7 @@ import { queryClient } from '@/config/queryClient.js';
 import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
 import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
 import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
@@ -397,14 +398,11 @@ const handleSubmit = async () => {
         </div>
 
         <!-- Due date -->
-        <div class="task-form-group">
-          <label class="task-form-label">Due date</label>
-          <input
-            v-model="dueDate"
-            type="datetime-local"
-            class="task-form-input"
-          >
-        </div>
+        <CustomDatePicker
+          v-model="dueDate"
+          label="Due date"
+          showTime
+        />
 
         <!-- Assignees -->
         <div class="task-form-group">

@@ -192,6 +192,10 @@ onBeforeUnmount(() => {
   border-color: var(--gray-300, #C2B6AD);
 }
 
+.custom-select-container--open {
+  z-index: 1000 !important;
+}
+
 .custom-select-container--open .custom-select-trigger {
   border-color: var(--primary-500, #E95C47);
   box-shadow: var(--ui-focus-ring);
@@ -227,7 +231,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 50;
+  z-index: 9999 !important;
   margin-top: 4px;
   padding: 0;
   list-style: none;
