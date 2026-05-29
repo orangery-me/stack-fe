@@ -702,3 +702,16 @@
   background: var(--primary-600);
   color: #fff;
 }
+
+// Huddle
+.header-button--huddle {
+  gap: 4px;
+  .huddle-icon-text {
+    font-size: 13px;
+  }
+}
+.huddle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}

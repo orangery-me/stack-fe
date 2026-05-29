@@ -11,6 +11,8 @@ import { useTaskStore } from "@/modules/channels/stores/task.store.js";
 import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
 import AppLoading from "@/components/loading/AppLoading.vue";
+import { PhoneCall } from 'lucide-vue-next';
+
 
 
 const route = useRoute();
@@ -372,6 +374,13 @@ const handleClickOutsideTabMenu = (event) => {
 
 
 
+// --- Huddle handlers ---
+function handleHuddleClick() {
+  if (!selectedChannel.value?.id || !workspaceId.value) return;
+  const huddleUrl = `/workspaces/${workspaceId.value}/channels/${selectedChannel.value.id}/huddle`;
+  window.open(huddleUrl, '_blank');
+}
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutsideChannelMenu);
   document.addEventListener("click", handleClickOutsideTabMenu);
@@ -405,6 +414,18 @@ onBeforeUnmount(() => {
         </div>
         <div class="channel-header-right flex items-center gap-2">
 
+          <button
+            v-if="selectedChannel"
+            class="header-button header-button--huddle"
+            title="Start a huddle"
+            type="button"
+            @click="handleHuddleClick"
+          >
+            <span class="huddle-icon-text">
+              <PhoneCall :size="14" />
+            </span>
+            Huddle
+          </button>
           <button
             v-if="selectedChannel"
             class="header-button"
@@ -521,6 +542,7 @@ onBeforeUnmount(() => {
     <MessageTabView
       v-if="selectedChannel && activeMainTab === 'messages'"
       @add-people-to-channel="openInviteTeammatesModal"
+      @join-huddle="handleHuddleClick"
     />
 
     <TaskTabView
@@ -868,6 +890,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
   </div>
 </template>
 

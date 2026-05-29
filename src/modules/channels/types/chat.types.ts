@@ -15,6 +15,7 @@ export interface ChatMessage {
   createdAt: string;
   channelId: string;
   status: MessageStatus;
+  metadata?: Record<string, any>;
 }
 
 /**
