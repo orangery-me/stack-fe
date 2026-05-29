@@ -9,6 +9,14 @@
   },
   "license": "MIT",
   "type": "module",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@parcel/watcher",
+      "vue-demi",
+      "@tailwindcss/oxide"
+    ]
+  },
   "scripts": {
     "dev": "vite --port 5173",
     "preview": "vite preview",
@@ -39,6 +47,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
+    "livekit-client": "^2.19.0",
     "lottie-web": "^5.13.0",
     "lucide-vue-next": "^0.563.0",
     "mediasoup-client": "^3.20.0",

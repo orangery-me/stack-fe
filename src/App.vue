@@ -12,12 +12,14 @@ const isWorkspaceDetail = computed(() => route.name === "workspaceDetail");
 const isWorkspaceFiles = computed(() => route.name === "workspaceFiles");
 const isMyTasks = computed(() => route.name === "myTasks");
 const isCanvasEdit = computed(() => route.name === "canvasEdit");
+const isHuddleRoom = computed(() => route.name === "huddleRoom");
 const hideAppHeader = computed(
   () =>
     isWorkspaceDetail.value ||
     isWorkspaceFiles.value ||
     isMyTasks.value ||
-    isCanvasEdit.value
+    isCanvasEdit.value ||
+    isHuddleRoom.value
 );
 
 // Prevent body scroll when on workspace detail or canvas edit page

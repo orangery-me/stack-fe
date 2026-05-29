@@ -10,8 +10,9 @@ import { useChatStore } from "@/modules/channels/stores/chat.store";
 import { useInfiniteQuery } from "@tanstack/vue-query";
 import chatService from "@/services/chat.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
+import HuddleSystemMessage from "@/modules/channels/huddle/components/HuddleSystemMessage.vue";
 
-const emit = defineEmits(["add-people-to-channel"]);
+const emit = defineEmits(["add-people-to-channel", "join-huddle"]);
 
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
@@ -412,9 +413,16 @@ onBeforeUnmount(() => {
                   </div>
                   <div
                     class="message-item-content"
-                    :class="{ 'message-item-content--system': message.messageType === 'system' }"
+                    :class="{ 'message-item-content--system': message.messageType === 'system' && message.content !== 'Huddle started' && message.content !== 'Huddle ended' }"
                   >
-                    {{ message.content }}
+                    <HuddleSystemMessage
+                      v-if="message.messageType === 'system' && (message.content === 'Huddle started' || message.content === 'Huddle ended')"
+                      :message-content="message.content"
+                      @join="$emit('join-huddle')"
+                    />
+                    <template v-else>
+                      {{ message.content }}
+                    </template>
                   </div>
                   <div
                     v-if="message.status === 'failed'"

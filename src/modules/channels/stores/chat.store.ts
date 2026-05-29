@@ -214,6 +214,16 @@ export const useChatStore = defineStore("chat", {
 
       if (!channelId || !channelData || typeof channelData === "boolean") return;
 
+      if (message.messageType === 'system') {
+        const { useHuddleStore } = require('../huddle/stores/huddle.store');
+        const huddleStore = useHuddleStore();
+        if (message.content === 'Huddle started') {
+          huddleStore.hasActiveHuddle = true;
+        } else if (message.content === 'Huddle ended') {
+          huddleStore.hasActiveHuddle = false;
+        }
+      }
+
       const formattedMessage = this.formatMessage(message, channelData.members || [], "sent");
 
       const exists = this.getMessagesFromCache(channelId).some(
@@ -301,6 +311,7 @@ export const useChatStore = defineStore("chat", {
         createdAt: message.createdAt,
         channelId: message.channelId,
         status: message.status || status,
+        metadata: message.metadata,
       };
     },
 

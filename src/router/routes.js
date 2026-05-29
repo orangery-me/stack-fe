@@ -11,6 +11,7 @@ import WorkspaceFilesView from '@/modules/workspaces/pages/WorkspaceFilesView.vu
 import AcceptInviteView from '@/modules/workspaces/pages/AcceptInviteView.vue';
 import CanvasEditView from '@/modules/channels/pages/CanvasEditView.vue';
 import TaskDetailPage from '@/modules/channels/pages/TaskDetailPage.vue';
+import HuddleRoomView from '@/modules/channels/pages/HuddleRoomView.vue';
 
 
 export default [
@@ -56,6 +57,12 @@ export default [
 		name: 'myTasks',
 		component: WorkspaceDetailView,
 		meta: { title: 'My Tasks', requiresAuth: true },
+	},
+	{
+		path: '/workspaces/:workspaceId/channels/:channelId/huddle',
+		name: 'huddleRoom',
+		component: HuddleRoomView,
+		meta: { title: 'Huddle', requiresAuth: true },
 	},
 	{
 		path: '/workspaces/:workspaceId/tasks/:taskId',
