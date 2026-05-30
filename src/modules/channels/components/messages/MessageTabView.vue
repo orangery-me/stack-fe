@@ -12,6 +12,8 @@ import { useInfiniteQuery } from "@tanstack/vue-query";
 import chatService from "@/services/chat.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import HuddleSystemMessage from "@/modules/channels/huddle/components/HuddleSystemMessage.vue";
+import { useRouter } from "vue-router";
+import { ExternalLink, FileText, Info, UserMinus, UserPlus } from "lucide-vue-next";
 
 const emit = defineEmits(["add-people-to-channel", "join-huddle"]);
 
@@ -19,6 +21,7 @@ const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
 const chatStore = useChatStore();
 const huddleStore = useHuddleStore();
+const router = useRouter();
 
 const workspace = computed(() => workspaceStore.workspaceDetail);
 const selectedChannel = computed(() => channelStore.selectedChannel);
@@ -206,6 +209,42 @@ const isHuddleSystemMessage = (message) => {
       message.content === "Huddle started" ||
       message.content === "Huddle ended")
   );
+};
+
+const isCanvasShareSystemMessage = (message) =>
+  message?.messageType === "system" && Boolean(message?.metadata?.canvasShare?.targetUrl);
+
+const openCanvasShareMessage = (message) => {
+  const targetUrl = message?.metadata?.canvasShare?.targetUrl;
+  if (targetUrl) router.push(targetUrl);
+};
+
+const getCanvasShareTitle = (message) =>
+  message?.metadata?.canvasShare?.title || "Shared canvas";
+
+const getCanvasShareRoleLabel = (message) =>
+  message?.metadata?.canvasShare?.role === "editor" ? "Write access" : "Read access";
+
+const getCanvasShareActorName = (message) => {
+  const content = String(message?.content || "");
+  const marker = " has shared ";
+  const markerIndex = content.indexOf(marker);
+  if (markerIndex > 0) return content.slice(0, markerIndex);
+  return message?.authorName || "Someone";
+};
+
+const getGenericSystemKind = (message) => {
+  const content = String(message?.content || "").toLowerCase();
+  if (content.includes(" added ") && content.includes(" to this channel")) return "member-added";
+  if (content.includes(" removed ") && content.includes(" from this channel")) return "member-removed";
+  return "info";
+};
+
+const getGenericSystemTitle = (message) => {
+  const kind = getGenericSystemKind(message);
+  if (kind === "member-added") return "Member added";
+  if (kind === "member-removed") return "Member removed";
+  return "Channel update";
 };
 
 const normalizeAuthorName = (message) =>
@@ -427,7 +466,6 @@ onBeforeUnmount(() => {
                   </div>
                   <div
                     class="message-item-content"
-                    :class="{ 'message-item-content--system': message.messageType === 'system' && !isHuddleSystemMessage(message) }"
                   >
                     <HuddleSystemMessage
                       v-if="isHuddleSystemMessage(message)"
@@ -436,6 +474,60 @@ onBeforeUnmount(() => {
                       :created-at="message.createdAt"
                       @join="$emit('join-huddle')"
                     />
+                    <div
+                      v-else-if="isCanvasShareSystemMessage(message)"
+                      class="canvas-share-system"
+                    >
+                      <div class="canvas-share-system__icon">
+                        <FileText :size="17" />
+                      </div>
+                      <div class="canvas-share-system__body">
+                        <div class="canvas-share-system__title-row">
+                          <strong>{{ getCanvasShareActorName(message) }} shared a canvas</strong>
+                          <span class="canvas-share-system__time">{{ formatTime(message.createdAt) }}</span>
+                        </div>
+                        <div class="canvas-share-system__detail">
+                          "{{ getCanvasShareTitle(message) }}" was shared with this channel.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        class="canvas-share-system__action"
+                        @click="openCanvasShareMessage(message)"
+                      >
+                        <ExternalLink :size="13" />
+                        Open canvas
+                      </button>
+                      <span class="canvas-share-system__role">{{ getCanvasShareRoleLabel(message) }}</span>
+                    </div>
+                    <div
+                      v-else-if="message.messageType === 'system'"
+                      class="channel-system-card"
+                    >
+                      <div class="channel-system-card__icon">
+                        <UserPlus
+                          v-if="getGenericSystemKind(message) === 'member-added'"
+                          :size="17"
+                        />
+                        <UserMinus
+                          v-else-if="getGenericSystemKind(message) === 'member-removed'"
+                          :size="17"
+                        />
+                        <Info
+                          v-else
+                          :size="17"
+                        />
+                      </div>
+                      <div class="channel-system-card__body">
+                        <div class="channel-system-card__title-row">
+                          <strong>{{ getGenericSystemTitle(message) }}</strong>
+                          <span class="channel-system-card__time">{{ formatTime(message.createdAt) }}</span>
+                        </div>
+                        <div class="channel-system-card__detail">
+                          {{ message.content }}
+                        </div>
+                      </div>
+                    </div>
                     <template v-else>
                       {{ message.content }}
                     </template>

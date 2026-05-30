@@ -1,8 +1,8 @@
 <template>
   <div class="huddle-system-msg" :class="statusClass">
     <span class="huddle-icon" aria-hidden="true">
-      <PhoneOff v-if="isEndedMessage" :size="18" />
-      <Headphones v-else :size="18" />
+      <PhoneOff v-if="isEndedMessage" :size="16" />
+      <Headphones v-else :size="16" />
     </span>
     <span class="huddle-text">
       <span class="huddle-title-row">
@@ -28,7 +28,7 @@
       :title="callId ? 'Review meeting transcript' : 'Transcript is not available'"
       @click="handleReviewTranscript"
     >
-      <FileText :size="14" />
+      <FileText :size="13" />
       {{ isOpeningTranscript ? 'Opening...' : 'Review meeting transcript' }}
     </button>
   </div>
@@ -122,12 +122,12 @@ async function handleReviewTranscript() {
 .huddle-system-msg {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 8px;
-  margin: 8px 0;
-  font-size: 14px;
+  margin: 6px 0;
+  font-size: 13px;
   line-height: 1.35;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
@@ -145,8 +145,8 @@ async function handleReviewTranscript() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   border-radius: 8px;
   background: #059669;
@@ -172,18 +172,19 @@ async function handleReviewTranscript() {
   border-radius: 999px;
   background: #047857;
   color: #fff;
-  padding: 1px 7px;
-  font-size: 11px;
+  padding: 1px 6px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 16px;
 }
 .huddle-time {
   color: rgba(15, 23, 42, 0.62);
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .huddle-detail {
   color: rgba(15, 23, 42, 0.76);
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 .join-btn,
@@ -191,18 +192,18 @@ async function handleReviewTranscript() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   flex: 0 0 auto;
-  min-height: 32px;
+  min-height: 30px;
   border-radius: 6px;
   border: none;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, transform 0.2s;
 }
 .join-btn {
-  padding: 7px 14px;
+  padding: 6px 12px;
   background: #059669;
   color: #fff;
 }
@@ -210,7 +211,7 @@ async function handleReviewTranscript() {
   background: #047857;
 }
 .transcript-btn {
-  padding: 7px 12px;
+  padding: 6px 10px;
   background: #1d4ed8;
   color: #fff;
 }

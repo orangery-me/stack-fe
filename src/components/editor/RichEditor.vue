@@ -2,7 +2,6 @@
 import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
 import {
-  ChevronDown,
   FileText,
   ListTodo,
   Share2,
@@ -80,6 +79,7 @@ const emit = defineEmits<{
   "selection-icon-click": [];
   "ai-summary": [];
   "ai-task-generation": [];
+  share: [];
 }>();
 
 function onTitleInput(e: Event) {
@@ -286,6 +286,7 @@ onBeforeUnmount(() => {
               class="rte-title-input"
               :value="title"
               placeholder="New page"
+              :disabled="readOnly"
               @input="onTitleInput"
             >
             <div
@@ -527,25 +528,17 @@ onBeforeUnmount(() => {
           >
             <ListTodo :size="18" />
           </button>
-          <details class="rte-share-wrap">
-            <summary class="rte-share-btn">
-              <Share2 :size="17" />
-              <span class="rte-share-btn-text">Share</span>
-              <span class="rte-share-btn-sep" />
-              <ChevronDown
-                :size="15"
-                class="rte-share-btn-caret"
-              />
-            </summary>
-            <div class="rte-share-menu">
-              <button type="button">
-                Share with everyone
-              </button>
-              <button type="button">
-                Copy link
-              </button>
-            </div>
-          </details>
+          <button
+            type="button"
+            class="rte-share-btn"
+            :disabled="readOnly"
+            title="Share"
+            aria-label="Share"
+            @click="emit('share')"
+          >
+            <Share2 :size="17" />
+            <span class="rte-share-btn-text">Share</span>
+          </button>
           <button
             type="button"
             class="rte-header-action-btn rte-header-action-btn--ai"
@@ -1136,6 +1129,10 @@ onBeforeUnmount(() => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+.rte-title-input:disabled {
+  color: #4b5563;
+  cursor: default;
+}
 
 /* Dropdown */
 .dd {
@@ -1398,6 +1395,16 @@ onBeforeUnmount(() => {
 .rte-share-btn:hover {
   background: #bae6fd;
   color: #075985;
+}
+
+.rte-share-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rte-share-btn:disabled:hover {
+  background: #e0f2fe;
+  color: #0c4a6e;
 }
 
 .rte-share-btn-text {

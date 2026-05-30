@@ -81,6 +81,12 @@ export const API_ENDPOINTS = {
     // By canvasId only
     GET_BY_ID: (canvasId) => `/canvases/${canvasId}`,
     UPDATE: (canvasId) => `/canvases/${canvasId}`,
+    GET_ACCESS: (canvasId) => `/canvases/${canvasId}/access`,
+    GET_PERMISSIONS: (canvasId) => `/canvases/${canvasId}/permissions`,
+    SHARE_USER: (canvasId) => `/canvases/${canvasId}/permissions/users`,
+    SHARE_CHANNEL: (canvasId) => `/canvases/${canvasId}/permissions/channels`,
+    UPDATE_VISIBILITY: (canvasId) => `/canvases/${canvasId}/visibility`,
+    REMOVE_PERMISSION: (canvasId, permissionId) => `/canvases/${canvasId}/permissions/${permissionId}`,
     SAVE_CONTENT: (canvasId) => `/canvases/${canvasId}/content`,
     // Versions
     GET_VERSIONS: (canvasId) => `/canvases/${canvasId}/versions`,
@@ -111,4 +117,3 @@ export const API_ENDPOINTS = {
     TASK_APPLY_ACTION: '/agent/tasks/actions/apply',
   },
 };
-

@@ -20,6 +20,7 @@ import * as Y from "yjs";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import TranscriptBanner from "@/components/editor/TranscriptBanner.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
+import CanvasShareDialog from "@/components/editor/CanvasShareDialog.vue";
 import { AiPreviewExtension } from "@/components/editor/ai-preview.extension";
 import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
@@ -59,6 +60,7 @@ const aiActionsDisabled = computed(
 );
 const showTaskChannelPicker = ref(false);
 const showTranscriptBanner = ref(false);
+const showShareDialog = ref(false);
 
 // ======== Title =========
 
@@ -68,6 +70,16 @@ const { data: selectedCanvas, isLoading } = requestCanvas({
 });
 
 const availableChannels = computed(() => channelStore.channels || []);
+const shareWorkspaceId = computed(() =>
+  typeof selectedCanvas.value?.workspaceId === "string"
+    ? selectedCanvas.value.workspaceId
+    : undefined,
+);
+const selectedCanvasOwner = computed(() =>
+  selectedCanvas.value?.owner as
+    | { id?: string; name?: string; avatar?: string | null }
+    | undefined,
+);
 const resolvedChannelId = computed(() => {
   const fromCanvas = selectedCanvas.value?.channelId;
   if (typeof fromCanvas === "string" && fromCanvas) return fromCanvas;
@@ -122,6 +134,7 @@ watch(
 );
 
 function onTitleUpdate(value: string) {
+  if (selectedCanvas.value?.canEdit !== true) return;
   displayTitle.value = value;
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
   titleSaveTimer = setTimeout(async () => {
@@ -178,6 +191,7 @@ const displaySaveStatus = computed<"saved" | "saving">(() =>
     ? "saving"
     : "saved",
 );
+const editorReadOnly = computed(() => !isEditorReady.value || selectedCanvas.value?.canEdit !== true);
 
 const jwtToken = computed(() => authStore.accessToken);
 
@@ -350,7 +364,7 @@ function setupForCanvas(id: string) {
       syncReadyTimeoutId = undefined;
     }
     isEditorReady.value = true;
-    editor.value?.setEditable(true);
+    editor.value?.setEditable(selectedCanvas.value?.canEdit === true);
     saveStatus.value = "saved";
     hadChangesSinceLastSaved.value = false;
   }
@@ -401,10 +415,23 @@ function setupForCanvas(id: string) {
   nextTick(() => buildSelectionListener());
 }
 
+let setupCanvasId: string | null = null;
+
 watch(
-  () => [canvasId.value, jwtToken.value],
-  async ([id, token]) => {
+  () => [canvasId.value, jwtToken.value, selectedCanvas.value?.id],
+  async ([id, token, loadedCanvasId]) => {
     if (!id || !token) return;
+
+    if (loadedCanvasId !== id) {
+      if (setupCanvasId && setupCanvasId !== id) {
+        setupCanvasId = null;
+        destroyCollabResources();
+      }
+      return;
+    }
+
+    if (setupCanvasId === id) return;
+
     destroyCollabResources();
     try {
       await canvasStore.selectCanvas(id);
@@ -412,6 +439,7 @@ watch(
       // Toast is shown by the global axios interceptor
     }
     setupForCanvas(id);
+    setupCanvasId = id;
   },
   { immediate: true },
 );
@@ -485,6 +513,10 @@ function handleTranscriptBannerDismissed() {
   localStorage.setItem(transcriptDismissKey.value, "1");
   showTranscriptBanner.value = false;
 }
+
+function handleShare() {
+  showShareDialog.value = true;
+}
 </script>
 
 <template>
@@ -512,7 +544,7 @@ function handleTranscriptBannerDismissed() {
       <RichEditor
         v-if="editor"
         :editor="editor"
-        :read-only="!isEditorReady"
+        :read-only="editorReadOnly"
         :title="displayTitle"
         :viewers="onlineUsers"
         :current-user="currentUser"
@@ -527,6 +559,7 @@ function handleTranscriptBannerDismissed() {
         @move-to-trash="handleMoveToTrash"
         @ai-summary="handleAiSummary"
         @ai-task-generation="handleAiTaskGeneration"
+        @share="handleShare"
         @preview-start="handlePreviewStart"
         @preview-chunk="handlePreviewChunk"
         @preview-done="handlePreviewDone"
@@ -534,6 +567,16 @@ function handleTranscriptBannerDismissed() {
         @reject="handleReject"
         @ai-close="handleAiWriterClose"
         @selection-icon-click="handleSelectionIconClick"
+      />
+      <CanvasShareDialog
+        :open="showShareDialog"
+        :canvas-id="canvasId"
+        :canvas-title="displayTitle"
+        :workspace-id="shareWorkspaceId"
+        :owner="selectedCanvasOwner"
+        :current-user="currentUser"
+        :channels="availableChannels"
+        @close="showShareDialog = false"
       />
     </div>
     <AiChatSidebar
