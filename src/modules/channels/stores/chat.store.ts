@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import socketHelper from "../../../helpers/socket.helper";
 import { CHAT_EVENTS, CHAT_NAMESPACE } from "../constants";
 import { useAuthStore } from "../../auth/stores/auth.store";
+import { useHuddleStore } from "../huddle/stores/huddle.store";
 import { queryClient } from "@/config/queryClient";
 import type {
   MessageStatus,
@@ -225,7 +226,6 @@ export const useChatStore = defineStore("chat", {
       if (!channelId || !channelData || typeof channelData === "boolean") return;
 
       if (message.messageType === 'system') {
-        const { useHuddleStore } = require('../huddle/stores/huddle.store');
         const huddleStore = useHuddleStore();
         const huddleEvent = parseMetadata(message.metadata)?.huddle?.event;
         if (message.content === 'Huddle started' || huddleEvent === 'started') {

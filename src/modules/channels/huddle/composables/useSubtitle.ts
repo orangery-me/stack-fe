@@ -3,7 +3,12 @@ import { storeToRefs } from 'pinia';
 import { io, type Socket } from 'socket.io-client';
 import { API_BASE_URL } from '@/config/api.js';
 import { useSubtitleStore } from '../stores/subtitle.store';
-import type { SubtitleSegment, SubtitleStateEvent } from '../types/subtitle.types';
+import type {
+  SubtitleSegment,
+  SubtitleStateEvent,
+  TranscriptRecordingStartedEvent,
+  TranscriptSavedEvent,
+} from '../types/subtitle.types';
 
 interface UseSubtitleOptions {
   channelId: string;
@@ -18,6 +23,7 @@ export function useSubtitle(options: UseSubtitleOptions) {
   const { enabled } = storeToRefs(store);
   const socket = ref<Socket | null>(null);
   const segmentMap = ref(new Map<string, SubtitleSegment>());
+  const transcriptRecording = ref(false);
   const timers = new Map<string, number>();
 
   const activeSegments = computed(() => {
@@ -57,6 +63,16 @@ export function useSubtitle(options: UseSubtitleOptions) {
     payload.active_segments.forEach((segment) => scheduleClear(segment.segment_id));
   }
 
+  function handleTranscriptRecordingStarted(payload: TranscriptRecordingStartedEvent) {
+    if (payload.call_id !== options.callId) return;
+    transcriptRecording.value = payload.status === 'recording';
+  }
+
+  function handleTranscriptSaved(payload: TranscriptSavedEvent) {
+    if (payload.call_id !== options.callId) return;
+    transcriptRecording.value = false;
+  }
+
   function scheduleClear(segmentId: string) {
     const existing = timers.get(segmentId);
     if (existing) {
@@ -91,6 +107,8 @@ export function useSubtitle(options: UseSubtitleOptions) {
     });
     socket.value.on('subtitle:transcript', upsertSegment);
     socket.value.on('subtitle:state', hydrateState);
+    socket.value.on('subtitle:transcript_recording_started', handleTranscriptRecordingStarted);
+    socket.value.on('subtitle:transcript_saved', handleTranscriptSaved);
     socket.value.on('subtitle:preference_updated', (payload: { enabled: boolean }) => {
       store.setEnabled(payload.enabled);
     });
@@ -113,7 +131,11 @@ export function useSubtitle(options: UseSubtitleOptions) {
   return {
     enabled,
     activeSegments,
+    transcriptRecording,
     setEnabled: store.setEnabled,
+    setTranscriptRecording: (recording: boolean) => {
+      transcriptRecording.value = recording;
+    },
     syncPreference,
   };
 }

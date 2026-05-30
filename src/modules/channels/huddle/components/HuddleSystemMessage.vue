@@ -86,9 +86,12 @@ const participantLabel = computed(() => (participantCount.value === 1 ? 'partici
 
 const titleText = computed(() => (isEndedMessage.value ? 'Huddle ended' : 'Huddle started'));
 const showLiveBadge = computed(() => isStartMessage.value && store.hasActiveHuddle);
+const hasTranscript = computed(() => huddleMetadata.value.transcriptEnabled === true || Boolean(huddleMetadata.value.transcriptId));
 const detailText = computed(() => {
   if (isEndedMessage.value) {
-    return `Ended at ${displayTime.value || 'the recorded time'}. Review the meeting transcript when it is ready.`;
+    return hasTranscript.value
+      ? `Ended at ${displayTime.value || 'the recorded time'}. Transcript is ready for review.`
+      : `Ended at ${displayTime.value || 'the recorded time'}.`;
   }
   return `Started at ${displayTime.value || 'the recorded time'} with ${participantCount.value} ${participantLabel.value} in the huddle.`;
 });
@@ -99,7 +102,7 @@ const statusClass = computed(() => ({
 }));
 
 const showJoinButton = computed(() => props.allowJoinAction !== false && isStartMessage.value && store.hasActiveHuddle && !store.isCurrentUserParticipant);
-const showTranscriptButton = computed(() => isEndedMessage.value);
+const showTranscriptButton = computed(() => isEndedMessage.value && hasTranscript.value);
 
 async function handleReviewTranscript() {
   if (!callId.value || isOpeningTranscript.value) return;

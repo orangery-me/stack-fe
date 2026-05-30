@@ -5,7 +5,7 @@ const STORAGE_KEY = 'huddle_subtitles_enabled';
 
 export const useSubtitleStore = defineStore('huddle-subtitles', () => {
   const storedValue = localStorage.getItem(STORAGE_KEY);
-  const enabled = ref(storedValue === null ? true : storedValue === 'true');
+  const enabled = ref(storedValue === null ? false : storedValue === 'true');
 
   function setEnabled(value: boolean) {
     enabled.value = value;
