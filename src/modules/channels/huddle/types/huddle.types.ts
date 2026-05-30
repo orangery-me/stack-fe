@@ -32,6 +32,7 @@ export interface HuddleJoinResponse {
 export interface HuddleStatusResponse {
   active: boolean;
   call: HuddleCallInfo | null;
+  isCurrentUserParticipant?: boolean;
 }
 
 export interface HuddleStateUpdate {

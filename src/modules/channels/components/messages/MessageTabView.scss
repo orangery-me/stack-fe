@@ -158,8 +158,14 @@
 }
 
 .message-item--system {
-  justify-content: center;
+  justify-content: flex-start;
+  width: 100%;
   margin: 10px 0;
+}
+
+.message-item--system .message-item-body,
+.message-item--system .message-item-content {
+  width: 100%;
 }
 
 .message-item-avatar {
@@ -181,7 +187,6 @@
 }
 
 .message-item-body {
-  // flex: 1;
   min-width: 0;
 }
 

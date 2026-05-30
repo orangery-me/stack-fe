@@ -44,6 +44,11 @@ class HuddleService {
     const response = await apiHelper.post(this.buildUrl(channelId, '/token'));
     return response.data;
   }
+
+  async createTranscriptReviewCanvas(callId: string): Promise<{ canvas_id: string; created: boolean }> {
+    const response = await apiHelper.post(`/v1/subtitle/call/${callId}/review-canvas`);
+    return response.data;
+  }
 }
 
 export const huddleService = new HuddleService();

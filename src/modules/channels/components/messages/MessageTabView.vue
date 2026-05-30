@@ -7,6 +7,7 @@ import { computed, ref, nextTick, watch, onBeforeUnmount } from "vue";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
 import { useChannelStore } from "@/modules/channels/stores/channel.store.js";
 import { useChatStore } from "@/modules/channels/stores/chat.store";
+import { useHuddleStore } from "@/modules/channels/huddle/stores/huddle.store";
 import { useInfiniteQuery } from "@tanstack/vue-query";
 import chatService from "@/services/chat.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
@@ -17,6 +18,7 @@ const emit = defineEmits(["add-people-to-channel", "join-huddle"]);
 const workspaceStore = useWorkspaceStore();
 const channelStore = useChannelStore();
 const chatStore = useChatStore();
+const huddleStore = useHuddleStore();
 
 const workspace = computed(() => workspaceStore.workspaceDetail);
 const selectedChannel = computed(() => channelStore.selectedChannel);
@@ -195,6 +197,17 @@ const formatTime = (dateString) => {
   });
 };
 
+const isHuddleSystemMessage = (message) => {
+  const event = message?.metadata?.huddle?.event;
+  return (
+    message?.messageType === "system" &&
+    (event === "started" ||
+      event === "ended" ||
+      message.content === "Huddle started" ||
+      message.content === "Huddle ended")
+  );
+};
+
 const normalizeAuthorName = (message) =>
   String(message?.authorName || "")
     .trim()
@@ -257,6 +270,7 @@ watch(
     if (newChannelId && newChannelId !== oldChannelId) {
       chatStore.setupSocketListeners(newChannelId, members.value);
       chatStore.joinChannel(newChannelId);
+      huddleStore.checkActiveHuddle(newChannelId);
     }
   },
   { immediate: true }
@@ -413,11 +427,13 @@ onBeforeUnmount(() => {
                   </div>
                   <div
                     class="message-item-content"
-                    :class="{ 'message-item-content--system': message.messageType === 'system' && message.content !== 'Huddle started' && message.content !== 'Huddle ended' }"
+                    :class="{ 'message-item-content--system': message.messageType === 'system' && !isHuddleSystemMessage(message) }"
                   >
                     <HuddleSystemMessage
-                      v-if="message.messageType === 'system' && (message.content === 'Huddle started' || message.content === 'Huddle ended')"
+                      v-if="isHuddleSystemMessage(message)"
                       :message-content="message.content"
+                      :metadata="message.metadata"
+                      :created-at="message.createdAt"
                       @join="$emit('join-huddle')"
                     />
                     <template v-else>

@@ -110,6 +110,12 @@
           </div>
         </div>
 
+        <SubtitleOverlay
+          v-if="isConnected"
+          :enabled="subtitlesEnabled"
+          :segments="activeSubtitleSegments"
+        />
+
         <!-- Error state -->
         <div
           v-else-if="errorMessage"
@@ -182,6 +188,10 @@
           :size="20"
         />
       </button>
+      <SubtitleToggle
+        :enabled="subtitlesEnabled"
+        @toggle="handleSubtitleToggle"
+      />
       <button
         class="ctrl-btn ctrl-btn--leave"
         @click="handleLeave"
@@ -201,7 +211,10 @@ import { ref, onMounted, onUnmounted, watchEffect } from 'vue';
 import { Track } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Info, MessageCircle } from 'lucide-vue-next';
 import { useHuddle } from '../composables/useHuddle';
+import { useSubtitle } from '../composables/useSubtitle';
 import HuddleChatSidebar from './HuddleChatSidebar.vue';
+import SubtitleOverlay from './SubtitleOverlay.vue';
+import SubtitleToggle from './SubtitleToggle.vue';
 
 const props = defineProps<{
   livekitUrl: string;
@@ -223,6 +236,15 @@ const emit = defineEmits<{
 }>();
 
 const { state: huddleState, connect, disconnect, getRoom } = useHuddle();
+const {
+  enabled: subtitlesEnabled,
+  activeSegments: activeSubtitleSegments,
+  setEnabled: setSubtitleEnabled,
+  syncPreference: syncSubtitlePreference,
+} = useSubtitle({
+  channelId: props.channelId,
+  callId: props.callId,
+});
 
 const isConnected = ref(false);
 const errorMessage = ref('');
@@ -336,6 +358,11 @@ function toggleChat() {
   }
 }
 
+function handleSubtitleToggle(enabled: boolean) {
+  setSubtitleEnabled(enabled);
+  syncSubtitlePreference(enabled);
+}
+
 function handleLeave() {
   disconnect();
   emit('leave');
@@ -419,6 +446,7 @@ function handleLeave() {
   min-height: 0;
 }
 .call-content {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;

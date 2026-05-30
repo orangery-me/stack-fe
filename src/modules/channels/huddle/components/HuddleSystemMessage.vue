@@ -1,26 +1,49 @@
 <template>
   <div class="huddle-system-msg" :class="statusClass">
-    <span class="huddle-icon">
-      <PhoneCall v-if="isEndedMessage" :size="16" />
-      <Volume2 v-else :size="16" />
+    <span class="huddle-icon" aria-hidden="true">
+      <PhoneOff v-if="isEndedMessage" :size="18" />
+      <Headphones v-else :size="18" />
     </span>
-    <span class="huddle-text">{{ statusText }}</span>
+    <span class="huddle-text">
+      <span class="huddle-title-row">
+        <strong>{{ titleText }}</strong>
+        <span v-if="showLiveBadge" class="huddle-live-badge">LIVE</span>
+        <span class="huddle-time">{{ displayTime }}</span>
+      </span>
+      <span class="huddle-detail">{{ detailText }}</span>
+    </span>
     <button
       v-if="showJoinButton"
       class="join-btn"
+      type="button"
       @click="$emit('join')"
     >
-      Join Call
+      Join now
+    </button>
+    <button
+      v-if="showTranscriptButton"
+      class="transcript-btn"
+      type="button"
+      :disabled="isOpeningTranscript || !callId"
+      :title="callId ? 'Review meeting transcript' : 'Transcript is not available'"
+      @click="handleReviewTranscript"
+    >
+      <FileText :size="14" />
+      {{ isOpeningTranscript ? 'Opening...' : 'Review meeting transcript' }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Volume2, PhoneCall } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { FileText, Headphones, PhoneOff } from 'lucide-vue-next';
 import { useHuddleStore } from '../stores/huddle.store';
+import { huddleService } from '../services/huddle.service';
 
 const store = useHuddleStore();
+const router = useRouter();
+const isOpeningTranscript = ref(false);
 
 defineEmits<{
   (e: 'join'): void;
@@ -28,21 +51,46 @@ defineEmits<{
 
 const props = defineProps<{
   messageContent: string;
+  metadata?: Record<string, any>;
+  createdAt?: string;
+  allowJoinAction?: boolean;
 }>();
 
-const isEndedMessage = computed(() => props.messageContent === 'Huddle ended' || !store.hasActiveHuddle);
+const huddleMetadata = computed(() => props.metadata?.huddle || {});
+const callId = computed(() => huddleMetadata.value.callId || '');
+const huddleEvent = computed(() => huddleMetadata.value.event || (props.messageContent === 'Huddle ended' ? 'ended' : 'started'));
+const isEndedMessage = computed(() => huddleEvent.value === 'ended');
+const isStartMessage = computed(() => huddleEvent.value === 'started');
 
-const statusText = computed(() => {
-  if (props.messageContent === 'Huddle ended') {
-    return 'Huddle đã kết thúc';
+function formatTime(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+const startedAt = computed(() => huddleMetadata.value.startedAt || props.createdAt);
+const endedAt = computed(() => huddleMetadata.value.endedAt || props.createdAt);
+const displayTime = computed(() => formatTime(isEndedMessage.value ? endedAt.value : startedAt.value));
+const participantCount = computed(() => {
+  if (isStartMessage.value && store.hasActiveHuddle) {
+    return store.participantCount || huddleMetadata.value.participantCount || 1;
   }
-  if (store.isActive) {
-    return `Huddle đang diễn ra — ${store.participantCount} người`;
+  return huddleMetadata.value.participantCount || 1;
+});
+
+const participantLabel = computed(() => (participantCount.value === 1 ? 'participant' : 'participants'));
+
+const titleText = computed(() => (isEndedMessage.value ? 'Huddle ended' : 'Huddle started'));
+const showLiveBadge = computed(() => isStartMessage.value && store.hasActiveHuddle);
+const detailText = computed(() => {
+  if (isEndedMessage.value) {
+    return `Ended at ${displayTime.value || 'the recorded time'}. Review the meeting transcript when it is ready.`;
   }
-  if (!store.hasActiveHuddle) {
-    return 'Huddle đã kết thúc';
-  }
-  return 'Có huddle đang diễn ra. Tham gia ngay';
+  return `Started at ${displayTime.value || 'the recorded time'} with ${participantCount.value} ${participantLabel.value} in the huddle.`;
 });
 
 const statusClass = computed(() => ({
@@ -50,47 +98,144 @@ const statusClass = computed(() => ({
   'system-msg--ended': isEndedMessage.value,
 }));
 
-const showJoinButton = computed(() => props.messageContent === 'Huddle started' && store.hasActiveHuddle && !store.isActive);
+const showJoinButton = computed(() => props.allowJoinAction !== false && isStartMessage.value && store.hasActiveHuddle && !store.isCurrentUserParticipant);
+const showTranscriptButton = computed(() => isEndedMessage.value);
+
+async function handleReviewTranscript() {
+  if (!callId.value || isOpeningTranscript.value) return;
+  isOpeningTranscript.value = true;
+  try {
+    const result = await huddleService.createTranscriptReviewCanvas(callId.value);
+    if (result?.canvas_id) {
+      await router.push({ name: 'canvasEdit', params: { canvasId: result.canvas_id } });
+    }
+  } finally {
+    isOpeningTranscript.value = false;
+  }
+}
 </script>
 
 <style scoped>
 .huddle-system-msg {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
   border-radius: 8px;
   margin: 8px 0;
   font-size: 14px;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 .system-msg--active {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #14532d;
 }
 .system-msg--ended {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #64748b;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
 }
 .huddle-icon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #059669;
+  color: #fff;
+}
+.system-msg--ended .huddle-icon {
+  background: #2563eb;
 }
 .huddle-text {
-  flex: 1;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
 }
-.join-btn {
-  padding: 6px 14px;
+.huddle-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.huddle-live-badge {
+  border-radius: 999px;
+  background: #047857;
+  color: #fff;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
+.huddle-time {
+  color: rgba(15, 23, 42, 0.62);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.huddle-detail {
+  color: rgba(15, 23, 42, 0.76);
+  overflow-wrap: anywhere;
+}
+.join-btn,
+.transcript-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 32px;
   border-radius: 6px;
   border: none;
-  background: #22c55e;
-  color: #fff;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
+}
+.join-btn {
+  padding: 7px 14px;
+  background: #059669;
+  color: #fff;
 }
 .join-btn:hover {
-  background: #16a34a;
+  background: #047857;
+}
+.transcript-btn {
+  padding: 7px 12px;
+  background: #1d4ed8;
+  color: #fff;
+}
+.transcript-btn:hover {
+  background: #1e40af;
+}
+.transcript-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.join-btn:active,
+.transcript-btn:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 640px) {
+  .huddle-system-msg {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .huddle-text {
+    flex-basis: calc(100% - 48px);
+  }
+
+  .join-btn,
+  .transcript-btn {
+    margin-left: 48px;
+  }
 }
 </style>

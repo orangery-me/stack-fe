@@ -6,6 +6,7 @@ import AppLoading from "@/components/loading/AppLoading.vue";
 import chatService from "@/services/chat.service";
 import { useChatStore } from "@/modules/channels/stores/chat.store";
 import { useWorkspaceStore } from "@/modules/workspaces/stores/workspace.store.js";
+import HuddleSystemMessage from "./HuddleSystemMessage.vue";
 
 const props = defineProps({
   workspaceId: {
@@ -189,6 +190,17 @@ const isMessageGroupStart = (dayMessages, index) => {
   return !isSameSender(currentMessage, previousMessage);
 };
 
+const isHuddleSystemMessage = (message) => {
+  const event = message?.metadata?.huddle?.event;
+  return (
+    message?.messageType === "system" &&
+    (event === "started" ||
+      event === "ended" ||
+      message.content === "Huddle started" ||
+      message.content === "Huddle ended")
+  );
+};
+
 watch(
   () => messages.value.length,
   (newLength, oldLength) => {
@@ -312,9 +324,18 @@ onBeforeUnmount(() => {
 
               <div
                 class="huddle-message-content"
-                :class="{ 'huddle-message-content--system': message.messageType === 'system' }"
+                :class="{ 'huddle-message-content--system': message.messageType === 'system' && !isHuddleSystemMessage(message) }"
               >
-                {{ message.content }}
+                <HuddleSystemMessage
+                  v-if="isHuddleSystemMessage(message)"
+                  :message-content="message.content"
+                  :metadata="message.metadata"
+                  :created-at="message.createdAt"
+                  :allow-join-action="false"
+                />
+                <template v-else>
+                  {{ message.content }}
+                </template>
               </div>
 
               <div
@@ -495,7 +516,8 @@ onBeforeUnmount(() => {
 }
 
 .huddle-message--system {
-  justify-content: center;
+  justify-content: flex-start;
+  width: 100%;
 }
 
 .huddle-message--pending {
