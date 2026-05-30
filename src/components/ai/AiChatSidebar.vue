@@ -51,6 +51,8 @@ const isLoadingSession = ref(false);
 const messages = ref([]);
 const messagesEl = ref(null);
 const textareaEl = ref(null);
+const taskSetup = ref(null);
+const processingPendingCommandId = ref(null);
 
 // Session state
 const activeSession = ref(null);
@@ -170,6 +172,7 @@ function abortStream() {
     abortController = null;
   }
   isStreaming.value = false;
+  uiStore.setAiBusy(false);
 }
 
 function focusTextareaToEnd() {
@@ -190,8 +193,8 @@ function applyPendingDraft() {
 
 // ======== Send message ========
 
-async function sendMessage() {
-  const text = inputValue.value.trim();
+async function sendMessage(options = {}) {
+  const text = (options.message ?? inputValue.value).trim();
   if (!text || isStreaming.value || !activeSession.value) return;
 
   abortStream();
@@ -207,8 +210,11 @@ async function sendMessage() {
     streaming: true,
   });
 
-  inputValue.value = "";
+  if (!options.message) {
+    inputValue.value = "";
+  }
   isStreaming.value = true;
+  uiStore.setAiBusy(true);
   scrollToBottom();
 
   abortController = new AbortController();
@@ -216,6 +222,7 @@ async function sendMessage() {
     const msg = messages.value.find((m) => m.id === assistantId);
     if (msg) msg.streaming = false;
     isStreaming.value = false;
+    uiStore.setAiBusy(false);
     abortController = null;
 
     if (activeSession.value?.title === "New chat") {
@@ -234,23 +241,29 @@ async function sendMessage() {
   const onErrorCommon = (err) => {
     const msg = messages.value.find((m) => m.id === assistantId);
     if (msg) {
-      msg.content = msg.content || `(Lỗi: ${err?.message ?? "Không rõ"})`;
+      msg.content = msg.content || `(Error: ${err?.message ?? "Unknown"})`;
       msg.streaming = false;
       msg.error = true;
     }
     isStreaming.value = false;
+    uiStore.setAiBusy(false);
     abortController = null;
   };
 
-  const useTaskFlow = shouldUseTaskFlow(text);
+  const ctx = options.context || props.context || {};
+  const useTaskFlow =
+    options.kind === "canvas-task-generation" || shouldUseTaskFlow(text);
   if (useTaskFlow) {
-    const ctx = props.context || {};
     await sendTaskSessionMessageStream(activeSession.value.id, {
       workspaceId: ctx.workspaceId,
       channelId: ctx.channelId,
       taskListId: ctx.taskListId,
       canvasId: ctx.canvasId,
       canvasContent: ctx.canvasPlainText ?? "",
+      canvasTitle: ctx.canvasTitle,
+      sourceCanvasUrl: ctx.sourceCanvasUrl,
+      overallDueDate: ctx.overallDueDate,
+      timezone: ctx.timezone,
       message: text,
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
@@ -275,6 +288,7 @@ async function sendMessage() {
           msg.actions = event.actions.map((a) => ({
             ...a,
             status: a.status || "pending",
+            selectedTaskIndexes: getActionTasks(a).map((_, index) => index),
           }));
         }
         scrollToBottom();
@@ -283,11 +297,11 @@ async function sendMessage() {
       onError: onErrorCommon,
     });
   } else if (isCanvasMode.value) {
-    const ctx = props.context || {};
     await sendCanvasSessionMessageStream(activeSession.value.id, {
       canvasId: ctx.canvasId,
       canvasContent: ctx.canvasPlainText ?? "",
       message: text,
+      mode: options.mode,
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
       signal: abortController.signal,
@@ -311,6 +325,7 @@ async function sendMessage() {
           msg.actions = event.actions.map((a) => ({
             ...a,
             status: a.status || "pending",
+            selectedTaskIndexes: getActionTasks(a).map((_, index) => index),
           }));
         }
         scrollToBottom();
@@ -346,6 +361,7 @@ async function handleAcceptAction(messageId, action) {
     const isTaskAction =
       action.name === "create_task" ||
       action.name === "create_tasks_batch" ||
+      action.name === "create_task_list_with_tasks" ||
       action.name === "list_task_lists" ||
       action.name === "search_workspace_members";
     const result = isTaskAction
@@ -363,7 +379,7 @@ async function handleAcceptAction(messageId, action) {
         });
     action.status = result?.ok ? "accepted" : "failed";
     if (!result?.ok) {
-      action.error = result?.error || "Apply thất bại";
+      action.error = result?.error || "Apply failed";
     }
     if (result?.ok && isTaskAction && props.context?.workspaceId) {
       const workspaceId = props.context.workspaceId;
@@ -378,7 +394,7 @@ async function handleAcceptAction(messageId, action) {
     }
   } catch (err) {
     action.status = "failed";
-    action.error = err?.message || "Apply thất bại";
+    action.error = err?.message || "Apply failed";
   }
 }
 
@@ -398,6 +414,158 @@ function handleRejectAction(messageId, action) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions) return;
   action.status = "rejected";
+}
+
+async function processPendingAiCommand() {
+  const command = uiStore.pendingAiCommand;
+  if (
+    !command ||
+    isStreaming.value ||
+    processingPendingCommandId.value === command.id
+  ) {
+    return;
+  }
+  if (!props.open) {
+    emit("update:open", true);
+    return;
+  }
+  processingPendingCommandId.value = command.id;
+  try {
+    await startFreshCommandSession(command);
+    uiStore.clearPendingAiCommand(command.id);
+
+    if (command.kind === "canvas-summary") {
+      await sendMessage({
+        message: command.message,
+        kind: command.kind,
+        context: command.context,
+        mode: "summary",
+      });
+      return;
+    }
+
+    if (command.kind === "canvas-task-generation") {
+      taskSetup.value = {
+        command,
+        overallDueDate: "",
+      };
+    }
+  } catch {
+    // Toast shown by global interceptor
+  } finally {
+    processingPendingCommandId.value = null;
+  }
+}
+
+async function startFreshCommandSession(command) {
+  abortStream();
+  showSessionDropdown.value = false;
+  taskSetup.value = null;
+  messages.value = [];
+  const canvasTitle = command.context?.canvasTitle || "Canvas";
+  const prefix =
+    command.kind === "canvas-task-generation" ? "Tasks" : "Summary";
+  const title = `${prefix}: ${canvasTitle}`.slice(0, 80);
+  const session = await createSession(title);
+  activeSession.value = session;
+  await loadSessionList();
+}
+
+function submitTaskSetup() {
+  if (!taskSetup.value?.command || isStreaming.value) return;
+  const { command, overallDueDate } = taskSetup.value;
+  const dueIso = overallDueDate
+    ? new Date(`${overallDueDate}T17:00:00`).toISOString()
+    : "";
+  const timezone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const message = overallDueDate
+    ? `${command.message}\n\nOverall due date: ${overallDueDate}.`
+    : `${command.message}\n\nNo overall due date was provided; only set per-task due dates if the Canvas explicitly mentions dates.`;
+  taskSetup.value = null;
+  sendMessage({
+    message,
+    kind: command.kind,
+    context: {
+      ...command.context,
+      overallDueDate: dueIso,
+      timezone,
+    },
+  });
+}
+
+function cancelTaskSetup() {
+  taskSetup.value = null;
+}
+
+function isTaskListWithTasksAction(action) {
+  return action?.name === "create_task_list_with_tasks";
+}
+
+function getActionTasks(action) {
+  const tasks = action?.arguments?.tasks;
+  return Array.isArray(tasks) ? tasks : [];
+}
+
+function isTaskSelected(action, index) {
+  return Array.isArray(action.selectedTaskIndexes)
+    ? action.selectedTaskIndexes.includes(index)
+    : true;
+}
+
+function toggleTaskSelection(action, index, checked) {
+  const current = new Set(action.selectedTaskIndexes || []);
+  if (checked) current.add(index);
+  else current.delete(index);
+  action.selectedTaskIndexes = Array.from(current).sort((a, b) => a - b);
+}
+
+function selectedTaskCount(action) {
+  return getActionTasks(action).filter((_, index) =>
+    isTaskSelected(action, index),
+  ).length;
+}
+
+async function handleConfirmSelectedTasks(messageId, action) {
+  const tasks = getActionTasks(action);
+  const selected = tasks.filter((_, index) => isTaskSelected(action, index));
+  if (!selected.length) return;
+  action.arguments = {
+    ...(action.arguments || {}),
+    tasks: selected,
+  };
+  await handleAcceptAction(messageId, action);
+  if (action.status === "accepted") {
+    addAssistantNotice(
+      `Task list created successfully with ${selected.length} task${
+        selected.length === 1 ? "" : "s"
+      }.`,
+    );
+  }
+}
+
+function addAssistantNotice(content) {
+  messages.value.push({
+    id: ++msgIdCounter,
+    role: "assistant",
+    content,
+    actions: [],
+    streaming: false,
+  });
+  scrollToBottom();
+}
+
+function taskDueLabel(task) {
+  if (!task?.due_date) return "No due date";
+  try {
+    return new Date(task.due_date).toLocaleString();
+  } catch {
+    return task.due_date;
+  }
+}
+
+function actionCanvasTitle(action) {
+  return action?.arguments?.source_canvas_title || "Source canvas";
 }
 
 function handleKeydown(e) {
@@ -420,9 +588,13 @@ watch(
   () => props.open,
   async (opened) => {
     if (opened) {
-      await loadActiveSession();
-      await loadSessionList();
-      applyPendingDraft();
+      if (uiStore.pendingAiCommand) {
+        await processPendingAiCommand();
+      } else {
+        await loadActiveSession();
+        await loadSessionList();
+        applyPendingDraft();
+      }
       if (!inputValue.value) {
         focusTextareaToEnd();
       }
@@ -438,6 +610,13 @@ watch(
   () => {
     if (!props.open) return;
     applyPendingDraft();
+  },
+);
+
+watch(
+  () => uiStore.pendingAiCommand,
+  () => {
+    processPendingAiCommand();
   },
 );
 
@@ -506,8 +685,7 @@ function hasTaskKeywords(text) {
     normalized.includes("task") ||
     normalized.includes("todo") ||
     normalized.includes("to-do") ||
-    normalized.includes("action item") ||
-    normalized.includes("việc cần làm")
+    normalized.includes("action item")
   );
 }
 
@@ -546,7 +724,7 @@ function handleHistorySelect(session) {
       <!-- Drag resize handle (left edge) -->
       <div
         class="ai-chat-resize-handle"
-        title="Kéo để thay đổi kích thước"
+        title="Drag to resize"
         @mousedown.prevent="startResize"
       />
 
@@ -570,7 +748,7 @@ function handleHistorySelect(session) {
               type="button"
               class="ai-session-btn"
               :title="
-                activeSession ? sessionLabel(activeSession) : 'Chọn session'
+                activeSession ? sessionLabel(activeSession) : 'Choose session'
               "
               @click="showSessionDropdown = !showSessionDropdown"
             >
@@ -625,7 +803,7 @@ function handleHistorySelect(session) {
           <button
             type="button"
             class="ai-chat-close-btn"
-            title="Đóng"
+            title="Close"
             @click="close"
           >
             <X :size="16" />
@@ -657,7 +835,7 @@ function handleHistorySelect(session) {
             :size="32"
             class="ai-chat-empty-icon"
           />
-          <p>Chào! Tôi là AI Assistant.<br>Hãy hỏi bất cứ điều gì.</p>
+          <p>Hello, I am your AI Assistant.<br>Ask anything.</p>
         </div>
 
         <template v-else>
@@ -695,7 +873,10 @@ function handleHistorySelect(session) {
                 "
                 class="ai-action-list"
               >
-                <div class="ai-action-batch-controls">
+                <div
+                  v-if="!msg.actions.some(isTaskListWithTasksAction)"
+                  class="ai-action-batch-controls"
+                >
                   <button
                     type="button"
                     class="ai-action-btn ai-action-btn--accept"
@@ -716,7 +897,54 @@ function handleHistorySelect(session) {
                       :class="`is-${action.status}`"
                     >{{ action.status }}</span>
                   </div>
-                  <div class="ai-action-args">
+
+                  <div
+                    v-if="isTaskListWithTasksAction(action)"
+                    class="ai-task-preview"
+                  >
+                    <div class="ai-task-preview-header">
+                      <strong>{{ action.arguments?.list_name || "New task list" }}</strong>
+                      <span>{{ selectedTaskCount(action) }} selected</span>
+                    </div>
+                    <label
+                      v-for="(task, taskIndex) in getActionTasks(action)"
+                      :key="`${action.id || action.name}-${taskIndex}`"
+                      class="ai-task-preview-row"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="isTaskSelected(action, taskIndex)"
+                        :disabled="action.status !== 'pending'"
+                        @change="
+                          toggleTaskSelection(
+                            action,
+                            taskIndex,
+                            $event.target.checked,
+                          )
+                        "
+                      >
+                      <span class="ai-task-preview-body">
+                        <span class="ai-task-preview-title">{{
+                          task.title || "Untitled task"
+                        }}</span>
+                        <span
+                          v-if="task.description"
+                          class="ai-task-preview-description"
+                        >{{ task.description }}</span>
+                        <span class="ai-task-preview-meta">
+                          Due: {{ taskDueLabel(task) }} · Priority:
+                          {{ task.priority || "medium" }} · Assignee: You
+                        </span>
+                        <span class="ai-task-preview-meta">
+                          Attachment: {{ actionCanvasTitle(action) }}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                  <div
+                    v-else
+                    class="ai-action-args"
+                  >
                     {{ JSON.stringify(action.arguments || {}) }}
                   </div>
                   <div
@@ -730,6 +958,16 @@ function handleHistorySelect(session) {
                     class="ai-action-buttons"
                   >
                     <button
+                      v-if="isTaskListWithTasksAction(action)"
+                      type="button"
+                      class="ai-action-btn ai-action-btn--accept"
+                      :disabled="selectedTaskCount(action) === 0"
+                      @click="handleConfirmSelectedTasks(msg.id, action)"
+                    >
+                      Confirm Selected
+                    </button>
+                    <button
+                      v-else
                       type="button"
                       class="ai-action-btn ai-action-btn--accept"
                       @click="handleAcceptAction(msg.id, action)"
@@ -751,22 +989,56 @@ function handleHistorySelect(session) {
         </template>
       </div>
 
+      <div
+        v-if="taskSetup"
+        class="ai-task-setup"
+      >
+        <div class="ai-task-setup-title">
+          Task generation setup
+        </div>
+        <label class="ai-task-setup-field">
+          <span>Overall due date</span>
+          <input
+            v-model="taskSetup.overallDueDate"
+            type="date"
+          >
+        </label>
+        <div class="ai-task-setup-actions">
+          <button
+            type="button"
+            class="ai-action-btn ai-action-btn--reject"
+            @click="cancelTaskSetup"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="ai-action-btn ai-action-btn--accept"
+            @click="submitTaskSetup"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+
       <!-- Input area -->
       <div class="ai-chat-input-area">
         <textarea
           ref="textareaEl"
           v-model="inputValue"
           class="ai-chat-textarea"
-          placeholder="Nhập câu hỏi... (Enter để gửi)"
+          placeholder="Ask a question... (Enter to send)"
           rows="3"
-          :disabled="isStreaming || isLoadingSession"
+          :disabled="isStreaming || isLoadingSession || Boolean(taskSetup)"
           @keydown="handleKeydown"
         />
         <button
           type="button"
           class="ai-chat-send-btn"
-          :disabled="isStreaming || isLoadingSession || !inputValue.trim()"
-          title="Gửi (Enter)"
+          :disabled="
+            isStreaming || isLoadingSession || Boolean(taskSetup) || !inputValue.trim()
+          "
+          title="Send (Enter)"
           @click="sendMessage"
         >
           <Send :size="16" />
@@ -1192,6 +1464,60 @@ function handleHistorySelect(session) {
   overflow-x: auto;
 }
 
+.ai-task-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-task-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.ai-task-preview-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+}
+
+.ai-task-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ai-task-preview-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ai-task-preview-description {
+  font-size: 12px;
+  color: #334155;
+}
+
+.ai-task-preview-meta {
+  font-size: 11px;
+  color: #64748b;
+}
+
 .ai-action-error {
   font-size: 11px;
   color: #b91c1c;
@@ -1210,6 +1536,11 @@ function handleHistorySelect(session) {
   padding: 4px 8px;
   font-size: 11px;
   cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .ai-action-btn--accept {
@@ -1220,6 +1551,46 @@ function handleHistorySelect(session) {
 .ai-action-btn--reject {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.ai-task-setup {
+  flex-shrink: 0;
+  border-top: 1px solid var(--ui-divider, #e5e7eb);
+  background: #f8fafc;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-task-setup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ai-task-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: #475569;
+
+  input {
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 0 8px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fff;
+  }
+}
+
+.ai-task-setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .ai-chat-msg-text {

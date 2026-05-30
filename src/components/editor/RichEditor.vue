@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
+import {
+  ChevronDown,
+  FileText,
+  ListTodo,
+  Share2,
+  Sparkles,
+} from "lucide-vue-next";
 import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
 import AiWriterBar from "@/components/editor/AiWriterBar.vue";
 import AiSelectionIcon from "@/components/editor/AiSelectionIcon.vue";
@@ -40,6 +47,7 @@ const props = withDefaults(
     // Selection AI trigger
     selectionAiIcon?: SelectionAiIconState | null;
     canvasPlainText?: string;
+    aiActionsDisabled?: boolean;
   }>(),
   {
     readOnly: false,
@@ -51,6 +59,7 @@ const props = withDefaults(
     aiWriterBar: null,
     selectionAiIcon: null,
     canvasPlainText: "",
+    aiActionsDisabled: false,
   },
 );
 
@@ -69,6 +78,8 @@ const emit = defineEmits<{
   "ai-close": [];
   // Selection AI trigger
   "selection-icon-click": [];
+  "ai-summary": [];
+  "ai-task-generation": [];
 }>();
 
 function onTitleInput(e: Event) {
@@ -160,6 +171,10 @@ const viewersExcludingSelf = computed(() => {
   return props.viewers ?? [];
 });
 
+const aiToolbarActionsDisabled = computed(() => {
+  return props.aiActionsDisabled || !props.canvasPlainText?.trim();
+});
+
 const visibleViewers = computed(() => {
   return viewersExcludingSelf.value.slice(0, 5);
 });
@@ -213,16 +228,16 @@ const viewerPopupStyle = computed((): Record<string, string | number> => {
 
   let left;
 
-  // Quyết định mở trái / phải
+  // Decide whether to open left or right.
   if (rect.left > window.innerWidth / 2) {
-    // mở về bên trái
+    // Open to the left.
     left = rect.right - popupWidth;
   } else {
-    // mở về bên phải
+    // Open to the right.
     left = rect.left;
   }
 
-  // Clamp lại để không tràn viewport
+  // Clamp to keep the popup inside the viewport.
   if (left + popupWidth > window.innerWidth - margin) {
     left = window.innerWidth - popupWidth - margin;
   }
@@ -304,60 +319,6 @@ onBeforeUnmount(() => {
               }}</span>
             </div>
           </div>
-          <!-- Dãy function: File, Insert (hàng dưới) -->
-          <div class="toolbar-row toolbar-row--menu">
-            <details class="dd dd-menu-item">
-              <summary class="dd-btn dd-btn--menu">
-                File
-              </summary>
-              <div class="dd-menu">
-                <button
-                  type="button"
-                  @click="emit('download')"
-                >
-                  Download
-                </button>
-                <button
-                  type="button"
-                  @click="emit('moveToTrash')"
-                >
-                  Move to trash
-                </button>
-              </div>
-            </details>
-            <details
-              class="dd dd-menu-item"
-              :class="{ 'dd-disabled': readOnly }"
-              :aria-disabled="readOnly ? 'true' : 'false'"
-            >
-              <summary class="dd-btn dd-btn--menu">
-                Insert
-              </summary>
-              <div class="dd-menu">
-                <button
-                  type="button"
-                  :disabled="readOnly"
-                  @click="addImageFromUrl"
-                >
-                  Image (URL)
-                </button>
-                <button
-                  type="button"
-                  :disabled="readOnly"
-                  @click="editor?.chain().focus().setHorizontalRule().run()"
-                >
-                  Divider
-                </button>
-                <button
-                  type="button"
-                  :disabled="readOnly"
-                  @click="editor?.chain().focus().toggleCodeBlock().run()"
-                >
-                  Code block
-                </button>
-              </div>
-            </details>
-          </div>
         </div>
         <div class="spacer" />
         <!-- Viewers list -->
@@ -425,8 +386,8 @@ onBeforeUnmount(() => {
                       <button
                         type="button"
                         class="rte-viewer-popup__add-person"
-                        title="Thêm người"
-                        aria-label="Thêm người"
+                        title="Add person"
+                        aria-label="Add person"
                       >
                         <svg
                           width="16"
@@ -469,14 +430,14 @@ onBeforeUnmount(() => {
                         alt=""
                         class="rte-viewer-popup__btn-icon"
                       >
-                      Gửi thư
+                      Send email
                     </button>
                     <div class="rte-viewer-popup__actions">
                       <button
                         type="button"
                         class="rte-viewer-popup__action-btn"
-                        title="Nhắn tin"
-                        aria-label="Nhắn tin"
+                        title="Message"
+                        aria-label="Message"
                       >
                         <img
                           src="/icons/message-circle-dot.svg"
@@ -488,8 +449,8 @@ onBeforeUnmount(() => {
                       <button
                         type="button"
                         class="rte-viewer-popup__action-btn"
-                        title="Gọi video"
-                        aria-label="Gọi video"
+                        title="Video call"
+                        aria-label="Video call"
                       >
                         <img
                           src="/icons/meeting.svg"
@@ -501,8 +462,8 @@ onBeforeUnmount(() => {
                       <button
                         type="button"
                         class="rte-viewer-popup__action-btn"
-                        title="Lịch"
-                        aria-label="Lịch"
+                        title="Calendar"
+                        aria-label="Calendar"
                       >
                         <img
                           src="/icons/calendar.svg"
@@ -517,7 +478,7 @@ onBeforeUnmount(() => {
                       class="rte-viewer-popup__detail-link"
                       @click.prevent
                     >
-                      Mở chế độ xem chi tiết
+                      Open detailed view
                       <svg
                         width="14"
                         height="14"
@@ -544,32 +505,47 @@ onBeforeUnmount(() => {
             </div>
           </Teleport>
         </div>
-        <!-- Header actions: History, Comment, Share, Sparkle (between viewers and current user) -->
+        <!-- Header actions -->
         <div class="rte-header-actions">
           <button
             type="button"
-            class="rte-header-action-btn"
-            title="Lịch sử"
-            aria-label="Lịch sử"
+            class="rte-header-action-btn rte-header-action-btn--ai-tool"
+            :disabled="aiToolbarActionsDisabled"
+            title="AI Summary"
+            aria-label="AI Summary"
+            @click="emit('ai-summary')"
           >
-            <img
-              src="/icons/toolbar2/history.svg"
-              alt=""
-              class="rte-header-action-icon"
-            >
+            <FileText :size="18" />
           </button>
           <button
             type="button"
-            class="rte-header-action-btn"
-            title="Bình luận"
-            aria-label="Bình luận"
+            class="rte-header-action-btn rte-header-action-btn--ai-tool"
+            :disabled="aiToolbarActionsDisabled"
+            title="AI Task Generation"
+            aria-label="AI Task Generation"
+            @click="emit('ai-task-generation')"
           >
-            <img
-              src="/icons/toolbar2/comment.svg"
-              alt=""
-              class="rte-header-action-icon rte-header-action-icon--comment"
-            >
+            <ListTodo :size="18" />
           </button>
+          <details class="rte-share-wrap">
+            <summary class="rte-share-btn">
+              <Share2 :size="17" />
+              <span class="rte-share-btn-text">Share</span>
+              <span class="rte-share-btn-sep" />
+              <ChevronDown
+                :size="15"
+                class="rte-share-btn-caret"
+              />
+            </summary>
+            <div class="rte-share-menu">
+              <button type="button">
+                Share with everyone
+              </button>
+              <button type="button">
+                Copy link
+              </button>
+            </div>
+          </details>
           <button
             type="button"
             class="rte-header-action-btn rte-header-action-btn--ai"
@@ -578,58 +554,8 @@ onBeforeUnmount(() => {
             aria-label="AI Assistant"
             @click="uiStore.toggleAi()"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
-              />
-            </svg>
+            <Sparkles :size="18" />
           </button>
-          <details class="rte-share-wrap">
-            <summary class="rte-share-btn">
-              <img
-                src="/icons/toolbar2/share.svg"
-                alt=""
-                class="rte-share-btn-icon"
-              >
-              <span class="rte-share-btn-text">Share</span>
-              <span class="rte-share-btn-sep" />
-              <img
-                src="/icons/arrow-down.svg"
-                alt=""
-                class="rte-share-btn-caret"
-              >
-            </summary>
-            <div class="rte-share-menu">
-              <button type="button">
-                Chia sẻ với mọi người
-              </button>
-              <button type="button">
-                Sao chép link
-              </button>
-            </div>
-          </details>
-          <!-- <button
-            type="button"
-            class="rte-header-action-btn"
-            title="Sparkle"
-            aria-label="Sparkle"
-          >
-            <img
-              src="/icons/star.svg"
-              alt=""
-              class="rte-header-action-icon"
-            >
-          </button> -->
         </div>
         <!-- Current user avatar (top-right) -->
         <div
@@ -1021,7 +947,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .rte {
   border: 0px solid #e5e7eb;
-  /* Toolbar cố định, chỉ phần nội dung scroll khi dài */
+  /* Fixed toolbar; only the content area scrolls when long. */
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1107,28 +1033,6 @@ onBeforeUnmount(() => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.toolbar-row--menu {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  /* padding: 4px 12px 8px; */
-  /* border-bottom: 1px solid #e5e7eb; */
-}
-
-.dd-btn--menu {
-  font-size: 14px;
-  color: #374151;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.dd-btn--menu:hover {
-  background: #f3f4f6;
-}
-.dd-menu-item .dd-menu {
-  top: 100%;
-  margin-top: 4px;
 }
 
 .toolbar-row--actions {
@@ -1291,7 +1195,7 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
-/* Content style giống “prose” */
+/* Content styling similar to prose. */
 .content {
   flex: 1;
   min-height: 0;
@@ -1405,7 +1309,7 @@ onBeforeUnmount(() => {
   border-color: #e5e7eb;
 }
 
-/* Header actions: History, Comment, Share, Sparkle */
+/* Header actions */
 .rte-header-actions {
   display: flex;
   align-items: center;
@@ -1431,6 +1335,15 @@ onBeforeUnmount(() => {
   background: #f3f4f6;
 }
 
+.rte-header-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rte-header-action-btn:disabled:hover {
+  background: transparent;
+}
+
 .rte-header-action-btn--ai {
   color: #6b7280;
 }
@@ -1449,19 +1362,13 @@ onBeforeUnmount(() => {
   background: #ddd6fe;
 }
 
-.rte-header-action-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  /* Chuẩn hóa màu/độ đậm giữa các SVG khác nhau */
-  filter: brightness(0) saturate(100%);
-  opacity: 0.72;
+.rte-header-action-btn--ai-tool {
+  color: #1f2937;
 }
 
-/* Comment icon SVG mỏng hơn → scale nhẹ + đậm hơn để đồng bộ với History/Star */
-.rte-header-action-icon--comment {
-  transform: scale(1.18);
-  opacity: 0.82;
+.rte-header-action-btn--ai-tool:hover {
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .rte-share-wrap {
@@ -1472,7 +1379,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
+  height: 36px;
   padding: 0 10px 0 12px;
   background: #e0f2fe;
   color: #0c4a6e;
@@ -1493,13 +1400,6 @@ onBeforeUnmount(() => {
   color: #075985;
 }
 
-.rte-share-btn-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  background: transparent;
-}
-
 .rte-share-btn-text {
   margin-right: 2px;
   font-weight: 500;
@@ -1514,12 +1414,7 @@ onBeforeUnmount(() => {
 }
 
 .rte-share-btn-caret {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(22%) sepia(35%) saturate(1200%)
-    hue-rotate(185deg);
-  opacity: 0.92;
+  flex-shrink: 0;
 }
 
 .rte-share-menu {

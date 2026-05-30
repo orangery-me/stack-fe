@@ -496,6 +496,7 @@ onBeforeUnmount(() => {
           :key="list.id"
           class="channel-tab"
           :class="{ active: activeMainTab === `task-${list.id}` }"
+          :title="list.name || 'Untitled list'"
           type="button"
           @click="activeMainTab = `task-${list.id}`"
         >
@@ -503,7 +504,9 @@ onBeforeUnmount(() => {
             class="pi pi-check-square"
             style="font-size: 12px"
           />
-          {{ list.name || 'Untitled list' }}
+          <span class="channel-tab-label">
+            {{ list.name || 'Untitled list' }}
+          </span>
         </button>
 
         <!-- + Button dropdown -->
