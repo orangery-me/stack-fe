@@ -192,6 +192,34 @@ export async function updateSession(sessionId, title) {
 }
 
 /**
+ * Persist the reviewed status of a structured assistant action.
+ * @param {string} sessionId
+ * @param {string} messageId
+ * @param {string} actionId
+ * @param {{ status: string, error?: string }} payload
+ * @returns {Promise<ChatMessage>}
+ */
+export async function updateMessageActionStatus(
+  sessionId,
+  messageId,
+  actionId,
+  { status, error } = {},
+) {
+  const response = await apiHelper.patch(
+    API_ENDPOINTS.AGENT.SESSION_MESSAGE_ACTION_STATUS(
+      sessionId,
+      messageId,
+      actionId,
+    ),
+    {
+      status,
+      ...(error && { error }),
+    },
+  );
+  return response.data?.data ?? response.data;
+}
+
+/**
  * Send a message in a session with SSE streaming.
  * @param {string} sessionId
  * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
@@ -245,6 +273,7 @@ export async function sendCanvasSessionMessageStream(
     message,
     provider,
     model,
+    mode,
     signal,
     onChunk,
     onEvent,
@@ -260,6 +289,7 @@ export async function sendCanvasSessionMessageStream(
       message,
       ...(provider && { provider }),
       ...(model && { model }),
+      ...(mode && { mode }),
     },
     { signal, onChunk, onEvent, onDone, onError },
   );
@@ -292,6 +322,10 @@ export async function sendTaskSessionMessageStream(
     taskListId,
     canvasId,
     canvasContent,
+    canvasTitle,
+    sourceCanvasUrl,
+    overallDueDate,
+    timezone,
     message,
     provider,
     model,
@@ -310,6 +344,10 @@ export async function sendTaskSessionMessageStream(
       taskListId,
       canvasId,
       canvasContent: canvasContent ?? "",
+      ...(canvasTitle && { canvasTitle }),
+      ...(sourceCanvasUrl && { sourceCanvasUrl }),
+      ...(overallDueDate && { overallDueDate }),
+      ...(timezone && { timezone }),
       message,
       ...(provider && { provider }),
       ...(model && { model }),

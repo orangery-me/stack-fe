@@ -158,8 +158,14 @@
 }
 
 .message-item--system {
-  justify-content: center;
+  justify-content: flex-start;
+  width: 100%;
   margin: 10px 0;
+}
+
+.message-item--system .message-item-body,
+.message-item--system .message-item-content {
+  width: 100%;
 }
 
 .message-item-avatar {
@@ -181,7 +187,6 @@
 }
 
 .message-item-body {
-  // flex: 1;
   min-width: 0;
 }
 
@@ -219,6 +224,208 @@
   padding: 4px 10px;
   background: var(--gray-50);
   text-align: center;
+}
+
+.message-system-link {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.message-system-link:hover {
+  color: var(--primary-600);
+  text-decoration: underline;
+}
+
+.canvas-share-system {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.canvas-share-system__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.canvas-share-system__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.canvas-share-system__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.canvas-share-system__title-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-share-system__time,
+.canvas-share-system__detail {
+  color: #6b7280;
+}
+
+.canvas-share-system__time {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.canvas-share-system__detail {
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.canvas-share-system__role {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.canvas-share-system__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.canvas-share-system__action:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.canvas-share-system__action:active {
+  transform: translateY(1px);
+}
+
+.channel-system-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.channel-system-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.channel-system-card__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.channel-system-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.channel-system-card__title-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-system-card__time,
+.channel-system-card__detail {
+  color: #6b7280;
+}
+
+.channel-system-card__time {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.channel-system-card__detail {
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .canvas-share-system,
+  .channel-system-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .canvas-share-system__body,
+  .channel-system-card__body {
+    flex-basis: calc(100% - 42px);
+  }
+
+  .canvas-share-system__role,
+  .canvas-share-system__action {
+    margin-left: 42px;
+  }
 }
 
 .message-item--pending {

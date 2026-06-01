@@ -6,6 +6,31 @@ import type {
   CreateCanvasPayload,
 } from "@/modules/channels/types/canvas.types";
 
+export type CanvasShareRole = "viewer" | "editor";
+
+export interface CanvasPermissionItem {
+  id: string;
+  type: "user" | "channel" | "workspace";
+  targetId: string;
+  role: CanvasShareRole;
+  label: string;
+}
+
+export interface CanvasPermissionList {
+  visibility: "private" | "shared" | "public-workspace";
+  generalAccess: {
+    enabled: boolean;
+    role: CanvasShareRole;
+  };
+  items: CanvasPermissionItem[];
+}
+
+export interface CanvasAccess {
+  role: CanvasShareRole;
+  canEdit: boolean;
+  readOnly: boolean;
+}
+
 /**
  * Canvas API Service – khớp với backend @Controller('/canvases')
  */
@@ -36,6 +61,63 @@ class CanvasService {
       API_ENDPOINTS.CANVAS.GET_BY_ID(canvasId)
     );
     return response.data.data as Canvas;
+  }
+
+  async getCanvasAccess(canvasId: string): Promise<CanvasAccess> {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CANVAS.GET_ACCESS(canvasId)
+    );
+    return response.data.data as CanvasAccess;
+  }
+
+  async getCanvasPermissions(canvasId: string): Promise<CanvasPermissionList> {
+    const response = await apiHelper.get(
+      API_ENDPOINTS.CANVAS.GET_PERMISSIONS(canvasId)
+    );
+    return response.data.data as CanvasPermissionList;
+  }
+
+  async shareCanvasWithUser(
+    canvasId: string,
+    payload: { email: string; role: CanvasShareRole }
+  ): Promise<CanvasPermissionList> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.SHARE_USER(canvasId),
+      payload
+    );
+    return response.data.data as CanvasPermissionList;
+  }
+
+  async shareCanvasWithChannel(
+    canvasId: string,
+    payload: { channelId: string; role: CanvasShareRole }
+  ): Promise<CanvasPermissionList> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.SHARE_CHANNEL(canvasId),
+      payload
+    );
+    return response.data.data as CanvasPermissionList;
+  }
+
+  async updateCanvasVisibility(
+    canvasId: string,
+    payload: {
+      visibility: "private" | "shared" | "public-workspace";
+      role?: CanvasShareRole;
+    }
+  ): Promise<CanvasPermissionList> {
+    const response = await apiHelper.patch(
+      API_ENDPOINTS.CANVAS.UPDATE_VISIBILITY(canvasId),
+      payload
+    );
+    return response.data.data as CanvasPermissionList;
+  }
+
+  async removeCanvasPermission(canvasId: string, permissionId: string): Promise<CanvasPermissionList> {
+    const response = await apiHelper.delete(
+      API_ENDPOINTS.CANVAS.REMOVE_PERMISSION(canvasId, permissionId)
+    );
+    return response.data.data as CanvasPermissionList;
   }
 
   /** PATCH /canvases/:canvasId – cập nhật canvas (title, không gắn content) */

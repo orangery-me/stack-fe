@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import Drawer from "primevue/drawer";
 import { useNotificationStore } from "@/modules/notifications/stores/notification.store.js";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "vue-router";
 
 const props = defineProps({
   workspaceId: {
@@ -14,6 +15,7 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const notificationStore = useNotificationStore();
+const router = useRouter();
 
 const drawerVisible = ref(true);
 
@@ -34,6 +36,15 @@ const markAllNotificationsRead = async () => {
 
 const markNotificationRead = async (notificationId) => {
   await notificationStore.markRead(notificationId, props.workspaceId);
+};
+
+const openNotification = async (item) => {
+  await markNotificationRead(item.id);
+  const targetUrl = item?.payload?.targetUrl;
+  if (targetUrl) {
+    drawerVisible.value = false;
+    await router.push(targetUrl);
+  }
 };
 
 const formatTime = (dateString) => {
@@ -109,7 +120,7 @@ const getTypeLabel = (type) => {
           :key="item.id"
           class="notification-item"
           :class="{ unread: !item.readAt }"
-          @click="markNotificationRead(item.id)"
+          @click="openNotification(item)"
         >
           <div class="notification-avatar">
             <v-icon

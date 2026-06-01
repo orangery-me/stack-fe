@@ -4,6 +4,7 @@ import type {
   HuddleStatusResponse,
   HuddleStateUpdate,
 } from '../types/huddle.types';
+import type { TranscriptRecordingStatus } from '../types/subtitle.types';
 
 class HuddleService {
   private buildUrl(channelId: string, path = '') {
@@ -43,6 +44,34 @@ class HuddleService {
   async refreshToken(channelId: string): Promise<{ livekitToken: string; expiresIn: number }> {
     const response = await apiHelper.post(this.buildUrl(channelId, '/token'));
     return response.data;
+  }
+
+  async createTranscriptReviewCanvas(callId: string): Promise<{ canvas_id: string; created: boolean }> {
+    const response = await apiHelper.post(`/v1/subtitle/call/${callId}/review-canvas`);
+    return response.data;
+  }
+
+  async getTranscriptRecordingStatus(callId: string): Promise<TranscriptRecordingStatus> {
+    const response = await apiHelper.get(`/v1/subtitle/call/${callId}/status`);
+    return this.normalizeTranscriptStatus(response.data, callId);
+  }
+
+  async startTranscriptRecording(callId: string): Promise<TranscriptRecordingStatus> {
+    const response = await apiHelper.post(`/v1/subtitle/call/${callId}/start`);
+    return this.normalizeTranscriptStatus(response.data, callId);
+  }
+
+  private normalizeTranscriptStatus(data: any, callId: string): TranscriptRecordingStatus {
+    const status = data?.status ?? null;
+
+    return {
+      call_id: data?.call_id || data?.callId || callId,
+      transcript_id: data?.transcript_id || data?.id || null,
+      status,
+      recording: data?.recording ?? status === 'recording',
+      segment_count: data?.segment_count ?? data?.segmentCount ?? 0,
+      review_canvas_id: data?.review_canvas_id || data?.reviewCanvasId || null,
+    };
   }
 }
 

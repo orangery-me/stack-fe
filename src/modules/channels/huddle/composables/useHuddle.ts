@@ -39,6 +39,10 @@ function participantFromRemote(p: RemoteParticipant): HuddleParticipantInfo {
   };
 }
 
+function isSystemParticipant(p: RemoteParticipant): boolean {
+  return p.identity?.startsWith('subtitle-bot:') || false;
+}
+
 export function useHuddle() {
   async function connect(url: string, token: string): Promise<void> {
     try {
@@ -57,6 +61,7 @@ export function useHuddle() {
       });
 
       room.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
+        if (isSystemParticipant(p)) return;
         state.value.participants.push(participantFromRemote(p));
       });
 
@@ -79,6 +84,7 @@ export function useHuddle() {
 
       // Sync existing participants
       room.remoteParticipants.forEach((p) => {
+        if (isSystemParticipant(p)) return;
         state.value.participants.push(participantFromRemote(p));
       });
 

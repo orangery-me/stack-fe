@@ -18,11 +18,16 @@ import { Editor } from "@tiptap/vue-3";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import TranscriptBanner from "@/components/editor/TranscriptBanner.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
+import CanvasShareDialog from "@/components/editor/CanvasShareDialog.vue";
+import { AiCanvasActionsExtension } from "@/components/editor/ai-canvas-actions.extension";
+import type { CanvasAiInlineAction } from "@/components/editor/ai-canvas-actions.extension";
 import { AiPreviewExtension } from "@/components/editor/ai-preview.extension";
 import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
 import { useCanvasStore } from "../stores/canvas.store";
+import { useChannelStore } from "../stores/channel.store.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -35,6 +40,7 @@ const TITLE_SAVE_DEBOUNCE_MS = 1000;
 const SYNC_READY_TIMEOUT_MS = 10_000;
 
 const canvasStore = useCanvasStore();
+const channelStore = useChannelStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const queryClient = useQueryClient();
@@ -44,11 +50,21 @@ const canvasId = computed(() => route.params.canvasId as string);
 const aiCanvasContext = computed(() => ({
   kind: "canvas",
   workspaceId: selectedCanvas.value?.workspaceId,
-  channelId: selectedCanvas.value?.channelId,
+  channelId: resolvedChannelId.value,
   canvasId: canvasId.value,
   canvasTitle: displayTitle.value,
   canvasPlainText: canvasPlainText.value,
+  sourceCanvasUrl: `/canvas/${canvasId.value}/edit`,
 }));
+const isAiCommandPending = computed(() => Boolean(uiStore.pendingAiCommand));
+const aiActionsDisabled = computed(
+  () => isAiCommandPending.value || uiStore.isAiBusy || !canvasPlainText.value.trim(),
+);
+const showTaskChannelPicker = ref(false);
+const showTranscriptBanner = ref(false);
+const showShareDialog = ref(false);
+const aiChatSidebarRef = ref<InstanceType<typeof AiChatSidebar> | null>(null);
+const canvasAiActions = ref<CanvasAiInlineAction[]>([]);
 
 // ======== Title =========
 
@@ -56,6 +72,30 @@ const { data: selectedCanvas, isLoading } = requestCanvas({
   canvasId: computed(() => canvasId.value),
   staleTime: 5 * 60 * 1000,
 });
+
+const availableChannels = computed(() => channelStore.channels || []);
+const shareWorkspaceId = computed(() =>
+  typeof selectedCanvas.value?.workspaceId === "string"
+    ? selectedCanvas.value.workspaceId
+    : undefined,
+);
+const selectedCanvasOwner = computed(() =>
+  selectedCanvas.value?.owner as
+    | { id?: string; name?: string; avatar?: string | null }
+    | undefined,
+);
+const resolvedChannelId = computed(() => {
+  const fromCanvas = selectedCanvas.value?.channelId;
+  if (typeof fromCanvas === "string" && fromCanvas) return fromCanvas;
+  const fromQuery = route.query.channelId;
+  if (typeof fromQuery === "string" && fromQuery) return fromQuery;
+  const selected = channelStore.selectedChannel?.id;
+  if (selected) return selected;
+  return availableChannels.value.length === 1 ? availableChannels.value[0].id : undefined;
+});
+const transcriptDismissKey = computed(
+  () => `canvas-transcript-ai-banner-dismissed:${canvasId.value}`,
+);
 
 const displayTitle = ref("");
 let titleSaveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -87,7 +127,25 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => canvasId.value,
+  () => {
+    canvasAiActions.value = [];
+  },
+);
+
+watch(
+  () => selectedCanvas.value?.workspaceId,
+  (workspaceId) => {
+    if (workspaceId) {
+      void channelStore.fetchUserChannels(workspaceId);
+    }
+  },
+  { immediate: true },
+);
+
 function onTitleUpdate(value: string) {
+  if (selectedCanvas.value?.canEdit !== true) return;
   displayTitle.value = value;
   if (titleSaveTimer) clearTimeout(titleSaveTimer);
   titleSaveTimer = setTimeout(async () => {
@@ -144,6 +202,7 @@ const displaySaveStatus = computed<"saved" | "saving">(() =>
     ? "saving"
     : "saved",
 );
+const editorReadOnly = computed(() => !isEditorReady.value || selectedCanvas.value?.canEdit !== true);
 
 const jwtToken = computed(() => authStore.accessToken);
 
@@ -220,6 +279,35 @@ const {
   handleSelectionIconClick,
 } = useCanvasAiWriter(editor);
 
+const isTranscriptCanvas = computed(() => {
+  const haystack = [
+    displayTitle.value,
+    selectedCanvas.value?.description,
+    canvasPlainText.value.slice(0, 1200),
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase();
+  return (
+    haystack.includes("meeting transcript") ||
+    haystack.includes("transcript generated from realtime subtitles") ||
+    /\[\d{1,2}:\d{2}(?::\d{2})?\s*-\s*\d{1,2}:\d{2}(?::\d{2})?\]/.test(
+      haystack,
+    ) ||
+    /(^|\n)\s*(speaker|người nói|nguoi noi)\s*:/i.test(haystack)
+  );
+});
+
+watch(
+  () => [canvasId.value, isTranscriptCanvas.value],
+  () => {
+    showTranscriptBanner.value =
+      isTranscriptCanvas.value &&
+      localStorage.getItem(transcriptDismissKey.value) !== "1";
+  },
+  { immediate: true },
+);
+
 // ======== Editor setup =========
 
 function generateColorFromName(name: string) {
@@ -287,7 +375,7 @@ function setupForCanvas(id: string) {
       syncReadyTimeoutId = undefined;
     }
     isEditorReady.value = true;
-    editor.value?.setEditable(true);
+    editor.value?.setEditable(selectedCanvas.value?.canEdit === true);
     saveStatus.value = "saved";
     hadChangesSinceLastSaved.value = false;
   }
@@ -328,20 +416,34 @@ function setupForCanvas(id: string) {
       Subscript,
       Superscript,
       buildSlashCommandExtension(),
+      AiCanvasActionsExtension,
       AiPreviewExtension,
     ],
     autofocus: false,
     editable: false,
   });
 
-  // Phase 3: đăng ký selection listener sau khi editor được tạo
+  // Phase 3: register selection listeners after the editor is created.
   nextTick(() => buildSelectionListener());
 }
 
+let setupCanvasId: string | null = null;
+
 watch(
-  () => [canvasId.value, jwtToken.value],
-  async ([id, token]) => {
+  () => [canvasId.value, jwtToken.value, selectedCanvas.value?.id],
+  async ([id, token, loadedCanvasId]) => {
     if (!id || !token) return;
+
+    if (loadedCanvasId !== id) {
+      if (setupCanvasId && setupCanvasId !== id) {
+        setupCanvasId = null;
+        destroyCollabResources();
+      }
+      return;
+    }
+
+    if (setupCanvasId === id) return;
+
     destroyCollabResources();
     try {
       await canvasStore.selectCanvas(id);
@@ -349,6 +451,7 @@ watch(
       // Toast is shown by the global axios interceptor
     }
     setupForCanvas(id);
+    setupCanvasId = id;
   },
   { immediate: true },
 );
@@ -365,6 +468,86 @@ function handleDownload() {
 
 function handleMoveToTrash() {
   // TODO: implement move canvas to trash
+}
+
+function createAiCommandId(kind: string) {
+  return `${kind}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function setCanvasAiCommand(kind: "canvas-summary" | "canvas-task-generation", channelId?: string) {
+  const text = canvasPlainText.value.trim();
+  if (!text || !selectedCanvas.value?.workspaceId) return;
+  const summaryMessage =
+    "Summarize this Canvas. Return the key points, decisions, action items, and open questions.";
+  const taskMessage =
+    "Analyze this Canvas and create a new task list with proposed tasks.";
+  uiStore.setPendingAiCommand({
+    id: createAiCommandId(kind),
+    kind,
+    message: kind === "canvas-summary" ? summaryMessage : taskMessage,
+    context: {
+      workspaceId: selectedCanvas.value.workspaceId,
+      channelId,
+      canvasId: canvasId.value,
+      canvasTitle: displayTitle.value || selectedCanvas.value.title || "Canvas",
+      canvasPlainText: text,
+      sourceCanvasUrl: `/canvas/${canvasId.value}/edit`,
+    },
+  });
+}
+
+function handleAiSummary() {
+  setCanvasAiCommand("canvas-summary", resolvedChannelId.value);
+}
+
+async function handleAiTaskGeneration() {
+  if (selectedCanvas.value?.workspaceId && !availableChannels.value.length) {
+    try {
+      await channelStore.fetchUserChannels(selectedCanvas.value.workspaceId);
+    } catch {
+      // Global interceptor shows the error.
+    }
+  }
+  const channelId = resolvedChannelId.value;
+  if (channelId) {
+    setCanvasAiCommand("canvas-task-generation", channelId);
+    return;
+  }
+  showTaskChannelPicker.value = true;
+}
+
+function handleTaskChannelSelected(channelId: string) {
+  showTaskChannelPicker.value = false;
+  setCanvasAiCommand("canvas-task-generation", channelId);
+}
+
+function handleTranscriptBannerDismissed() {
+  localStorage.setItem(transcriptDismissKey.value, "1");
+  showTranscriptBanner.value = false;
+}
+
+function handleShare() {
+  showShareDialog.value = true;
+}
+
+function handleCanvasAiActionsUpdated(actions: CanvasAiInlineAction[]) {
+  canvasAiActions.value = actions;
+}
+
+function handleAcceptCanvasAiAction(inlineId: string) {
+  void aiChatSidebarRef.value?.acceptCanvasActionByInlineId(inlineId);
+}
+
+function handleRejectCanvasAiAction(inlineId: string) {
+  aiChatSidebarRef.value?.rejectCanvasActionByInlineId(inlineId);
+}
+
+function handleAcceptAllCanvasAiActions() {
+  void aiChatSidebarRef.value?.acceptAllInlineCanvasActions();
+}
+
+function handleRejectAllCanvasAiActions() {
+  aiChatSidebarRef.value?.rejectAllInlineCanvasActions();
 }
 </script>
 
@@ -384,12 +567,16 @@ function handleMoveToTrash() {
         v-if="syncStatus === 'offline' && isEditorReady"
         class="canvas-edit-view__offline-banner"
       >
-        Đang chỉnh sửa offline – máy chủ đồng bộ chưa kết nối.
+        Editing offline - the sync server is not connected.
       </div>
+      <TranscriptBanner
+        v-if="showTranscriptBanner"
+        @dismissed="handleTranscriptBannerDismissed"
+      />
       <RichEditor
         v-if="editor"
         :editor="editor"
-        :read-only="!isEditorReady"
+        :read-only="editorReadOnly"
         :title="displayTitle"
         :viewers="onlineUsers"
         :current-user="currentUser"
@@ -398,9 +585,14 @@ function handleMoveToTrash() {
         :ai-writer-bar="aiWriterBar"
         :selection-ai-icon="selectionAiIcon"
         :canvas-plain-text="canvasPlainText"
+        :ai-canvas-actions="canvasAiActions"
+        :ai-actions-disabled="aiActionsDisabled"
         @update:title="onTitleUpdate"
         @download="handleDownload"
         @move-to-trash="handleMoveToTrash"
+        @ai-summary="handleAiSummary"
+        @ai-task-generation="handleAiTaskGeneration"
+        @share="handleShare"
         @preview-start="handlePreviewStart"
         @preview-chunk="handlePreviewChunk"
         @preview-done="handlePreviewDone"
@@ -408,12 +600,54 @@ function handleMoveToTrash() {
         @reject="handleReject"
         @ai-close="handleAiWriterClose"
         @selection-icon-click="handleSelectionIconClick"
+        @accept-canvas-ai-action="handleAcceptCanvasAiAction"
+        @reject-canvas-ai-action="handleRejectCanvasAiAction"
+        @accept-all-canvas-ai-actions="handleAcceptAllCanvasAiActions"
+        @reject-all-canvas-ai-actions="handleRejectAllCanvasAiActions"
+      />
+      <CanvasShareDialog
+        :open="showShareDialog"
+        :canvas-id="canvasId"
+        :canvas-title="displayTitle"
+        :workspace-id="shareWorkspaceId"
+        :owner="selectedCanvasOwner"
+        :current-user="currentUser"
+        :channels="availableChannels"
+        @close="showShareDialog = false"
       />
     </div>
     <AiChatSidebar
+      ref="aiChatSidebarRef"
       v-model:open="uiStore.isAiOpen"
       :context="aiCanvasContext"
+      @canvas-actions-updated="handleCanvasAiActionsUpdated"
     />
+    <div
+      v-if="showTaskChannelPicker"
+      class="canvas-channel-picker"
+    >
+      <div class="canvas-channel-picker__panel">
+        <div class="canvas-channel-picker__title">
+          Choose target channel
+        </div>
+        <button
+          v-for="channel in availableChannels"
+          :key="channel.id"
+          type="button"
+          class="canvas-channel-picker__item"
+          @click="handleTaskChannelSelected(channel.id)"
+        >
+          #{{ channel.name || channel.title || "Channel" }}
+        </button>
+        <button
+          type="button"
+          class="canvas-channel-picker__cancel"
+          @click="showTaskChannelPicker = false"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -463,5 +697,57 @@ function handleMoveToTrash() {
 
 .canvas-edit-view__editor :deep(.content) {
   flex: 1;
+}
+
+.canvas-channel-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.canvas-channel-picker__panel {
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(460px, calc(100vh - 48px));
+  overflow: auto;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+  padding: 12px;
+}
+
+.canvas-channel-picker__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.canvas-channel-picker__item,
+.canvas-channel-picker__cancel {
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 13px;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.canvas-channel-picker__item:hover {
+  background: #f1f5f9;
+}
+
+.canvas-channel-picker__cancel {
+  margin-top: 6px;
+  text-align: center;
+  color: #64748b;
+  background: #f8fafc;
 }
 </style>

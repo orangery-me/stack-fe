@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import socketHelper from "../../../helpers/socket.helper";
 import { CHAT_EVENTS, CHAT_NAMESPACE } from "../constants";
 import { useAuthStore } from "../../auth/stores/auth.store";
+import { useHuddleStore } from "../huddle/stores/huddle.store";
 import { queryClient } from "@/config/queryClient";
 import type {
   MessageStatus,
@@ -22,6 +23,16 @@ function generateTempId(): string {
   return `${TEMP_ID_PREFIX}${Date.now()}_${Math.random()
     .toString(36)
     .substr(2, 9)}`;
+}
+
+function parseMetadata(metadata: any): Record<string, any> | undefined {
+  if (!metadata) return undefined;
+  if (typeof metadata !== "string") return metadata;
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return undefined;
+  }
 }
 
 export const useChatStore = defineStore("chat", {
@@ -215,12 +226,13 @@ export const useChatStore = defineStore("chat", {
       if (!channelId || !channelData || typeof channelData === "boolean") return;
 
       if (message.messageType === 'system') {
-        const { useHuddleStore } = require('../huddle/stores/huddle.store');
         const huddleStore = useHuddleStore();
-        if (message.content === 'Huddle started') {
+        const huddleEvent = parseMetadata(message.metadata)?.huddle?.event;
+        if (message.content === 'Huddle started' || huddleEvent === 'started') {
           huddleStore.hasActiveHuddle = true;
-        } else if (message.content === 'Huddle ended') {
-          huddleStore.hasActiveHuddle = false;
+          huddleStore.checkActiveHuddle(channelId).catch(() => {});
+        } else if (message.content === 'Huddle ended' || huddleEvent === 'ended') {
+          huddleStore.markEnded();
         }
       }
 
@@ -311,7 +323,7 @@ export const useChatStore = defineStore("chat", {
         createdAt: message.createdAt,
         channelId: message.channelId,
         status: message.status || status,
-        metadata: message.metadata,
+        metadata: parseMetadata(message.metadata),
       };
     },
 

@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { EditorContent, Editor } from "@tiptap/vue-3";
+import {
+  FileText,
+  ListTodo,
+  Share2,
+  Sparkles,
+} from "lucide-vue-next";
 import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
 import AiWriterBar from "@/components/editor/AiWriterBar.vue";
 import AiSelectionIcon from "@/components/editor/AiSelectionIcon.vue";
+import type { CanvasAiInlineAction } from "@/components/editor/ai-canvas-actions.extension";
 import type {
   SlashMenuState,
   AiWriterBarState,
@@ -40,6 +47,8 @@ const props = withDefaults(
     // Selection AI trigger
     selectionAiIcon?: SelectionAiIconState | null;
     canvasPlainText?: string;
+    aiCanvasActions?: CanvasAiInlineAction[];
+    aiActionsDisabled?: boolean;
   }>(),
   {
     readOnly: false,
@@ -51,6 +60,8 @@ const props = withDefaults(
     aiWriterBar: null,
     selectionAiIcon: null,
     canvasPlainText: "",
+    aiCanvasActions: () => [],
+    aiActionsDisabled: false,
   },
 );
 
@@ -69,6 +80,13 @@ const emit = defineEmits<{
   "ai-close": [];
   // Selection AI trigger
   "selection-icon-click": [];
+  "accept-canvas-ai-action": [inlineId: string];
+  "reject-canvas-ai-action": [inlineId: string];
+  "accept-all-canvas-ai-actions": [];
+  "reject-all-canvas-ai-actions": [];
+  "ai-summary": [];
+  "ai-task-generation": [];
+  share: [];
 }>();
 
 function onTitleInput(e: Event) {
@@ -89,6 +107,45 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => [props.editor, props.aiCanvasActions] as const,
+  ([inst, actions]) => {
+    const commands = inst?.commands as
+      | {
+          setCanvasAiActions?: (items: CanvasAiInlineAction[]) => boolean;
+          clearCanvasAiActions?: () => boolean;
+        }
+      | undefined;
+    if (!commands) return;
+
+    if (actions?.length) {
+      commands.setCanvasAiActions?.(actions);
+    } else {
+      commands.clearCanvasAiActions?.();
+    }
+  },
+  { immediate: true, deep: true },
+);
+
+function handleEditorContentClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  const button = target?.closest<HTMLButtonElement>("[data-ai-canvas-action]");
+  if (!button) return;
+
+  const inlineId = button.dataset.aiCanvasActionId;
+  const intent = button.dataset.aiCanvasAction;
+  if (!inlineId || !intent) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (intent === "accept") {
+    emit("accept-canvas-ai-action", inlineId);
+  } else if (intent === "reject") {
+    emit("reject-canvas-ai-action", inlineId);
+  }
+}
 
 const currentHeadingLabel = computed(() => {
   if (!editor.value) return "H";
@@ -160,6 +217,16 @@ const viewersExcludingSelf = computed(() => {
   return props.viewers ?? [];
 });
 
+const aiToolbarActionsDisabled = computed(() => {
+  return props.aiActionsDisabled || !props.canvasPlainText?.trim();
+});
+
+const pendingCanvasAiActionCount = computed(() => {
+  return (props.aiCanvasActions || []).filter((action) =>
+    ["pending", "applying", "failed"].includes(action.status || "pending"),
+  ).length;
+});
+
 const visibleViewers = computed(() => {
   return viewersExcludingSelf.value.slice(0, 5);
 });
@@ -213,16 +280,16 @@ const viewerPopupStyle = computed((): Record<string, string | number> => {
 
   let left;
 
-  // Quyết định mở trái / phải
+  // Decide whether to open left or right.
   if (rect.left > window.innerWidth / 2) {
-    // mở về bên trái
+    // Open to the left.
     left = rect.right - popupWidth;
   } else {
-    // mở về bên phải
+    // Open to the right.
     left = rect.left;
   }
 
-  // Clamp lại để không tràn viewport
+  // Clamp to keep the popup inside the viewport.
   if (left + popupWidth > window.innerWidth - margin) {
     left = window.innerWidth - popupWidth - margin;
   }
@@ -271,6 +338,7 @@ onBeforeUnmount(() => {
               class="rte-title-input"
               :value="title"
               placeholder="New page"
+              :disabled="readOnly"
               @input="onTitleInput"
             >
             <div
@@ -303,60 +371,6 @@ onBeforeUnmount(() => {
                 displaySaveStatus === "saving" ? "Saving..." : "Saved"
               }}</span>
             </div>
-          </div>
-          <!-- Dãy function: File, Insert (hàng dưới) -->
-          <div class="toolbar-row toolbar-row--menu">
-            <details class="dd dd-menu-item">
-              <summary class="dd-btn dd-btn--menu">
-                File
-              </summary>
-              <div class="dd-menu">
-                <button
-                  type="button"
-                  @click="emit('download')"
-                >
-                  Download
-                </button>
-                <button
-                  type="button"
-                  @click="emit('moveToTrash')"
-                >
-                  Move to trash
-                </button>
-              </div>
-            </details>
-            <details
-              class="dd dd-menu-item"
-              :class="{ 'dd-disabled': readOnly }"
-              :aria-disabled="readOnly ? 'true' : 'false'"
-            >
-              <summary class="dd-btn dd-btn--menu">
-                Insert
-              </summary>
-              <div class="dd-menu">
-                <button
-                  type="button"
-                  :disabled="readOnly"
-                  @click="addImageFromUrl"
-                >
-                  Image (URL)
-                </button>
-                <button
-                  type="button"
-                  :disabled="readOnly"
-                  @click="editor?.chain().focus().setHorizontalRule().run()"
-                >
-                  Divider
-                </button>
-                <button
-                  type="button"
-                  :disabled="readOnly"
-                  @click="editor?.chain().focus().toggleCodeBlock().run()"
-                >
-                  Code block
-                </button>
-              </div>
-            </details>
           </div>
         </div>
         <div class="spacer" />
@@ -425,8 +439,8 @@ onBeforeUnmount(() => {
                       <button
                         type="button"
                         class="rte-viewer-popup__add-person"
-                        title="Thêm người"
-                        aria-label="Thêm người"
+                        title="Add person"
+                        aria-label="Add person"
                       >
                         <svg
                           width="16"
@@ -469,14 +483,14 @@ onBeforeUnmount(() => {
                         alt=""
                         class="rte-viewer-popup__btn-icon"
                       >
-                      Gửi thư
+                      Send email
                     </button>
                     <div class="rte-viewer-popup__actions">
                       <button
                         type="button"
                         class="rte-viewer-popup__action-btn"
-                        title="Nhắn tin"
-                        aria-label="Nhắn tin"
+                        title="Message"
+                        aria-label="Message"
                       >
                         <img
                           src="/icons/message-circle-dot.svg"
@@ -488,8 +502,8 @@ onBeforeUnmount(() => {
                       <button
                         type="button"
                         class="rte-viewer-popup__action-btn"
-                        title="Gọi video"
-                        aria-label="Gọi video"
+                        title="Video call"
+                        aria-label="Video call"
                       >
                         <img
                           src="/icons/meeting.svg"
@@ -501,8 +515,8 @@ onBeforeUnmount(() => {
                       <button
                         type="button"
                         class="rte-viewer-popup__action-btn"
-                        title="Lịch"
-                        aria-label="Lịch"
+                        title="Calendar"
+                        aria-label="Calendar"
                       >
                         <img
                           src="/icons/calendar.svg"
@@ -517,7 +531,7 @@ onBeforeUnmount(() => {
                       class="rte-viewer-popup__detail-link"
                       @click.prevent
                     >
-                      Mở chế độ xem chi tiết
+                      Open detailed view
                       <svg
                         width="14"
                         height="14"
@@ -544,31 +558,38 @@ onBeforeUnmount(() => {
             </div>
           </Teleport>
         </div>
-        <!-- Header actions: History, Comment, Share, Sparkle (between viewers and current user) -->
+        <!-- Header actions -->
         <div class="rte-header-actions">
           <button
             type="button"
-            class="rte-header-action-btn"
-            title="Lịch sử"
-            aria-label="Lịch sử"
+            class="rte-header-action-btn rte-header-action-btn--ai-tool"
+            :disabled="aiToolbarActionsDisabled"
+            title="AI Summary"
+            aria-label="AI Summary"
+            @click="emit('ai-summary')"
           >
-            <img
-              src="/icons/toolbar2/history.svg"
-              alt=""
-              class="rte-header-action-icon"
-            >
+            <FileText :size="18" />
           </button>
           <button
             type="button"
-            class="rte-header-action-btn"
-            title="Bình luận"
-            aria-label="Bình luận"
+            class="rte-header-action-btn rte-header-action-btn--ai-tool"
+            :disabled="aiToolbarActionsDisabled"
+            title="AI Task Generation"
+            aria-label="AI Task Generation"
+            @click="emit('ai-task-generation')"
           >
-            <img
-              src="/icons/toolbar2/comment.svg"
-              alt=""
-              class="rte-header-action-icon rte-header-action-icon--comment"
-            >
+            <ListTodo :size="18" />
+          </button>
+          <button
+            type="button"
+            class="rte-share-btn"
+            :disabled="readOnly"
+            title="Share"
+            aria-label="Share"
+            @click="emit('share')"
+          >
+            <Share2 :size="17" />
+            <span class="rte-share-btn-text">Share</span>
           </button>
           <button
             type="button"
@@ -578,58 +599,8 @@ onBeforeUnmount(() => {
             aria-label="AI Assistant"
             @click="uiStore.toggleAi()"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
-              />
-            </svg>
+            <Sparkles :size="18" />
           </button>
-          <details class="rte-share-wrap">
-            <summary class="rte-share-btn">
-              <img
-                src="/icons/toolbar2/share.svg"
-                alt=""
-                class="rte-share-btn-icon"
-              >
-              <span class="rte-share-btn-text">Share</span>
-              <span class="rte-share-btn-sep" />
-              <img
-                src="/icons/arrow-down.svg"
-                alt=""
-                class="rte-share-btn-caret"
-              >
-            </summary>
-            <div class="rte-share-menu">
-              <button type="button">
-                Chia sẻ với mọi người
-              </button>
-              <button type="button">
-                Sao chép link
-              </button>
-            </div>
-          </details>
-          <!-- <button
-            type="button"
-            class="rte-header-action-btn"
-            title="Sparkle"
-            aria-label="Sparkle"
-          >
-            <img
-              src="/icons/star.svg"
-              alt=""
-              class="rte-header-action-icon"
-            >
-          </button> -->
         </div>
         <!-- Current user avatar (top-right) -->
         <div
@@ -986,7 +957,29 @@ onBeforeUnmount(() => {
     <EditorContent
       :editor="editor"
       class="content"
+      @click="handleEditorContentClick"
     />
+
+    <div
+      v-if="pendingCanvasAiActionCount > 0"
+      class="rte-ai-canvas-banner"
+    >
+      <span>{{ pendingCanvasAiActionCount }} AI proposed change{{ pendingCanvasAiActionCount === 1 ? "" : "s" }}</span>
+      <button
+        type="button"
+        class="rte-ai-canvas-banner__btn rte-ai-canvas-banner__btn--accept"
+        @click="emit('accept-all-canvas-ai-actions')"
+      >
+        Accept all
+      </button>
+      <button
+        type="button"
+        class="rte-ai-canvas-banner__btn rte-ai-canvas-banner__btn--reject"
+        @click="emit('reject-all-canvas-ai-actions')"
+      >
+        Reject all
+      </button>
+    </div>
   </div>
 
   <!-- Slash command popup (optional AI writer feature) -->
@@ -1021,7 +1014,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .rte {
   border: 0px solid #e5e7eb;
-  /* Toolbar cố định, chỉ phần nội dung scroll khi dài */
+  /* Fixed toolbar; only the content area scrolls when long. */
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1107,28 +1100,6 @@ onBeforeUnmount(() => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.toolbar-row--menu {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  /* padding: 4px 12px 8px; */
-  /* border-bottom: 1px solid #e5e7eb; */
-}
-
-.dd-btn--menu {
-  font-size: 14px;
-  color: #374151;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.dd-btn--menu:hover {
-  background: #f3f4f6;
-}
-.dd-menu-item .dd-menu {
-  top: 100%;
-  margin-top: 4px;
 }
 
 .toolbar-row--actions {
@@ -1232,6 +1203,10 @@ onBeforeUnmount(() => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+.rte-title-input:disabled {
+  color: #4b5563;
+  cursor: default;
+}
 
 /* Dropdown */
 .dd {
@@ -1291,7 +1266,7 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
-/* Content style giống “prose” */
+/* Content styling similar to prose. */
 .content {
   flex: 1;
   min-height: 0;
@@ -1304,6 +1279,142 @@ onBeforeUnmount(() => {
   max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.rte-ai-canvas-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-top: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rte-ai-canvas-banner__btn {
+  border: 0;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.rte-ai-canvas-banner__btn--accept {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.rte-ai-canvas-banner__btn--accept:hover {
+  background: #bbf7d0;
+}
+
+.rte-ai-canvas-banner__btn--reject {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.rte-ai-canvas-banner__btn--reject:hover {
+  background: #fecaca;
+}
+
+.content :deep(.ai-canvas-action-stack) {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.content :deep(.ai-canvas-action-card) {
+  border: 1px solid #bfdbfe;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  padding: 10px 12px;
+  color: #0f172a;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.08);
+}
+
+.content :deep(.ai-canvas-action-card.is-failed) {
+  border-color: #fecaca;
+  border-left-color: #dc2626;
+  background: #fef2f2;
+}
+
+.content :deep(.ai-canvas-action-card__header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.content :deep(.ai-canvas-action-card__title) {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.content :deep(.ai-canvas-action-card__status) {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.content :deep(.ai-canvas-action-card__body) {
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.content :deep(.ai-canvas-action-card__error) {
+  margin-top: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.content :deep(.ai-canvas-action-card__actions) {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.content :deep(.ai-canvas-action-btn) {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.content :deep(.ai-canvas-action-btn:disabled) {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.content :deep(.ai-canvas-action-btn--accept) {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.content :deep(.ai-canvas-action-btn--accept:hover:not(:disabled)) {
+  background: #bbf7d0;
+}
+
+.content :deep(.ai-canvas-action-btn--reject) {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.content :deep(.ai-canvas-action-btn--reject:hover:not(:disabled)) {
+  background: #fecaca;
 }
 .content :deep(h1) {
   font-size: 34px;
@@ -1405,7 +1516,7 @@ onBeforeUnmount(() => {
   border-color: #e5e7eb;
 }
 
-/* Header actions: History, Comment, Share, Sparkle */
+/* Header actions */
 .rte-header-actions {
   display: flex;
   align-items: center;
@@ -1431,6 +1542,15 @@ onBeforeUnmount(() => {
   background: #f3f4f6;
 }
 
+.rte-header-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rte-header-action-btn:disabled:hover {
+  background: transparent;
+}
+
 .rte-header-action-btn--ai {
   color: #6b7280;
 }
@@ -1449,19 +1569,13 @@ onBeforeUnmount(() => {
   background: #ddd6fe;
 }
 
-.rte-header-action-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  /* Chuẩn hóa màu/độ đậm giữa các SVG khác nhau */
-  filter: brightness(0) saturate(100%);
-  opacity: 0.72;
+.rte-header-action-btn--ai-tool {
+  color: #1f2937;
 }
 
-/* Comment icon SVG mỏng hơn → scale nhẹ + đậm hơn để đồng bộ với History/Star */
-.rte-header-action-icon--comment {
-  transform: scale(1.18);
-  opacity: 0.82;
+.rte-header-action-btn--ai-tool:hover {
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .rte-share-wrap {
@@ -1472,7 +1586,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
+  height: 36px;
   padding: 0 10px 0 12px;
   background: #e0f2fe;
   color: #0c4a6e;
@@ -1493,11 +1607,14 @@ onBeforeUnmount(() => {
   color: #075985;
 }
 
-.rte-share-btn-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  background: transparent;
+.rte-share-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rte-share-btn:disabled:hover {
+  background: #e0f2fe;
+  color: #0c4a6e;
 }
 
 .rte-share-btn-text {
@@ -1514,12 +1631,7 @@ onBeforeUnmount(() => {
 }
 
 .rte-share-btn-caret {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(22%) sepia(35%) saturate(1200%)
-    hue-rotate(185deg);
-  opacity: 0.92;
+  flex-shrink: 0;
 }
 
 .rte-share-menu {

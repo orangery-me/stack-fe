@@ -21,6 +21,7 @@ import {
   sendCanvasSessionMessageStream,
   sendTaskSessionMessageStream,
   updateSession,
+  updateMessageActionStatus,
   applyCanvasAction,
   applyTaskAction,
 } from "@/services/agent.service.js";
@@ -39,7 +40,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:open"]);
+const emit = defineEmits(["update:open", "canvas-actions-updated"]);
 
 // ======== State ========
 
@@ -51,6 +52,8 @@ const isLoadingSession = ref(false);
 const messages = ref([]);
 const messagesEl = ref(null);
 const textareaEl = ref(null);
+const taskSetup = ref(null);
+const processingPendingCommandId = ref(null);
 
 // Session state
 const activeSession = ref(null);
@@ -65,6 +68,181 @@ const DEFAULT_PROVIDER = "openai";
 const DEFAULT_MODEL = "gpt-5.3-codex";
 const isCanvasMode = computed(() => props.context?.kind === "canvas");
 const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
+const CANVAS_ACTION_NAMES = new Set([
+  "insert_canvas_block",
+  "update_canvas_block",
+  "delete_canvas_block",
+  "reorder_canvas_blocks",
+]);
+
+function isCanvasAction(action) {
+  return CANVAS_ACTION_NAMES.has(action?.name);
+}
+
+function isActionVisibleInSidebar(action) {
+  return !(isCanvasMode.value && isCanvasAction(action));
+}
+
+function numberArg(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function canvasActionAnchorKey(action) {
+  const args = action?.arguments || {};
+  if (action?.name === "insert_canvas_block") {
+    return String(numberArg(args.after_index) ?? -1);
+  }
+  if (action?.name === "update_canvas_block" || action?.name === "delete_canvas_block") {
+    const index = numberArg(args.index);
+    return index === null ? null : String(index);
+  }
+  if (action?.name === "reorder_canvas_blocks") {
+    const index = numberArg(args.from_index);
+    return index === null ? null : String(index);
+  }
+  return null;
+}
+
+function dedupeCanvasActionsByAnchor(actions) {
+  if (!isCanvasMode.value || !Array.isArray(actions)) return actions;
+
+  const seen = new Set();
+  const deduped = [];
+  for (let index = actions.length - 1; index >= 0; index--) {
+    const action = actions[index];
+    const anchorKey = isCanvasAction(action) ? canvasActionAnchorKey(action) : null;
+    if (anchorKey && seen.has(anchorKey)) continue;
+    if (anchorKey) seen.add(anchorKey);
+    deduped.unshift(action);
+  }
+  return deduped;
+}
+
+function supersedeOlderCanvasActions(newActions, currentMessageId) {
+  if (!isCanvasMode.value || !Array.isArray(newActions)) return;
+
+  const newAnchorKeys = new Set(
+    newActions
+      .filter(isCanvasAction)
+      .map(canvasActionAnchorKey)
+      .filter(Boolean),
+  );
+  if (!newAnchorKeys.size) return;
+
+  for (const msg of messages.value) {
+    if (msg.id === currentMessageId || !Array.isArray(msg.actions)) continue;
+    for (const action of msg.actions) {
+      if (!isCanvasAction(action)) continue;
+      const status = action.status || "pending";
+      if (!["pending", "failed", "applying"].includes(status)) continue;
+      const anchorKey = canvasActionAnchorKey(action);
+      if (anchorKey && newAnchorKeys.has(anchorKey)) {
+        action.status = "superseded";
+        persistActionStatus(msg.id, action);
+      }
+    }
+  }
+}
+
+function visibleActionsForSidebar(msg) {
+  return Array.isArray(msg?.actions)
+    ? msg.actions.filter(isActionVisibleInSidebar)
+    : [];
+}
+
+function canvasActionInlineId(messageId, action, index) {
+  return `${messageId}:${action?.id || `${action?.name || "action"}-${index}`}`;
+}
+
+function splitCanvasActionInlineId(inlineId) {
+  const separatorIndex = String(inlineId || "").indexOf(":");
+  if (separatorIndex < 0) return null;
+  return {
+    messageId: String(inlineId).slice(0, separatorIndex),
+    actionId: String(inlineId).slice(separatorIndex + 1),
+  };
+}
+
+function findActionByInlineId(inlineId) {
+  const parsed = splitCanvasActionInlineId(inlineId);
+  if (!parsed) return null;
+  const msg = messages.value.find((m) => String(m.id) === parsed.messageId);
+  if (!msg?.actions) return null;
+  const action = msg.actions.find(
+    (item, index) => canvasActionInlineId(msg.id, item, index) === inlineId,
+  );
+  return action ? { msg, action } : null;
+}
+
+function getInlineCanvasActions() {
+  if (!isCanvasMode.value) return [];
+
+  return messages.value.flatMap((msg) => {
+    if (!Array.isArray(msg.actions)) return [];
+    return msg.actions
+      .map((action, index) => ({ action, index }))
+      .filter(({ action }) => {
+        const status = action.status || "pending";
+        return (
+          isCanvasAction(action) &&
+          (status === "pending" || status === "applying" || status === "failed")
+        );
+      })
+      .map(({ action, index }) => ({
+        ...action,
+        inlineId: canvasActionInlineId(msg.id, action, index),
+      }));
+  });
+}
+
+function syncInlineCanvasActions() {
+  emit("canvas-actions-updated", getInlineCanvasActions());
+}
+
+function persistedActionId(action, index = 0) {
+  return action?.id || `${action?.name || "action"}-${index}`;
+}
+
+async function persistActionStatus(messageId, action) {
+  if (!activeSession.value?.id || !action?.name) return;
+  const actionId = persistedActionId(action);
+  if (!actionId) return;
+
+  try {
+    await updateMessageActionStatus(activeSession.value.id, String(messageId), actionId, {
+      status: action.status || "pending",
+      error: action.error,
+    });
+  } catch {
+    // The assistant message may not be persisted until the stream fully closes.
+    // onDone retries terminal action statuses after the server has had time to save it.
+  }
+}
+
+function persistTerminalActionStatuses(messageId) {
+  const msg = messages.value.find((m) => m.id === messageId);
+  if (!msg?.actions?.length) return;
+  for (const action of msg.actions) {
+    if (["accepted", "rejected", "failed", "superseded"].includes(action.status)) {
+      persistActionStatus(messageId, action);
+    }
+  }
+}
+
+function normalizeIncomingActions(actions) {
+  return dedupeCanvasActionsByAnchor(
+    actions.map((a) => ({
+      ...a,
+      status: a.status || "pending",
+      selectedTaskIndexes: getActionTasks(a).map((_, index) => index),
+    })),
+  );
+}
 
 // ======== Session loading ========
 
@@ -92,6 +270,7 @@ async function loadActiveSession() {
         streaming: false,
       };
     });
+    syncInlineCanvasActions();
     await scrollToBottom();
   } catch {
     // Toast shown by global interceptor
@@ -135,6 +314,7 @@ async function switchSession(session) {
         streaming: false,
       };
     });
+    syncInlineCanvasActions();
     await scrollToBottom();
   } catch {
     // ignore
@@ -148,6 +328,7 @@ async function handleNewChat() {
     const session = await createSession();
     activeSession.value = session;
     messages.value = [];
+    syncInlineCanvasActions();
     await loadSessionList();
   } catch {
     // Toast shown by global interceptor
@@ -170,6 +351,7 @@ function abortStream() {
     abortController = null;
   }
   isStreaming.value = false;
+  uiStore.setAiBusy(false);
 }
 
 function focusTextareaToEnd() {
@@ -190,8 +372,8 @@ function applyPendingDraft() {
 
 // ======== Send message ========
 
-async function sendMessage() {
-  const text = inputValue.value.trim();
+async function sendMessage(options = {}) {
+  const text = (options.message ?? inputValue.value).trim();
   if (!text || isStreaming.value || !activeSession.value) return;
 
   abortStream();
@@ -207,8 +389,11 @@ async function sendMessage() {
     streaming: true,
   });
 
-  inputValue.value = "";
+  if (!options.message) {
+    inputValue.value = "";
+  }
   isStreaming.value = true;
+  uiStore.setAiBusy(true);
   scrollToBottom();
 
   abortController = new AbortController();
@@ -216,7 +401,9 @@ async function sendMessage() {
     const msg = messages.value.find((m) => m.id === assistantId);
     if (msg) msg.streaming = false;
     isStreaming.value = false;
+    uiStore.setAiBusy(false);
     abortController = null;
+    window.setTimeout(() => persistTerminalActionStatuses(assistantId), 600);
 
     if (activeSession.value?.title === "New chat") {
       const newTitle = text.slice(0, 50);
@@ -234,23 +421,29 @@ async function sendMessage() {
   const onErrorCommon = (err) => {
     const msg = messages.value.find((m) => m.id === assistantId);
     if (msg) {
-      msg.content = msg.content || `(Lỗi: ${err?.message ?? "Không rõ"})`;
+      msg.content = msg.content || `(Error: ${err?.message ?? "Unknown"})`;
       msg.streaming = false;
       msg.error = true;
     }
     isStreaming.value = false;
+    uiStore.setAiBusy(false);
     abortController = null;
   };
 
-  const useTaskFlow = shouldUseTaskFlow(text);
+  const ctx = options.context || props.context || {};
+  const useTaskFlow =
+    options.kind === "canvas-task-generation" || shouldUseTaskFlow(text);
   if (useTaskFlow) {
-    const ctx = props.context || {};
     await sendTaskSessionMessageStream(activeSession.value.id, {
       workspaceId: ctx.workspaceId,
       channelId: ctx.channelId,
       taskListId: ctx.taskListId,
       canvasId: ctx.canvasId,
       canvasContent: ctx.canvasPlainText ?? "",
+      canvasTitle: ctx.canvasTitle,
+      sourceCanvasUrl: ctx.sourceCanvasUrl,
+      overallDueDate: ctx.overallDueDate,
+      timezone: ctx.timezone,
       message: text,
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
@@ -272,10 +465,10 @@ async function sendMessage() {
           msg.content += `${msg.content ? "\n" : ""}${event.content}`;
         }
         if (event.type === "actions" && Array.isArray(event.actions)) {
-          msg.actions = event.actions.map((a) => ({
-            ...a,
-            status: a.status || "pending",
-          }));
+          const nextActions = normalizeIncomingActions(event.actions);
+          supersedeOlderCanvasActions(nextActions, msg.id);
+          msg.actions = nextActions;
+          syncInlineCanvasActions();
         }
         scrollToBottom();
       },
@@ -283,11 +476,11 @@ async function sendMessage() {
       onError: onErrorCommon,
     });
   } else if (isCanvasMode.value) {
-    const ctx = props.context || {};
     await sendCanvasSessionMessageStream(activeSession.value.id, {
       canvasId: ctx.canvasId,
       canvasContent: ctx.canvasPlainText ?? "",
       message: text,
+      mode: options.mode,
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
       signal: abortController.signal,
@@ -308,10 +501,10 @@ async function sendMessage() {
           msg.content += `${msg.content ? "\n" : ""}${event.content}`;
         }
         if (event.type === "actions" && Array.isArray(event.actions)) {
-          msg.actions = event.actions.map((a) => ({
-            ...a,
-            status: a.status || "pending",
-          }));
+          const nextActions = normalizeIncomingActions(event.actions);
+          supersedeOlderCanvasActions(nextActions, msg.id);
+          msg.actions = nextActions;
+          syncInlineCanvasActions();
         }
         scrollToBottom();
       },
@@ -342,10 +535,13 @@ async function handleAcceptAction(messageId, action) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions) return;
   action.status = "applying";
+  action.error = undefined;
+  syncInlineCanvasActions();
   try {
     const isTaskAction =
       action.name === "create_task" ||
       action.name === "create_tasks_batch" ||
+      action.name === "create_task_list_with_tasks" ||
       action.name === "list_task_lists" ||
       action.name === "search_workspace_members";
     const result = isTaskAction
@@ -363,8 +559,9 @@ async function handleAcceptAction(messageId, action) {
         });
     action.status = result?.ok ? "accepted" : "failed";
     if (!result?.ok) {
-      action.error = result?.error || "Apply thất bại";
+      action.error = result?.error || "Apply failed";
     }
+    persistActionStatus(messageId, action);
     if (result?.ok && isTaskAction && props.context?.workspaceId) {
       const workspaceId = props.context.workspaceId;
       queryClient.invalidateQueries({ queryKey: ["my-tasks", workspaceId] });
@@ -378,17 +575,18 @@ async function handleAcceptAction(messageId, action) {
     }
   } catch (err) {
     action.status = "failed";
-    action.error = err?.message || "Apply thất bại";
+    action.error = err?.message || "Apply failed";
+    persistActionStatus(messageId, action);
+  } finally {
+    syncInlineCanvasActions();
   }
 }
 
-async function handleAcceptAllActions(messageId) {
+async function handleAcceptAllVisibleActions(messageId) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions?.length) return;
   for (const action of msg.actions) {
-    if (action.status === "pending") {
-      // Keep sequential apply to avoid race conditions in server-side ordering.
-       
+    if (action.status === "pending" && isActionVisibleInSidebar(action)) {
       await handleAcceptAction(messageId, action);
     }
   }
@@ -398,6 +596,191 @@ function handleRejectAction(messageId, action) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions) return;
   action.status = "rejected";
+  persistActionStatus(messageId, action);
+  syncInlineCanvasActions();
+}
+
+async function acceptCanvasActionByInlineId(inlineId) {
+  const match = findActionByInlineId(inlineId);
+  if (!match || !isCanvasAction(match.action)) return;
+  await handleAcceptAction(match.msg.id, match.action);
+}
+
+function rejectCanvasActionByInlineId(inlineId) {
+  const match = findActionByInlineId(inlineId);
+  if (!match || !isCanvasAction(match.action)) return;
+  handleRejectAction(match.msg.id, match.action);
+}
+
+async function acceptAllInlineCanvasActions() {
+  const actions = getInlineCanvasActions().filter(
+    (action) => action.status === "pending",
+  );
+  for (const action of actions) {
+    await acceptCanvasActionByInlineId(action.inlineId);
+  }
+}
+
+function rejectAllInlineCanvasActions() {
+  const actions = getInlineCanvasActions().filter((action) =>
+    ["pending", "failed"].includes(action.status || "pending"),
+  );
+  for (const action of actions) {
+    rejectCanvasActionByInlineId(action.inlineId);
+  }
+}
+
+async function processPendingAiCommand() {
+  const command = uiStore.pendingAiCommand;
+  if (
+    !command ||
+    isStreaming.value ||
+    processingPendingCommandId.value === command.id
+  ) {
+    return;
+  }
+  if (!props.open) {
+    emit("update:open", true);
+    return;
+  }
+  processingPendingCommandId.value = command.id;
+  try {
+    await startFreshCommandSession(command);
+    uiStore.clearPendingAiCommand(command.id);
+
+    if (command.kind === "canvas-summary") {
+      await sendMessage({
+        message: command.message,
+        kind: command.kind,
+        context: command.context,
+        mode: "summary",
+      });
+      return;
+    }
+
+    if (command.kind === "canvas-task-generation") {
+      taskSetup.value = {
+        command,
+        overallDueDate: "",
+      };
+    }
+  } catch {
+    // Toast shown by global interceptor
+  } finally {
+    processingPendingCommandId.value = null;
+  }
+}
+
+async function startFreshCommandSession(command) {
+  abortStream();
+  showSessionDropdown.value = false;
+  taskSetup.value = null;
+  messages.value = [];
+  syncInlineCanvasActions();
+  const canvasTitle = command.context?.canvasTitle || "Canvas";
+  const prefix =
+    command.kind === "canvas-task-generation" ? "Tasks" : "Summary";
+  const title = `${prefix}: ${canvasTitle}`.slice(0, 80);
+  const session = await createSession(title);
+  activeSession.value = session;
+  await loadSessionList();
+}
+
+function submitTaskSetup() {
+  if (!taskSetup.value?.command || isStreaming.value) return;
+  const { command, overallDueDate } = taskSetup.value;
+  const dueIso = overallDueDate
+    ? new Date(`${overallDueDate}T17:00:00`).toISOString()
+    : "";
+  const timezone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const message = overallDueDate
+    ? `${command.message}\n\nOverall due date: ${overallDueDate}.`
+    : `${command.message}\n\nNo overall due date was provided; only set per-task due dates if the Canvas explicitly mentions dates.`;
+  taskSetup.value = null;
+  sendMessage({
+    message,
+    kind: command.kind,
+    context: {
+      ...command.context,
+      overallDueDate: dueIso,
+      timezone,
+    },
+  });
+}
+
+function cancelTaskSetup() {
+  taskSetup.value = null;
+}
+
+function isTaskListWithTasksAction(action) {
+  return action?.name === "create_task_list_with_tasks";
+}
+
+function getActionTasks(action) {
+  const tasks = action?.arguments?.tasks;
+  return Array.isArray(tasks) ? tasks : [];
+}
+
+function isTaskSelected(action, index) {
+  return Array.isArray(action.selectedTaskIndexes)
+    ? action.selectedTaskIndexes.includes(index)
+    : true;
+}
+
+function toggleTaskSelection(action, index, checked) {
+  const current = new Set(action.selectedTaskIndexes || []);
+  if (checked) current.add(index);
+  else current.delete(index);
+  action.selectedTaskIndexes = Array.from(current).sort((a, b) => a - b);
+}
+
+function selectedTaskCount(action) {
+  return getActionTasks(action).filter((_, index) =>
+    isTaskSelected(action, index),
+  ).length;
+}
+
+async function handleConfirmSelectedTasks(messageId, action) {
+  const tasks = getActionTasks(action);
+  const selected = tasks.filter((_, index) => isTaskSelected(action, index));
+  if (!selected.length) return;
+  action.arguments = {
+    ...(action.arguments || {}),
+    tasks: selected,
+  };
+  await handleAcceptAction(messageId, action);
+  if (action.status === "accepted") {
+    addAssistantNotice(
+      `Task list created successfully with ${selected.length} task${
+        selected.length === 1 ? "" : "s"
+      }.`,
+    );
+  }
+}
+
+function addAssistantNotice(content) {
+  messages.value.push({
+    id: ++msgIdCounter,
+    role: "assistant",
+    content,
+    actions: [],
+    streaming: false,
+  });
+  scrollToBottom();
+}
+
+function taskDueLabel(task) {
+  if (!task?.due_date) return "No due date";
+  try {
+    return new Date(task.due_date).toLocaleString();
+  } catch {
+    return task.due_date;
+  }
+}
+
+function actionCanvasTitle(action) {
+  return action?.arguments?.source_canvas_title || "Source canvas";
 }
 
 function handleKeydown(e) {
@@ -420,9 +803,13 @@ watch(
   () => props.open,
   async (opened) => {
     if (opened) {
-      await loadActiveSession();
-      await loadSessionList();
-      applyPendingDraft();
+      if (uiStore.pendingAiCommand) {
+        await processPendingAiCommand();
+      } else {
+        await loadActiveSession();
+        await loadSessionList();
+        applyPendingDraft();
+      }
       if (!inputValue.value) {
         focusTextareaToEnd();
       }
@@ -438,6 +825,13 @@ watch(
   () => {
     if (!props.open) return;
     applyPendingDraft();
+  },
+);
+
+watch(
+  () => uiStore.pendingAiCommand,
+  () => {
+    processPendingAiCommand();
   },
 );
 
@@ -475,6 +869,14 @@ function stopResize() {
 onBeforeUnmount(() => {
   abortStream();
   stopResize();
+  emit("canvas-actions-updated", []);
+});
+
+defineExpose({
+  acceptCanvasActionByInlineId,
+  rejectCanvasActionByInlineId,
+  acceptAllInlineCanvasActions,
+  rejectAllInlineCanvasActions,
 });
 
 // ======== Text formatting ========
@@ -506,8 +908,7 @@ function hasTaskKeywords(text) {
     normalized.includes("task") ||
     normalized.includes("todo") ||
     normalized.includes("to-do") ||
-    normalized.includes("action item") ||
-    normalized.includes("việc cần làm")
+    normalized.includes("action item")
   );
 }
 
@@ -546,7 +947,7 @@ function handleHistorySelect(session) {
       <!-- Drag resize handle (left edge) -->
       <div
         class="ai-chat-resize-handle"
-        title="Kéo để thay đổi kích thước"
+        title="Drag to resize"
         @mousedown.prevent="startResize"
       />
 
@@ -570,7 +971,7 @@ function handleHistorySelect(session) {
               type="button"
               class="ai-session-btn"
               :title="
-                activeSession ? sessionLabel(activeSession) : 'Chọn session'
+                activeSession ? sessionLabel(activeSession) : 'Choose session'
               "
               @click="showSessionDropdown = !showSessionDropdown"
             >
@@ -625,7 +1026,7 @@ function handleHistorySelect(session) {
           <button
             type="button"
             class="ai-chat-close-btn"
-            title="Đóng"
+            title="Close"
             @click="close"
           >
             <X :size="16" />
@@ -657,7 +1058,7 @@ function handleHistorySelect(session) {
             :size="32"
             class="ai-chat-empty-icon"
           />
-          <p>Chào! Tôi là AI Assistant.<br>Hãy hỏi bất cứ điều gì.</p>
+          <p>Hello, I am your AI Assistant.<br>Ask anything.</p>
         </div>
 
         <template v-else>
@@ -690,22 +1091,24 @@ function handleHistorySelect(session) {
               <div
                 v-if="
                   msg.role === 'assistant' &&
-                    Array.isArray(msg.actions) &&
-                    msg.actions.length > 0
+                    visibleActionsForSidebar(msg).length > 0
                 "
                 class="ai-action-list"
               >
-                <div class="ai-action-batch-controls">
+                <div
+                  v-if="!visibleActionsForSidebar(msg).some(isTaskListWithTasksAction)"
+                  class="ai-action-batch-controls"
+                >
                   <button
                     type="button"
                     class="ai-action-btn ai-action-btn--accept"
-                    @click="handleAcceptAllActions(msg.id)"
+                    @click="handleAcceptAllVisibleActions(msg.id)"
                   >
                     Accept all
                   </button>
                 </div>
                 <div
-                  v-for="action in msg.actions"
+                  v-for="action in visibleActionsForSidebar(msg)"
                   :key="action.id"
                   class="ai-action-item"
                 >
@@ -716,7 +1119,54 @@ function handleHistorySelect(session) {
                       :class="`is-${action.status}`"
                     >{{ action.status }}</span>
                   </div>
-                  <div class="ai-action-args">
+
+                  <div
+                    v-if="isTaskListWithTasksAction(action)"
+                    class="ai-task-preview"
+                  >
+                    <div class="ai-task-preview-header">
+                      <strong>{{ action.arguments?.list_name || "New task list" }}</strong>
+                      <span>{{ selectedTaskCount(action) }} selected</span>
+                    </div>
+                    <label
+                      v-for="(task, taskIndex) in getActionTasks(action)"
+                      :key="`${action.id || action.name}-${taskIndex}`"
+                      class="ai-task-preview-row"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="isTaskSelected(action, taskIndex)"
+                        :disabled="action.status !== 'pending'"
+                        @change="
+                          toggleTaskSelection(
+                            action,
+                            taskIndex,
+                            $event.target.checked,
+                          )
+                        "
+                      >
+                      <span class="ai-task-preview-body">
+                        <span class="ai-task-preview-title">{{
+                          task.title || "Untitled task"
+                        }}</span>
+                        <span
+                          v-if="task.description"
+                          class="ai-task-preview-description"
+                        >{{ task.description }}</span>
+                        <span class="ai-task-preview-meta">
+                          Due: {{ taskDueLabel(task) }} · Priority:
+                          {{ task.priority || "medium" }} · Assignee: You
+                        </span>
+                        <span class="ai-task-preview-meta">
+                          Attachment: {{ actionCanvasTitle(action) }}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                  <div
+                    v-else
+                    class="ai-action-args"
+                  >
                     {{ JSON.stringify(action.arguments || {}) }}
                   </div>
                   <div
@@ -730,6 +1180,16 @@ function handleHistorySelect(session) {
                     class="ai-action-buttons"
                   >
                     <button
+                      v-if="isTaskListWithTasksAction(action)"
+                      type="button"
+                      class="ai-action-btn ai-action-btn--accept"
+                      :disabled="selectedTaskCount(action) === 0"
+                      @click="handleConfirmSelectedTasks(msg.id, action)"
+                    >
+                      Confirm Selected
+                    </button>
+                    <button
+                      v-else
                       type="button"
                       class="ai-action-btn ai-action-btn--accept"
                       @click="handleAcceptAction(msg.id, action)"
@@ -751,22 +1211,56 @@ function handleHistorySelect(session) {
         </template>
       </div>
 
+      <div
+        v-if="taskSetup"
+        class="ai-task-setup"
+      >
+        <div class="ai-task-setup-title">
+          Task generation setup
+        </div>
+        <label class="ai-task-setup-field">
+          <span>Overall due date</span>
+          <input
+            v-model="taskSetup.overallDueDate"
+            type="date"
+          >
+        </label>
+        <div class="ai-task-setup-actions">
+          <button
+            type="button"
+            class="ai-action-btn ai-action-btn--reject"
+            @click="cancelTaskSetup"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="ai-action-btn ai-action-btn--accept"
+            @click="submitTaskSetup"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+
       <!-- Input area -->
       <div class="ai-chat-input-area">
         <textarea
           ref="textareaEl"
           v-model="inputValue"
           class="ai-chat-textarea"
-          placeholder="Nhập câu hỏi... (Enter để gửi)"
+          placeholder="Ask a question... (Enter to send)"
           rows="3"
-          :disabled="isStreaming || isLoadingSession"
+          :disabled="isStreaming || isLoadingSession || Boolean(taskSetup)"
           @keydown="handleKeydown"
         />
         <button
           type="button"
           class="ai-chat-send-btn"
-          :disabled="isStreaming || isLoadingSession || !inputValue.trim()"
-          title="Gửi (Enter)"
+          :disabled="
+            isStreaming || isLoadingSession || Boolean(taskSetup) || !inputValue.trim()
+          "
+          title="Send (Enter)"
           @click="sendMessage"
         >
           <Send :size="16" />
@@ -1192,6 +1686,60 @@ function handleHistorySelect(session) {
   overflow-x: auto;
 }
 
+.ai-task-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-task-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.ai-task-preview-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+}
+
+.ai-task-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ai-task-preview-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ai-task-preview-description {
+  font-size: 12px;
+  color: #334155;
+}
+
+.ai-task-preview-meta {
+  font-size: 11px;
+  color: #64748b;
+}
+
 .ai-action-error {
   font-size: 11px;
   color: #b91c1c;
@@ -1210,6 +1758,11 @@ function handleHistorySelect(session) {
   padding: 4px 8px;
   font-size: 11px;
   cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .ai-action-btn--accept {
@@ -1220,6 +1773,46 @@ function handleHistorySelect(session) {
 .ai-action-btn--reject {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.ai-task-setup {
+  flex-shrink: 0;
+  border-top: 1px solid var(--ui-divider, #e5e7eb);
+  background: #f8fafc;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-task-setup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ai-task-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: #475569;
+
+  input {
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 0 8px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fff;
+  }
+}
+
+.ai-task-setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .ai-chat-msg-text {

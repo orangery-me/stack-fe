@@ -6,6 +6,11 @@
         <p>{{ currentTime }} · Call ID: {{ callId || 'N/A' }}</p>
       </div>
       <div class="call-header-actions">
+        <TranscriptRecordToggle
+          :recording="isTranscriptRecording"
+          :loading="isTranscriptRecordingLoading"
+          @start="handleStartTranscriptRecording"
+        />
         <button
           class="call-header-action"
           type="button"
@@ -110,6 +115,12 @@
           </div>
         </div>
 
+        <SubtitleOverlay
+          v-if="isConnected"
+          :enabled="subtitlesEnabled"
+          :segments="activeSubtitleSegments"
+        />
+
         <!-- Error state -->
         <div
           v-else-if="errorMessage"
@@ -182,6 +193,10 @@
           :size="20"
         />
       </button>
+      <SubtitleToggle
+        :enabled="subtitlesEnabled"
+        @toggle="handleSubtitleToggle"
+      />
       <button
         class="ctrl-btn ctrl-btn--leave"
         @click="handleLeave"
@@ -201,7 +216,12 @@ import { ref, onMounted, onUnmounted, watchEffect } from 'vue';
 import { Track } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Info, MessageCircle } from 'lucide-vue-next';
 import { useHuddle } from '../composables/useHuddle';
+import { useSubtitle } from '../composables/useSubtitle';
+import { huddleService } from '../services/huddle.service';
 import HuddleChatSidebar from './HuddleChatSidebar.vue';
+import SubtitleOverlay from './SubtitleOverlay.vue';
+import SubtitleToggle from './SubtitleToggle.vue';
+import TranscriptRecordToggle from './TranscriptRecordToggle.vue';
 
 const props = defineProps<{
   livekitUrl: string;
@@ -223,6 +243,17 @@ const emit = defineEmits<{
 }>();
 
 const { state: huddleState, connect, disconnect, getRoom } = useHuddle();
+const {
+  enabled: subtitlesEnabled,
+  activeSegments: activeSubtitleSegments,
+  transcriptRecording: isTranscriptRecording,
+  setEnabled: setSubtitleEnabled,
+  setTranscriptRecording,
+  syncPreference: syncSubtitlePreference,
+} = useSubtitle({
+  channelId: props.channelId,
+  callId: props.callId,
+});
 
 const isConnected = ref(false);
 const errorMessage = ref('');
@@ -232,6 +263,7 @@ const localVideoEl = ref<HTMLVideoElement | null>(null);
 const isChatOpen = ref(false);
 const hasOpenedChat = ref(false);
 const currentTime = ref('');
+const isTranscriptRecordingLoading = ref(false);
 let timeIntervalId: number | undefined;
 
 function updateCurrentTime() {
@@ -305,6 +337,7 @@ async function retryConnection() {
 onMounted(() => {
   updateCurrentTime();
   timeIntervalId = window.setInterval(updateCurrentTime, 60000);
+  void loadTranscriptRecordingStatus();
   connectToRoom();
 });
 
@@ -333,6 +366,34 @@ function toggleChat() {
   isChatOpen.value = !isChatOpen.value;
   if (isChatOpen.value) {
     hasOpenedChat.value = true;
+  }
+}
+
+function handleSubtitleToggle(enabled: boolean) {
+  setSubtitleEnabled(enabled);
+  syncSubtitlePreference(enabled);
+}
+
+async function loadTranscriptRecordingStatus() {
+  try {
+    const status = await huddleService.getTranscriptRecordingStatus(props.callId);
+    setTranscriptRecording(status.recording);
+  } catch (err) {
+    console.warn('Failed to load transcript recording status', err);
+  }
+}
+
+async function handleStartTranscriptRecording() {
+  if (isTranscriptRecording.value || isTranscriptRecordingLoading.value) return;
+
+  try {
+    isTranscriptRecordingLoading.value = true;
+    const status = await huddleService.startTranscriptRecording(props.callId);
+    setTranscriptRecording(status.recording);
+  } catch (err) {
+    console.error('Failed to start transcript recording', err);
+  } finally {
+    isTranscriptRecordingLoading.value = false;
   }
 }
 
@@ -419,6 +480,7 @@ function handleLeave() {
   min-height: 0;
 }
 .call-content {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;

@@ -81,6 +81,12 @@ export const API_ENDPOINTS = {
     // By canvasId only
     GET_BY_ID: (canvasId) => `/canvases/${canvasId}`,
     UPDATE: (canvasId) => `/canvases/${canvasId}`,
+    GET_ACCESS: (canvasId) => `/canvases/${canvasId}/access`,
+    GET_PERMISSIONS: (canvasId) => `/canvases/${canvasId}/permissions`,
+    SHARE_USER: (canvasId) => `/canvases/${canvasId}/permissions/users`,
+    SHARE_CHANNEL: (canvasId) => `/canvases/${canvasId}/permissions/channels`,
+    UPDATE_VISIBILITY: (canvasId) => `/canvases/${canvasId}/visibility`,
+    REMOVE_PERMISSION: (canvasId, permissionId) => `/canvases/${canvasId}/permissions/${permissionId}`,
     SAVE_CONTENT: (canvasId) => `/canvases/${canvasId}/content`,
     // Versions
     GET_VERSIONS: (canvasId) => `/canvases/${canvasId}/versions`,
@@ -101,6 +107,8 @@ export const API_ENDPOINTS = {
     SESSIONS_ACTIVE: '/agent/sessions/active',
     SESSIONS: '/agent/sessions',
     SESSION_MESSAGES: (sessionId) => `/agent/sessions/${sessionId}/messages`,
+    SESSION_MESSAGE_ACTION_STATUS: (sessionId, messageId, actionId) =>
+      `/agent/sessions/${sessionId}/messages/${messageId}/actions/${actionId}`,
     SESSION_UPDATE: (sessionId) => `/agent/sessions/${sessionId}`,
     SESSION_SEND: (sessionId) => `/agent/sessions/${sessionId}/messages`,
     SESSION_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/messages/stream`,
@@ -111,4 +119,3 @@ export const API_ENDPOINTS = {
     TASK_APPLY_ACTION: '/agent/tasks/actions/apply',
   },
 };
-
