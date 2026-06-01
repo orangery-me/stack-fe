@@ -21,6 +21,7 @@ import {
   sendCanvasSessionMessageStream,
   sendTaskSessionMessageStream,
   updateSession,
+  updateMessageActionStatus,
   applyCanvasAction,
   applyTaskAction,
 } from "@/services/agent.service.js";
@@ -39,7 +40,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:open"]);
+const emit = defineEmits(["update:open", "canvas-actions-updated"]);
 
 // ======== State ========
 
@@ -67,6 +68,181 @@ const DEFAULT_PROVIDER = "openai";
 const DEFAULT_MODEL = "gpt-5.3-codex";
 const isCanvasMode = computed(() => props.context?.kind === "canvas");
 const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
+const CANVAS_ACTION_NAMES = new Set([
+  "insert_canvas_block",
+  "update_canvas_block",
+  "delete_canvas_block",
+  "reorder_canvas_blocks",
+]);
+
+function isCanvasAction(action) {
+  return CANVAS_ACTION_NAMES.has(action?.name);
+}
+
+function isActionVisibleInSidebar(action) {
+  return !(isCanvasMode.value && isCanvasAction(action));
+}
+
+function numberArg(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function canvasActionAnchorKey(action) {
+  const args = action?.arguments || {};
+  if (action?.name === "insert_canvas_block") {
+    return String(numberArg(args.after_index) ?? -1);
+  }
+  if (action?.name === "update_canvas_block" || action?.name === "delete_canvas_block") {
+    const index = numberArg(args.index);
+    return index === null ? null : String(index);
+  }
+  if (action?.name === "reorder_canvas_blocks") {
+    const index = numberArg(args.from_index);
+    return index === null ? null : String(index);
+  }
+  return null;
+}
+
+function dedupeCanvasActionsByAnchor(actions) {
+  if (!isCanvasMode.value || !Array.isArray(actions)) return actions;
+
+  const seen = new Set();
+  const deduped = [];
+  for (let index = actions.length - 1; index >= 0; index--) {
+    const action = actions[index];
+    const anchorKey = isCanvasAction(action) ? canvasActionAnchorKey(action) : null;
+    if (anchorKey && seen.has(anchorKey)) continue;
+    if (anchorKey) seen.add(anchorKey);
+    deduped.unshift(action);
+  }
+  return deduped;
+}
+
+function supersedeOlderCanvasActions(newActions, currentMessageId) {
+  if (!isCanvasMode.value || !Array.isArray(newActions)) return;
+
+  const newAnchorKeys = new Set(
+    newActions
+      .filter(isCanvasAction)
+      .map(canvasActionAnchorKey)
+      .filter(Boolean),
+  );
+  if (!newAnchorKeys.size) return;
+
+  for (const msg of messages.value) {
+    if (msg.id === currentMessageId || !Array.isArray(msg.actions)) continue;
+    for (const action of msg.actions) {
+      if (!isCanvasAction(action)) continue;
+      const status = action.status || "pending";
+      if (!["pending", "failed", "applying"].includes(status)) continue;
+      const anchorKey = canvasActionAnchorKey(action);
+      if (anchorKey && newAnchorKeys.has(anchorKey)) {
+        action.status = "superseded";
+        persistActionStatus(msg.id, action);
+      }
+    }
+  }
+}
+
+function visibleActionsForSidebar(msg) {
+  return Array.isArray(msg?.actions)
+    ? msg.actions.filter(isActionVisibleInSidebar)
+    : [];
+}
+
+function canvasActionInlineId(messageId, action, index) {
+  return `${messageId}:${action?.id || `${action?.name || "action"}-${index}`}`;
+}
+
+function splitCanvasActionInlineId(inlineId) {
+  const separatorIndex = String(inlineId || "").indexOf(":");
+  if (separatorIndex < 0) return null;
+  return {
+    messageId: String(inlineId).slice(0, separatorIndex),
+    actionId: String(inlineId).slice(separatorIndex + 1),
+  };
+}
+
+function findActionByInlineId(inlineId) {
+  const parsed = splitCanvasActionInlineId(inlineId);
+  if (!parsed) return null;
+  const msg = messages.value.find((m) => String(m.id) === parsed.messageId);
+  if (!msg?.actions) return null;
+  const action = msg.actions.find(
+    (item, index) => canvasActionInlineId(msg.id, item, index) === inlineId,
+  );
+  return action ? { msg, action } : null;
+}
+
+function getInlineCanvasActions() {
+  if (!isCanvasMode.value) return [];
+
+  return messages.value.flatMap((msg) => {
+    if (!Array.isArray(msg.actions)) return [];
+    return msg.actions
+      .map((action, index) => ({ action, index }))
+      .filter(({ action }) => {
+        const status = action.status || "pending";
+        return (
+          isCanvasAction(action) &&
+          (status === "pending" || status === "applying" || status === "failed")
+        );
+      })
+      .map(({ action, index }) => ({
+        ...action,
+        inlineId: canvasActionInlineId(msg.id, action, index),
+      }));
+  });
+}
+
+function syncInlineCanvasActions() {
+  emit("canvas-actions-updated", getInlineCanvasActions());
+}
+
+function persistedActionId(action, index = 0) {
+  return action?.id || `${action?.name || "action"}-${index}`;
+}
+
+async function persistActionStatus(messageId, action) {
+  if (!activeSession.value?.id || !action?.name) return;
+  const actionId = persistedActionId(action);
+  if (!actionId) return;
+
+  try {
+    await updateMessageActionStatus(activeSession.value.id, String(messageId), actionId, {
+      status: action.status || "pending",
+      error: action.error,
+    });
+  } catch {
+    // The assistant message may not be persisted until the stream fully closes.
+    // onDone retries terminal action statuses after the server has had time to save it.
+  }
+}
+
+function persistTerminalActionStatuses(messageId) {
+  const msg = messages.value.find((m) => m.id === messageId);
+  if (!msg?.actions?.length) return;
+  for (const action of msg.actions) {
+    if (["accepted", "rejected", "failed", "superseded"].includes(action.status)) {
+      persistActionStatus(messageId, action);
+    }
+  }
+}
+
+function normalizeIncomingActions(actions) {
+  return dedupeCanvasActionsByAnchor(
+    actions.map((a) => ({
+      ...a,
+      status: a.status || "pending",
+      selectedTaskIndexes: getActionTasks(a).map((_, index) => index),
+    })),
+  );
+}
 
 // ======== Session loading ========
 
@@ -94,6 +270,7 @@ async function loadActiveSession() {
         streaming: false,
       };
     });
+    syncInlineCanvasActions();
     await scrollToBottom();
   } catch {
     // Toast shown by global interceptor
@@ -137,6 +314,7 @@ async function switchSession(session) {
         streaming: false,
       };
     });
+    syncInlineCanvasActions();
     await scrollToBottom();
   } catch {
     // ignore
@@ -150,6 +328,7 @@ async function handleNewChat() {
     const session = await createSession();
     activeSession.value = session;
     messages.value = [];
+    syncInlineCanvasActions();
     await loadSessionList();
   } catch {
     // Toast shown by global interceptor
@@ -224,6 +403,7 @@ async function sendMessage(options = {}) {
     isStreaming.value = false;
     uiStore.setAiBusy(false);
     abortController = null;
+    window.setTimeout(() => persistTerminalActionStatuses(assistantId), 600);
 
     if (activeSession.value?.title === "New chat") {
       const newTitle = text.slice(0, 50);
@@ -285,11 +465,10 @@ async function sendMessage(options = {}) {
           msg.content += `${msg.content ? "\n" : ""}${event.content}`;
         }
         if (event.type === "actions" && Array.isArray(event.actions)) {
-          msg.actions = event.actions.map((a) => ({
-            ...a,
-            status: a.status || "pending",
-            selectedTaskIndexes: getActionTasks(a).map((_, index) => index),
-          }));
+          const nextActions = normalizeIncomingActions(event.actions);
+          supersedeOlderCanvasActions(nextActions, msg.id);
+          msg.actions = nextActions;
+          syncInlineCanvasActions();
         }
         scrollToBottom();
       },
@@ -322,11 +501,10 @@ async function sendMessage(options = {}) {
           msg.content += `${msg.content ? "\n" : ""}${event.content}`;
         }
         if (event.type === "actions" && Array.isArray(event.actions)) {
-          msg.actions = event.actions.map((a) => ({
-            ...a,
-            status: a.status || "pending",
-            selectedTaskIndexes: getActionTasks(a).map((_, index) => index),
-          }));
+          const nextActions = normalizeIncomingActions(event.actions);
+          supersedeOlderCanvasActions(nextActions, msg.id);
+          msg.actions = nextActions;
+          syncInlineCanvasActions();
         }
         scrollToBottom();
       },
@@ -357,6 +535,8 @@ async function handleAcceptAction(messageId, action) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions) return;
   action.status = "applying";
+  action.error = undefined;
+  syncInlineCanvasActions();
   try {
     const isTaskAction =
       action.name === "create_task" ||
@@ -381,6 +561,7 @@ async function handleAcceptAction(messageId, action) {
     if (!result?.ok) {
       action.error = result?.error || "Apply failed";
     }
+    persistActionStatus(messageId, action);
     if (result?.ok && isTaskAction && props.context?.workspaceId) {
       const workspaceId = props.context.workspaceId;
       queryClient.invalidateQueries({ queryKey: ["my-tasks", workspaceId] });
@@ -395,16 +576,17 @@ async function handleAcceptAction(messageId, action) {
   } catch (err) {
     action.status = "failed";
     action.error = err?.message || "Apply failed";
+    persistActionStatus(messageId, action);
+  } finally {
+    syncInlineCanvasActions();
   }
 }
 
-async function handleAcceptAllActions(messageId) {
+async function handleAcceptAllVisibleActions(messageId) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions?.length) return;
   for (const action of msg.actions) {
-    if (action.status === "pending") {
-      // Keep sequential apply to avoid race conditions in server-side ordering.
-       
+    if (action.status === "pending" && isActionVisibleInSidebar(action)) {
       await handleAcceptAction(messageId, action);
     }
   }
@@ -414,6 +596,38 @@ function handleRejectAction(messageId, action) {
   const msg = messages.value.find((m) => m.id === messageId);
   if (!msg?.actions) return;
   action.status = "rejected";
+  persistActionStatus(messageId, action);
+  syncInlineCanvasActions();
+}
+
+async function acceptCanvasActionByInlineId(inlineId) {
+  const match = findActionByInlineId(inlineId);
+  if (!match || !isCanvasAction(match.action)) return;
+  await handleAcceptAction(match.msg.id, match.action);
+}
+
+function rejectCanvasActionByInlineId(inlineId) {
+  const match = findActionByInlineId(inlineId);
+  if (!match || !isCanvasAction(match.action)) return;
+  handleRejectAction(match.msg.id, match.action);
+}
+
+async function acceptAllInlineCanvasActions() {
+  const actions = getInlineCanvasActions().filter(
+    (action) => action.status === "pending",
+  );
+  for (const action of actions) {
+    await acceptCanvasActionByInlineId(action.inlineId);
+  }
+}
+
+function rejectAllInlineCanvasActions() {
+  const actions = getInlineCanvasActions().filter((action) =>
+    ["pending", "failed"].includes(action.status || "pending"),
+  );
+  for (const action of actions) {
+    rejectCanvasActionByInlineId(action.inlineId);
+  }
 }
 
 async function processPendingAiCommand() {
@@ -462,6 +676,7 @@ async function startFreshCommandSession(command) {
   showSessionDropdown.value = false;
   taskSetup.value = null;
   messages.value = [];
+  syncInlineCanvasActions();
   const canvasTitle = command.context?.canvasTitle || "Canvas";
   const prefix =
     command.kind === "canvas-task-generation" ? "Tasks" : "Summary";
@@ -654,6 +869,14 @@ function stopResize() {
 onBeforeUnmount(() => {
   abortStream();
   stopResize();
+  emit("canvas-actions-updated", []);
+});
+
+defineExpose({
+  acceptCanvasActionByInlineId,
+  rejectCanvasActionByInlineId,
+  acceptAllInlineCanvasActions,
+  rejectAllInlineCanvasActions,
 });
 
 // ======== Text formatting ========
@@ -868,25 +1091,24 @@ function handleHistorySelect(session) {
               <div
                 v-if="
                   msg.role === 'assistant' &&
-                    Array.isArray(msg.actions) &&
-                    msg.actions.length > 0
+                    visibleActionsForSidebar(msg).length > 0
                 "
                 class="ai-action-list"
               >
                 <div
-                  v-if="!msg.actions.some(isTaskListWithTasksAction)"
+                  v-if="!visibleActionsForSidebar(msg).some(isTaskListWithTasksAction)"
                   class="ai-action-batch-controls"
                 >
                   <button
                     type="button"
                     class="ai-action-btn ai-action-btn--accept"
-                    @click="handleAcceptAllActions(msg.id)"
+                    @click="handleAcceptAllVisibleActions(msg.id)"
                   >
                     Accept all
                   </button>
                 </div>
                 <div
-                  v-for="action in msg.actions"
+                  v-for="action in visibleActionsForSidebar(msg)"
                   :key="action.id"
                   class="ai-action-item"
                 >

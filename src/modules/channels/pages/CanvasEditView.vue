@@ -21,6 +21,8 @@ import RichEditor from "@/components/editor/RichEditor.vue";
 import TranscriptBanner from "@/components/editor/TranscriptBanner.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import CanvasShareDialog from "@/components/editor/CanvasShareDialog.vue";
+import { AiCanvasActionsExtension } from "@/components/editor/ai-canvas-actions.extension";
+import type { CanvasAiInlineAction } from "@/components/editor/ai-canvas-actions.extension";
 import { AiPreviewExtension } from "@/components/editor/ai-preview.extension";
 import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
@@ -61,6 +63,8 @@ const aiActionsDisabled = computed(
 const showTaskChannelPicker = ref(false);
 const showTranscriptBanner = ref(false);
 const showShareDialog = ref(false);
+const aiChatSidebarRef = ref<InstanceType<typeof AiChatSidebar> | null>(null);
+const canvasAiActions = ref<CanvasAiInlineAction[]>([]);
 
 // ======== Title =========
 
@@ -121,6 +125,13 @@ watch(
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => canvasId.value,
+  () => {
+    canvasAiActions.value = [];
+  },
 );
 
 watch(
@@ -405,6 +416,7 @@ function setupForCanvas(id: string) {
       Subscript,
       Superscript,
       buildSlashCommandExtension(),
+      AiCanvasActionsExtension,
       AiPreviewExtension,
     ],
     autofocus: false,
@@ -517,6 +529,26 @@ function handleTranscriptBannerDismissed() {
 function handleShare() {
   showShareDialog.value = true;
 }
+
+function handleCanvasAiActionsUpdated(actions: CanvasAiInlineAction[]) {
+  canvasAiActions.value = actions;
+}
+
+function handleAcceptCanvasAiAction(inlineId: string) {
+  void aiChatSidebarRef.value?.acceptCanvasActionByInlineId(inlineId);
+}
+
+function handleRejectCanvasAiAction(inlineId: string) {
+  aiChatSidebarRef.value?.rejectCanvasActionByInlineId(inlineId);
+}
+
+function handleAcceptAllCanvasAiActions() {
+  void aiChatSidebarRef.value?.acceptAllInlineCanvasActions();
+}
+
+function handleRejectAllCanvasAiActions() {
+  aiChatSidebarRef.value?.rejectAllInlineCanvasActions();
+}
 </script>
 
 <template>
@@ -553,6 +585,7 @@ function handleShare() {
         :ai-writer-bar="aiWriterBar"
         :selection-ai-icon="selectionAiIcon"
         :canvas-plain-text="canvasPlainText"
+        :ai-canvas-actions="canvasAiActions"
         :ai-actions-disabled="aiActionsDisabled"
         @update:title="onTitleUpdate"
         @download="handleDownload"
@@ -567,6 +600,10 @@ function handleShare() {
         @reject="handleReject"
         @ai-close="handleAiWriterClose"
         @selection-icon-click="handleSelectionIconClick"
+        @accept-canvas-ai-action="handleAcceptCanvasAiAction"
+        @reject-canvas-ai-action="handleRejectCanvasAiAction"
+        @accept-all-canvas-ai-actions="handleAcceptAllCanvasAiActions"
+        @reject-all-canvas-ai-actions="handleRejectAllCanvasAiActions"
       />
       <CanvasShareDialog
         :open="showShareDialog"
@@ -580,8 +617,10 @@ function handleShare() {
       />
     </div>
     <AiChatSidebar
+      ref="aiChatSidebarRef"
       v-model:open="uiStore.isAiOpen"
       :context="aiCanvasContext"
+      @canvas-actions-updated="handleCanvasAiActionsUpdated"
     />
     <div
       v-if="showTaskChannelPicker"

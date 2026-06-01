@@ -107,6 +107,8 @@ export const API_ENDPOINTS = {
     SESSIONS_ACTIVE: '/agent/sessions/active',
     SESSIONS: '/agent/sessions',
     SESSION_MESSAGES: (sessionId) => `/agent/sessions/${sessionId}/messages`,
+    SESSION_MESSAGE_ACTION_STATUS: (sessionId, messageId, actionId) =>
+      `/agent/sessions/${sessionId}/messages/${messageId}/actions/${actionId}`,
     SESSION_UPDATE: (sessionId) => `/agent/sessions/${sessionId}`,
     SESSION_SEND: (sessionId) => `/agent/sessions/${sessionId}/messages`,
     SESSION_SEND_STREAM: (sessionId) => `/agent/sessions/${sessionId}/messages/stream`,

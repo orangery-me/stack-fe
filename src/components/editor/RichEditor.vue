@@ -10,6 +10,7 @@ import {
 import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
 import AiWriterBar from "@/components/editor/AiWriterBar.vue";
 import AiSelectionIcon from "@/components/editor/AiSelectionIcon.vue";
+import type { CanvasAiInlineAction } from "@/components/editor/ai-canvas-actions.extension";
 import type {
   SlashMenuState,
   AiWriterBarState,
@@ -46,6 +47,7 @@ const props = withDefaults(
     // Selection AI trigger
     selectionAiIcon?: SelectionAiIconState | null;
     canvasPlainText?: string;
+    aiCanvasActions?: CanvasAiInlineAction[];
     aiActionsDisabled?: boolean;
   }>(),
   {
@@ -58,6 +60,7 @@ const props = withDefaults(
     aiWriterBar: null,
     selectionAiIcon: null,
     canvasPlainText: "",
+    aiCanvasActions: () => [],
     aiActionsDisabled: false,
   },
 );
@@ -77,6 +80,10 @@ const emit = defineEmits<{
   "ai-close": [];
   // Selection AI trigger
   "selection-icon-click": [];
+  "accept-canvas-ai-action": [inlineId: string];
+  "reject-canvas-ai-action": [inlineId: string];
+  "accept-all-canvas-ai-actions": [];
+  "reject-all-canvas-ai-actions": [];
   "ai-summary": [];
   "ai-task-generation": [];
   share: [];
@@ -100,6 +107,45 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => [props.editor, props.aiCanvasActions] as const,
+  ([inst, actions]) => {
+    const commands = inst?.commands as
+      | {
+          setCanvasAiActions?: (items: CanvasAiInlineAction[]) => boolean;
+          clearCanvasAiActions?: () => boolean;
+        }
+      | undefined;
+    if (!commands) return;
+
+    if (actions?.length) {
+      commands.setCanvasAiActions?.(actions);
+    } else {
+      commands.clearCanvasAiActions?.();
+    }
+  },
+  { immediate: true, deep: true },
+);
+
+function handleEditorContentClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  const button = target?.closest<HTMLButtonElement>("[data-ai-canvas-action]");
+  if (!button) return;
+
+  const inlineId = button.dataset.aiCanvasActionId;
+  const intent = button.dataset.aiCanvasAction;
+  if (!inlineId || !intent) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (intent === "accept") {
+    emit("accept-canvas-ai-action", inlineId);
+  } else if (intent === "reject") {
+    emit("reject-canvas-ai-action", inlineId);
+  }
+}
 
 const currentHeadingLabel = computed(() => {
   if (!editor.value) return "H";
@@ -173,6 +219,12 @@ const viewersExcludingSelf = computed(() => {
 
 const aiToolbarActionsDisabled = computed(() => {
   return props.aiActionsDisabled || !props.canvasPlainText?.trim();
+});
+
+const pendingCanvasAiActionCount = computed(() => {
+  return (props.aiCanvasActions || []).filter((action) =>
+    ["pending", "applying", "failed"].includes(action.status || "pending"),
+  ).length;
 });
 
 const visibleViewers = computed(() => {
@@ -905,7 +957,29 @@ onBeforeUnmount(() => {
     <EditorContent
       :editor="editor"
       class="content"
+      @click="handleEditorContentClick"
     />
+
+    <div
+      v-if="pendingCanvasAiActionCount > 0"
+      class="rte-ai-canvas-banner"
+    >
+      <span>{{ pendingCanvasAiActionCount }} AI proposed change{{ pendingCanvasAiActionCount === 1 ? "" : "s" }}</span>
+      <button
+        type="button"
+        class="rte-ai-canvas-banner__btn rte-ai-canvas-banner__btn--accept"
+        @click="emit('accept-all-canvas-ai-actions')"
+      >
+        Accept all
+      </button>
+      <button
+        type="button"
+        class="rte-ai-canvas-banner__btn rte-ai-canvas-banner__btn--reject"
+        @click="emit('reject-all-canvas-ai-actions')"
+      >
+        Reject all
+      </button>
+    </div>
   </div>
 
   <!-- Slash command popup (optional AI writer feature) -->
@@ -1205,6 +1279,142 @@ onBeforeUnmount(() => {
   max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.rte-ai-canvas-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-top: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rte-ai-canvas-banner__btn {
+  border: 0;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.rte-ai-canvas-banner__btn--accept {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.rte-ai-canvas-banner__btn--accept:hover {
+  background: #bbf7d0;
+}
+
+.rte-ai-canvas-banner__btn--reject {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.rte-ai-canvas-banner__btn--reject:hover {
+  background: #fecaca;
+}
+
+.content :deep(.ai-canvas-action-stack) {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.content :deep(.ai-canvas-action-card) {
+  border: 1px solid #bfdbfe;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  padding: 10px 12px;
+  color: #0f172a;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.08);
+}
+
+.content :deep(.ai-canvas-action-card.is-failed) {
+  border-color: #fecaca;
+  border-left-color: #dc2626;
+  background: #fef2f2;
+}
+
+.content :deep(.ai-canvas-action-card__header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.content :deep(.ai-canvas-action-card__title) {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.content :deep(.ai-canvas-action-card__status) {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.content :deep(.ai-canvas-action-card__body) {
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.content :deep(.ai-canvas-action-card__error) {
+  margin-top: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.content :deep(.ai-canvas-action-card__actions) {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.content :deep(.ai-canvas-action-btn) {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.content :deep(.ai-canvas-action-btn:disabled) {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.content :deep(.ai-canvas-action-btn--accept) {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.content :deep(.ai-canvas-action-btn--accept:hover:not(:disabled)) {
+  background: #bbf7d0;
+}
+
+.content :deep(.ai-canvas-action-btn--reject) {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.content :deep(.ai-canvas-action-btn--reject:hover:not(:disabled)) {
+  background: #fecaca;
 }
 .content :deep(h1) {
   font-size: 34px;
