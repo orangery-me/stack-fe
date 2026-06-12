@@ -47,6 +47,12 @@ app.use(PrimeVue, {
   theme: {
     preset: Aura,
   },
+  zIndex: {
+    modal: 1100,
+    overlay: 9999, // Ensure AutoComplete, DatePicker, and menus show on top of teleported modals
+    menu: 1000,
+    tooltip: 11000
+  }
 });
 
 app.component("VIcon", OhVueIcon);

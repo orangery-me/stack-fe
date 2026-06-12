@@ -132,9 +132,9 @@
     }
 
     &.active {
-      background: #1e40af;
+      background: var(--primary-600);
       border-left-color: var(--primary-500);
-      color: #eff6ff;
+      color: var(--ui-bg-surface);
     }
   }
 
@@ -333,14 +333,14 @@
   }
 
   &.active {
-    background: #1e40af;
-    color: #eff6ff;
+    background: var(--primary-600);
+    color: var(--ui-bg-surface);
     border-left: 2px solid var(--primary-500);
 
     .user-avatar {
-      background: #dbeafe;
-      color: #1e40af;
-      border-color: rgba(191, 219, 254, 0.8);
+      background: var(--primary-100);
+      color: var(--primary-600);
+      border-color: var(--primary-200);
     }
   }
 

@@ -238,3 +238,21 @@ const formattedValue = computed({
   margin: 0;
 }
 </style>
+
+<style lang="scss">
+/* Global styles for teleported CustomDatePicker panel */
+.calm-datepicker-panel-custom {
+  /* Hide scrollbars inside time pickers */
+  .p-hour-picker,
+  .p-minute-picker,
+  .p-second-picker,
+  .p-datepicker-time-picker,
+  .p-datepicker-select-month,
+  .p-datepicker-select-year {
+    scrollbar-width: none !important;
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
+  }
+}
+</style>

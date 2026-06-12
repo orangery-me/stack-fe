@@ -242,8 +242,14 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 25px -5px rgba(31, 26, 23, 0.08),
               0 8px 10px -6px rgba(31, 26, 23, 0.08);
   min-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
   max-height: 240px;
   overflow-y: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .custom-select-menu--align-right {
@@ -264,6 +270,8 @@ onBeforeUnmount(() => {
   color: var(--ui-text, #1F1A17);
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: background var(--ui-duration, 0.15s) var(--ui-ease, ease),
               color var(--ui-duration, 0.15s) var(--ui-ease, ease);
 }
