@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
     GET_USER_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels/my`,
     GET_ALL_CHANNELS: (workspaceId) => `/workspaces/${workspaceId}/channels`,
     CREATE: (workspaceId) => `/workspaces/${workspaceId}/channels`,
+    DIRECT_MESSAGES: (workspaceId) => `/workspaces/${workspaceId}/channels/direct-messages`,
     GET_BY_ID: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}`,
     GET_MEMBERS: (workspaceId, channelId) =>
       `/workspaces/${workspaceId}/channels/${channelId}/members`,
@@ -67,6 +68,12 @@ export const API_ENDPOINTS = {
   CHAT: {
     GET_MESSAGES: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
     SEND_MESSAGE: (workspaceId, channelId) => `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+    UPLOAD_ATTACHMENT: (workspaceId, channelId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/messages/attachments/upload`,
+    PIN_MESSAGE: (workspaceId, channelId, messageId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}/pin`,
+    DELETE_MESSAGE: (workspaceId, channelId, messageId) =>
+      `/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`,
   },
   NOTIFICATIONS: {
     LIST: "/notifications",
@@ -82,6 +89,7 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (canvasId) => `/canvases/${canvasId}`,
     UPDATE: (canvasId) => `/canvases/${canvasId}`,
     GET_ACCESS: (canvasId) => `/canvases/${canvasId}/access`,
+    GET_COLLAB_TOKEN: (canvasId) => `/canvases/${canvasId}/collab-token`,
     GET_PERMISSIONS: (canvasId) => `/canvases/${canvasId}/permissions`,
     SHARE_USER: (canvasId) => `/canvases/${canvasId}/permissions/users`,
     SHARE_CHANNEL: (canvasId) => `/canvases/${canvasId}/permissions/channels`,

@@ -44,6 +44,19 @@ class ChannelService {
   }
 
   /**
+   * Find or create a one-to-one direct-message channel.
+   * @param {string} workspaceId
+   * @param {{ targetUserId: string }} payload
+   */
+  async findOrCreateDirectMessage(workspaceId, payload) {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CHANNELS.DIRECT_MESSAGES(workspaceId),
+      payload
+    );
+    return response.data.data;
+  }
+
+  /**
    * Get channel details by ID
    * @param {string} workspaceId - ID of the workspace
    * @param {string} channelId - ID of the channel

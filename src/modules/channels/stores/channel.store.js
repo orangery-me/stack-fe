@@ -17,6 +17,9 @@ export const useChannelStore = defineStore('channel', {
     createChannelLoading: false,
     createChannelError: null,
 
+    directMessageLoading: false,
+    directMessageError: null,
+
     // Channel members cache by channelId
     channelMembersById: {},
     channelMembersLoadingById: {},
@@ -64,6 +67,33 @@ export const useChannelStore = defineStore('channel', {
         throw error;
       } finally {
         this.createChannelLoading = false;
+      }
+    },
+
+    async findOrCreateDirectMessage (workspaceId, targetUserId) {
+      this.directMessageLoading = true;
+      this.directMessageError = null;
+      try {
+        const channel = await channelService.findOrCreateDirectMessage(workspaceId, {
+          targetUserId,
+        });
+        const existingIndex = this.channels.findIndex((item) => item.id === channel.id);
+        if (existingIndex >= 0) {
+          this.channels[existingIndex] = {
+            ...this.channels[existingIndex],
+            ...channel,
+          };
+        } else {
+          this.channels.push(channel);
+        }
+        this.selectedChannel = this.channels.find((item) => item.id === channel.id) || channel;
+        await this.fetchChannelMembers(workspaceId, channel.id, { force: true });
+        return this.selectedChannel;
+      } catch (error) {
+        this.directMessageError = error;
+        throw error;
+      } finally {
+        this.directMessageLoading = false;
       }
     },
 

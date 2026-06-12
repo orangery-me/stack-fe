@@ -5,6 +5,7 @@ import { useTaskStore } from '@/modules/channels/stores/task.store.js';
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
   workspaceId: { type: String, required: true },
+  readonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['taskClick']);
@@ -29,10 +30,12 @@ const groupedTasks = computed(() => {
 });
 
 const onDragStart = (task) => {
+  if (props.readonly) return;
   draggingTask.value = task;
 };
 
 const onDrop = async (status) => {
+  if (props.readonly) return;
   if (!draggingTask.value) return;
   const task = draggingTask.value;
   draggingTask.value = null;
@@ -59,7 +62,7 @@ const onDrop = async (status) => {
           v-for="task in column.tasks"
           :key="task.id"
           class="task-kanban__card"
-          draggable="true"
+          :draggable="!readonly"
           @dragstart="onDragStart(task)"
           @click="emit('taskClick', task)"
         >

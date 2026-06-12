@@ -16,13 +16,17 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isDmOpen: {
+    type: Boolean,
+    default: false,
+  },
   activeRouteName: {
     type: String,
     default: "",
   },
 });
 
-const emit = defineEmits(["home", "files", "activity", "ai"]);
+const emit = defineEmits(["home", "dms", "files", "activity", "ai"]);
 
 const isActive = (name) => props.activeRouteName === name;
 </script>
@@ -54,8 +58,10 @@ const isActive = (name) => props.activeRouteName === name;
 
       <button
         class="icon-menu-item"
+        :class="{ active: isDmOpen }"
         title="DMs"
         type="button"
+        @click="emit('dms')"
       >
         <span class="icon-wrap">
           <i
@@ -63,7 +69,6 @@ const isActive = (name) => props.activeRouteName === name;
             aria-hidden="true"
           />
         </span>
-        <span class="notification-badge">1</span>
         <span class="icon-menu-label">DMs</span>
       </button>
 

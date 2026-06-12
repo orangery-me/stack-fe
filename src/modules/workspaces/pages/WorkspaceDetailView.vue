@@ -14,6 +14,7 @@ import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import NotificationPanel from "@/modules/notifications/components/NotificationPanel.vue";
 import WorkspaceMyTasksContent from "@/modules/workspaces/components/WorkspaceMyTasksContent.vue";
+import AutoComplete from "primevue/autocomplete";
 
 const { success } = useToast();
 const route = useRoute();
@@ -28,12 +29,33 @@ const { showFullscreen, hideFullscreen } = useLoading();
 const currentUser = computed(() => authStore.user);
 const workspaceId = route.params.id;
 
+const getUserIdFromAccessToken = () => {
+  const token = authStore.accessToken;
+  if (!token) return "";
+  try {
+    const base64Url = token.split(".")[1] || "";
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded));
+    return payload?.sub || "";
+  } catch {
+    return "";
+  }
+};
+
+const currentUserId = computed(() => currentUser.value?.id || getUserIdFromAccessToken());
+
 // Computed values from store
 const workspace = computed(() => workspaceStore.workspaceDetail);
-const members = computed(() => workspaceStore.members);
-const channels = computed(() => channelStore.channels);
+const members = computed(() => workspaceStore.members || []);
+const allChannels = computed(() => channelStore.channels);
+const channels = computed(() =>
+  allChannels.value.filter((channel) => !["dm", "group_dm"].includes(channel.type))
+);
+const directMessageChannels = computed(() =>
+  allChannels.value.filter((channel) => channel.type === "dm")
+);
 const selectedChannel = computed(() => channelStore.selectedChannel);
-const notifications = computed(() => notificationStore.items);
 const unreadCount = computed(() => notificationStore.unreadCount);
 const aiWorkspaceContext = computed(() => ({
   kind: "workspace",
@@ -75,7 +97,12 @@ onBeforeUnmount(() => {
 
 const channelsExpanded = ref(true);
 const directMessagesExpanded = ref(true);
+const isDmSidebarOpen = ref(false);
+const previousChannelBeforeDm = ref("");
 const isCreateChannelModalOpen = ref(false);
+const selectedDirectMessageMember = ref(null);
+const directMessageSearchSuggestions = ref([]);
+const openingDirectMessageUserId = ref("");
 const menuBarWidth = ref(280);
 const isResizingMenuBar = ref(false);
 const resizeStartX = ref(0);
@@ -146,6 +173,96 @@ const getUserInitials = (name) => {
   return name[0].toUpperCase();
 };
 
+const directMessageThreads = computed(() => {
+  return directMessageChannels.value
+    .map((channel) => {
+      const partner = getDirectMessagePartner(channel);
+      const displayName =
+        partner?.name || partner?.email || channel.name || "Direct message";
+      return {
+        channel,
+        partner,
+        displayName,
+        subtitle: partner?.email || "One-to-one conversation",
+        updatedAt: channel.createdAt ? new Date(channel.createdAt) : null,
+      };
+    })
+    .sort((a, b) => {
+      const timeA = a.updatedAt?.getTime?.() || 0;
+      const timeB = b.updatedAt?.getTime?.() || 0;
+      return timeB - timeA;
+    });
+});
+
+const homeDirectMessageThreads = computed(() => directMessageThreads.value.slice(0, 5));
+const hasMoreHomeDirectMessages = computed(() => directMessageThreads.value.length > 5);
+
+const getSearchableWorkspaceMembers = () => {
+  return members.value
+    .filter((member) => member.userId)
+    .map((member) => ({
+      ...member,
+      display: member.name || member.email || "Workspace member",
+    }))
+    .sort((a, b) =>
+      String(a.display || "").localeCompare(String(b.display || ""))
+    );
+};
+
+const searchDirectMessageMembers = (event) => {
+  const query = String(event.query || "").trim().toLowerCase();
+  const searchableMembers = getSearchableWorkspaceMembers();
+
+  if (!query) {
+    directMessageSearchSuggestions.value = searchableMembers;
+    return;
+  }
+
+  directMessageSearchSuggestions.value = searchableMembers.filter((member) => {
+    const searchable = `${member.name || ""} ${member.email || ""}`.toLowerCase();
+    return searchable.includes(query);
+  });
+};
+
+const openDirectMessageForMember = async (member) => {
+  if (!member?.userId || !workspaceId) return;
+  openingDirectMessageUserId.value = member.userId;
+  try {
+    const channel = await channelStore.findOrCreateDirectMessage(
+      workspaceId,
+      member.userId
+    );
+    if (channel?.id) {
+      await selectDirectMessage(channel);
+    }
+    selectedDirectMessageMember.value = null;
+    directMessageSearchSuggestions.value = [];
+  } finally {
+    openingDirectMessageUserId.value = "";
+  }
+};
+
+const getDirectMessagePartner = (channel) => {
+  const channelMembers = channelStore.getChannelMembersById(channel.id);
+  const partner = channelMembers.find(
+    (member) => member.userId && member.userId !== currentUserId.value
+  );
+  if (partner) return partner;
+  return (
+    channelMembers.find((member) => member.userId === currentUserId.value) ||
+    null
+  );
+};
+
+const ensureDirectMessageMembers = async (dmChannels = directMessageChannels.value) => {
+  if (!workspaceId || !dmChannels.length) return;
+  await Promise.all(
+    dmChannels.map((channel) =>
+      channelStore.fetchChannelMembers(workspaceId, channel.id).catch(() => {})
+    )
+  );
+};
+
 const selectChannel = (channelId) => {
   if (isMyTasksView.value) {
     router
@@ -159,6 +276,45 @@ const selectChannel = (channelId) => {
     return;
   }
   channelStore.selectChannel(channelId);
+};
+
+const selectDirectMessage = async (channel) => {
+  if (!channel?.id) return;
+  await channelStore.fetchChannelMembers(workspaceId, channel.id).catch(() => {});
+  selectChannel(channel.id);
+};
+
+const openInvitePeople = () => {
+  router.push({
+    name: "inviteMember",
+    params: { id: workspaceId },
+  });
+};
+
+const openDmInbox = async () => {
+  if (selectedChannel.value?.id && selectedChannel.value.type !== "dm") {
+    previousChannelBeforeDm.value = selectedChannel.value.id;
+  }
+  isDmSidebarOpen.value = true;
+  directMessagesExpanded.value = true;
+  if (directMessageChannels.value.length > 0 && selectedChannel.value?.type !== "dm") {
+    await selectDirectMessage(directMessageChannels.value[0]);
+    return;
+  }
+  if (directMessageChannels.value.length === 0) {
+    channelStore.clearSelectedChannel();
+  }
+};
+
+const closeDmInbox = () => {
+  isDmSidebarOpen.value = false;
+  if (previousChannelBeforeDm.value) {
+    const restoredChannelId = previousChannelBeforeDm.value;
+    previousChannelBeforeDm.value = "";
+    selectChannel(restoredChannelId);
+    return;
+  }
+  previousChannelBeforeDm.value = "";
 };
 
 const openCreateChannelModal = () => {
@@ -184,6 +340,7 @@ const toggleDirectMessages = () => {
 };
 
 const goToWorkspaceFiles = () => {
+  closeDmInbox();
   router.push({
     name: "workspaceFiles",
     params: { id: workspaceId },
@@ -191,6 +348,7 @@ const goToWorkspaceFiles = () => {
 };
 
 const goToMyTasks = () => {
+  closeDmInbox();
   router.push({
     name: "myTasks",
     params: { id: workspaceId },
@@ -198,6 +356,7 @@ const goToMyTasks = () => {
 };
 
 const goToMessages = () => {
+  closeDmInbox();
   router.push({
     name: "workspaceDetail",
     params: { id: workspaceId },
@@ -212,13 +371,13 @@ const toggleActivityPanel = async () => {
   await notificationStore.openPanel(workspaceId);
 };
 
-const markNotificationRead = async (notificationId) => {
-  await notificationStore.markRead(notificationId, workspaceId);
-};
-
-const markAllNotificationsRead = async () => {
-  await notificationStore.markAllRead(workspaceId);
-};
+watch(
+  directMessageChannels,
+  (dmChannels) => {
+    ensureDirectMessageMembers(dmChannels).catch(() => {});
+  },
+  { immediate: true }
+);
 
 onMounted(async () => {
   window.addEventListener("mousemove", handleResizeMenuBar);
@@ -235,14 +394,25 @@ onMounted(async () => {
     ]);
     await notificationStore.connectRealtime(workspaceId);
 
-    // Automatically select default channel
-    const defaultChannel = channelStore.channels.find(
+    await ensureDirectMessageMembers();
+
+    // Automatically select default channel unless another channel was selected before navigation.
+    const currentSelectionStillAvailable = channelStore.channels.some(
+      (channel) => channel.id === channelStore.selectedChannel?.id
+    );
+    if (currentSelectionStillAvailable) {
+      return;
+    }
+
+    const defaultChannel = channels.value.find(
       (channel) => channel.isDefault === true
     );
     if (defaultChannel) {
       channelStore.selectChannel(defaultChannel.id);
-    } else if (channelStore.channels.length > 0) {
-      channelStore.selectChannel(channelStore.channels[0].id);
+    } else if (channels.value.length > 0) {
+      channelStore.selectChannel(channels.value[0].id);
+    } else if (directMessageChannels.value.length > 0) {
+      channelStore.selectChannel(directMessageChannels.value[0].id);
     }
   } catch {
     // Toast is shown by the global axios interceptor
@@ -263,16 +433,74 @@ onMounted(async () => {
       :current-user-initials="getUserInitials(currentUser?.name || 'U')"
       :unread-count="unreadCount"
       :is-ai-open="uiStore.isAiOpen"
+      :is-dm-open="isDmSidebarOpen"
       :active-route-name="String(route.name || '')"
+      @home="goToMessages"
+      @dms="openDmInbox"
       @files="goToWorkspaceFiles"
       @activity="toggleActivityPanel"
       @ai="uiStore.toggleAi"
     />
 
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div :class="['sidebar', { 'sidebar--dm': isDmSidebarOpen }]">
       <div class="sidebar-header">
-        <div class="workspace-name">
+        <div
+          v-if="isDmSidebarOpen"
+          class="sidebar-dm-header"
+        >
+          <div class="sidebar-dm-header__title-row">
+            <div class="workspace-name workspace-name--dm">
+              <span>Direct messages</span>
+              <i
+                class="pi pi-angle-down workspace-arrow-icon"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+          <div class="sidebar-dm-search">
+            <i
+              class="pi pi-search sidebar-dm-search__icon"
+              aria-hidden="true"
+            />
+            <AutoComplete
+              v-model="selectedDirectMessageMember"
+              input-id="workspaceDmSearch"
+              :suggestions="directMessageSearchSuggestions"
+              option-label="display"
+              placeholder="Find a DM"
+              append-to="body"
+              panel-class="sidebar-dm-autocomplete-panel"
+              fluid
+              @complete="searchDirectMessageMembers"
+              @item-select="openDirectMessageForMember($event.value)"
+            >
+              <template #option="{ option }">
+                <div class="sidebar-dm-autocomplete-option">
+                  <div class="user-avatar">
+                    {{ getUserInitials(option.name || option.email) }}
+                  </div>
+                  <span class="sidebar-dm-identity">
+                    <span class="user-name">{{ option.name || option.email }}</span>
+                    <span class="sidebar-dm-subtitle">
+                      {{ option.email }}
+                    </span>
+                  </span>
+                  <span
+                    v-if="openingDirectMessageUserId === option.userId"
+                    class="sidebar-dm-date"
+                  >
+                    Opening...
+                  </span>
+                </div>
+              </template>
+            </AutoComplete>
+          </div>
+        </div>
+        <div
+          v-else
+          class="workspace-name"
+        >
           <span>{{ workspaceDisplayName }}</span>
           <i
             class="pi pi-angle-down workspace-arrow-icon"
@@ -305,7 +533,10 @@ onMounted(async () => {
 
         <template v-else>
           <!-- Draft & Sent -->
-          <div class="sidebar-section">
+          <div
+            v-if="!isDmSidebarOpen"
+            class="sidebar-section"
+          >
             <button class="sidebar-item">
               <i
                 class="pi pi-send sidebar-icon"
@@ -316,7 +547,10 @@ onMounted(async () => {
           </div>
 
           <!-- Directories -->
-          <div class="sidebar-section">
+          <div
+            v-if="!isDmSidebarOpen"
+            class="sidebar-section"
+          >
             <button class="sidebar-item">
               <i
                 class="pi pi-folder-open sidebar-icon"
@@ -338,7 +572,10 @@ onMounted(async () => {
           </div>
 
           <!-- Channels -->
-          <div class="sidebar-section">
+          <div
+            v-if="!isDmSidebarOpen"
+            class="sidebar-section"
+          >
             <button
               class="sidebar-section-header"
               @click="toggleChannels"
@@ -401,7 +638,10 @@ onMounted(async () => {
           </div>
 
           <!-- Direct Messages -->
-          <div class="sidebar-section">
+          <div
+            v-if="!isDmSidebarOpen"
+            class="sidebar-section"
+          >
             <button
               class="sidebar-section-header"
               @click="toggleDirectMessages"
@@ -421,41 +661,76 @@ onMounted(async () => {
               v-if="directMessagesExpanded"
               class="sidebar-section-content"
             >
-              <div
-                v-if="workspaceStore.membersLoading"
-                class="sidebar-loading"
+              <button
+                v-for="thread in homeDirectMessageThreads"
+                :key="thread.channel.id"
+                class="sidebar-user-item"
+                :class="{ active: !isMyTasksView && selectedChannel?.id === thread.channel.id }"
+                type="button"
+                @click="selectDirectMessage(thread.channel)"
               >
-                <!-- fullscreen loading -->
-              </div>
-              <template v-else-if="members && members.length > 0">
-                <button
-                  v-for="member in members"
-                  :key="member.id"
-                  class="sidebar-user-item"
-                >
-                  <div class="user-avatar">
-                    {{ getUserInitials(member.name) }}
-                  </div>
-                  <span class="user-name">{{ member.name }}</span>
-                  <span
-                    v-if="member.userId === currentUser?.id"
-                    class="user-badge"
-                  >you</span>
-                </button>
-                <button class="sidebar-add-item">
-                  <i
-                    class="pi pi-user-plus sidebar-add-icon"
-                    aria-hidden="true"
-                  />
-                  <span>Invite people</span>
-                </button>
-              </template>
-              <div
-                v-else
-                class="sidebar-loading"
+                <div class="user-avatar">
+                  {{ getUserInitials(thread.displayName) }}
+                </div>
+                <span class="user-name">{{ thread.displayName }}</span>
+              </button>
+
+              <button
+                class="sidebar-add-item"
+                type="button"
+                @click="openInvitePeople"
               >
-                <span>No members found</span>
+                <i
+                  class="pi pi-user-plus sidebar-add-icon"
+                  aria-hidden="true"
+                />
+                <span>Invite people</span>
+              </button>
+
+              <button
+                v-if="hasMoreHomeDirectMessages"
+                class="sidebar-more-item"
+                type="button"
+                @click="openDmInbox"
+              >
+                More
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="sidebar-section sidebar-section--dm"
+          >
+            <div class="sidebar-dm-results">
+              <div
+                v-if="!directMessageThreads.length"
+                class="sidebar-dm-empty"
+              >
+                No direct messages yet
               </div>
+
+              <button
+                v-for="thread in directMessageThreads"
+                :key="thread.channel.id"
+                class="sidebar-user-item sidebar-user-item--dm"
+                :class="{ active: !isMyTasksView && selectedChannel?.id === thread.channel.id }"
+                type="button"
+                @click="selectDirectMessage(thread.channel)"
+              >
+                <div class="user-avatar">
+                  {{ getUserInitials(thread.displayName) }}
+                </div>
+                <span class="sidebar-dm-identity">
+                  <span class="user-name">{{ thread.displayName }}</span>
+                  <span class="sidebar-dm-subtitle">
+                    {{ thread.subtitle }}
+                  </span>
+                </span>
+                <span class="sidebar-dm-date">
+                  {{ thread.updatedAt ? thread.updatedAt.toLocaleDateString() : "" }}
+                </span>
+              </button>
             </div>
           </div>
         </template>

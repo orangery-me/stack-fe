@@ -14,6 +14,7 @@ const props = defineProps({
   taskListId: { type: String, required: true },
   workspaceId: { type: String, required: true },
   listName: { type: String, default: 'Untitled list' },
+  canEditTaskItem: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update-name']);
@@ -125,6 +126,7 @@ const isEditingTitle = ref(false);
 const editTitleValue = ref('');
 
 const startEditTitle = () => {
+  if (!props.canEditTaskItem) return;
   editTitleValue.value = props.listName;
   isEditingTitle.value = true;
 };
@@ -148,6 +150,7 @@ const saveTitle = async () => {
 const createModalParentTaskId = ref(null);
 
 const openCreateModal = (parentTask = null) => {
+  if (!props.canEditTaskItem) return;
   createModalParentTaskId.value = parentTask?.id ?? null;
   isCreateModalOpen.value = true;
 };
@@ -218,6 +221,7 @@ watch(() => props.taskListId, () => {
       </div>
       <div class="task-tab-header-right">
         <button
+          v-if="canEditTaskItem"
           type="button"
           class="task-icon-btn"
           title="Create task"
@@ -403,6 +407,7 @@ watch(() => props.taskListId, () => {
           <!-- Add item → opens modal -->
           <div class="task-inline-add">
             <button
+              v-if="canEditTaskItem"
               type="button"
               class="task-add-item-btn"
               @click="openCreateModal()"
@@ -420,6 +425,7 @@ watch(() => props.taskListId, () => {
           <TaskKanbanView
             :tasks="filteredAndSortedTasks"
             :workspace-id="workspaceId"
+            :readonly="!canEditTaskItem"
             @task-click="handleTaskClick"
           />
         </div>
@@ -430,6 +436,7 @@ watch(() => props.taskListId, () => {
       v-if="selectedTask"
       :task="selectedTask"
       :workspace-id="workspaceId"
+      :readonly="!canEditTaskItem"
       @close="handleCloseDetail"
       @add-subtask="openCreateModal($event)"
     />

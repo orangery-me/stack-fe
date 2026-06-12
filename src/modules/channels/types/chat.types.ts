@@ -16,6 +16,9 @@ export interface ChatMessage {
   channelId: string;
   status: MessageStatus;
   metadata?: Record<string, any>;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedBy?: string | null;
 }
 
 /**
@@ -25,6 +28,7 @@ export interface PendingMessageInfo {
   timeoutId: number;
   channelId: string;
   content: string;
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -34,6 +38,8 @@ export interface SendMessagePayload {
   workspaceId: string;
   channelId: string;
   content: string;
+  messageType?: string;
+  metadata?: Record<string, any>;
 }
 
 /**

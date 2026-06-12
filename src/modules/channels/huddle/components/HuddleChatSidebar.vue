@@ -21,6 +21,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  channelType: {
+    type: String,
+    default: "public",
+  },
 });
 
 const emit = defineEmits(["close"]);
@@ -29,6 +33,13 @@ const chatStore = useChatStore();
 const workspaceStore = useWorkspaceStore();
 
 const members = computed(() => workspaceStore.members || []);
+const isDirectMessage = computed(() => props.channelType === "dm");
+const channelLabel = computed(() =>
+  isDirectMessage.value ? props.channelName : `# ${props.channelName}`
+);
+const messagePlaceholder = computed(() =>
+  isDirectMessage.value ? `Message ${props.channelName}` : `Message #${props.channelName}`
+);
 const newMessage = ref("");
 const messagesContainerRef = ref(null);
 
@@ -228,7 +239,7 @@ onBeforeUnmount(() => {
     <header class="huddle-chat-header">
       <div class="huddle-chat-heading">
         <h2>Chat</h2>
-        <p># {{ channelName }}</p>
+        <p>{{ channelLabel }}</p>
       </div>
       <button
         class="huddle-chat-close"
@@ -263,8 +274,8 @@ onBeforeUnmount(() => {
           v-if="messages.length === 0"
           class="huddle-chat-empty"
         >
-          <h3># {{ channelName }}</h3>
-          <p>Chưa có tin nhắn trong channel này.</p>
+          <h3>{{ channelLabel }}</h3>
+          <p>Chưa có tin nhắn trong cuộc trò chuyện này.</p>
         </div>
 
         <div class="huddle-chat-loading-older">
@@ -361,7 +372,7 @@ onBeforeUnmount(() => {
         <textarea
           v-model="newMessage"
           class="huddle-chat-textarea"
-          :placeholder="`Message #${channelName}`"
+          :placeholder="messagePlaceholder"
           rows="1"
           @keydown.enter.exact.prevent="handleSendMessage"
           @keydown.shift.enter.stop

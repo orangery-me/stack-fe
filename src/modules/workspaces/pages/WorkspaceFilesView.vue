@@ -8,6 +8,7 @@ import workspaceFilesService from "@/services/workspaceFiles.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import WorkspaceIconMenu from "@/modules/workspaces/components/WorkspaceIconMenu.vue";
+import WorkspaceDmPickerModal from "@/modules/workspaces/components/WorkspaceDmPickerModal.vue";
 import NotificationPanel from "@/modules/notifications/components/NotificationPanel.vue";
 
 const route = useRoute();
@@ -19,7 +20,6 @@ const notificationStore = useNotificationStore();
 const uiStore = useUiStore();
 const currentUser = computed(() => authStore.user);
 const unreadCount = computed(() => notificationStore.unreadCount);
-const notifications = computed(() => notificationStore.items);
 
 // Files page state
 const myCanvases = ref([]);
@@ -28,6 +28,7 @@ const sharedWithMeCanvases = ref([]);
 const isLoading = ref(false);
 const loadError = ref("");
 const activeSection = ref("recent");
+const isDmPickerOpen = ref(false);
 
 const workspaceInitials = computed(() => "W");
 
@@ -60,20 +61,16 @@ const goToWorkspaceFiles = () => {
   }
 };
 
+const openDmPicker = () => {
+  isDmPickerOpen.value = true;
+};
+
 const toggleActivityPanel = async () => {
   if (notificationStore.isPanelOpen) {
     notificationStore.closePanel();
     return;
   }
   await notificationStore.openPanel(workspaceId);
-};
-
-const markNotificationRead = async (notificationId) => {
-  await notificationStore.markRead(notificationId, workspaceId);
-};
-
-const markAllNotificationsRead = async () => {
-  await notificationStore.markAllRead(workspaceId);
 };
 
 const documents = computed(() => {
@@ -178,8 +175,10 @@ onBeforeUnmount(() => {
       :current-user-initials="getUserInitials(currentUser?.name || 'U')"
       :unread-count="unreadCount"
       :is-ai-open="uiStore.isAiOpen"
+      :is-dm-open="isDmPickerOpen"
       :active-route-name="String(route.name || '')"
       @home="goToWorkspaceHome"
+      @dms="openDmPicker"
       @files="goToWorkspaceFiles"
       @activity="toggleActivityPanel"
       @ai="uiStore.toggleAi"
@@ -189,6 +188,17 @@ onBeforeUnmount(() => {
     <div class="files-main">
       <div class="files-sidebar">
         <div class="files-nav-group">
+          <button
+            class="files-nav-item files-nav-item--with-icon"
+            type="button"
+            @click="openDmPicker"
+          >
+            <i
+              class="pi pi-comments"
+              aria-hidden="true"
+            />
+            <span>Direct messages</span>
+          </button>
           <button
             class="files-nav-item"
             :class="{ active: activeSection === 'home' }"
@@ -253,6 +263,13 @@ onBeforeUnmount(() => {
               @click="handleCreateNewCanvas"
             >
               New
+            </button>
+            <button
+              class="files-btn"
+              type="button"
+              @click="openDmPicker"
+            >
+              Message
             </button>
             <button
               class="files-btn"
@@ -478,6 +495,11 @@ onBeforeUnmount(() => {
     </div>
 
     <AiChatSidebar v-model:open="uiStore.isAiOpen" />
+
+    <WorkspaceDmPickerModal
+      v-model:open="isDmPickerOpen"
+      :workspace-id="workspaceId"
+    />
 
     <NotificationPanel
       v-if="notificationStore.isPanelOpen"

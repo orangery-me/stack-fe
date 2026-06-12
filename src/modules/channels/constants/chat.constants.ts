@@ -12,6 +12,8 @@ export const CHAT_EVENTS = {
   // Generic chat events
   NEW_MESSAGE: 'new_message',
   MESSAGE_SENT: 'message_sent',
+  MESSAGE_UPDATED: 'message_updated',
+  MESSAGE_DELETED: 'message_deleted',
   ERROR: 'error',
 
   // Room management

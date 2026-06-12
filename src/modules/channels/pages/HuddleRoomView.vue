@@ -25,11 +25,37 @@ const huddleCallData = ref(null);
 const huddleParticipantCount = ref(0);
 const joinConfig = ref({ micEnabled: true, cameraEnabled: false });
 
-const huddleChannelName = computed(() => {
-  const channel =
+const huddleChannel = computed(() =>
     channelStore.getChannelById(channelId) ||
-    (channelStore.selectedChannel?.id === channelId ? channelStore.selectedChannel : null);
-  return channel?.name || "Huddle Call";
+    (channelStore.selectedChannel?.id === channelId ? channelStore.selectedChannel : null)
+);
+
+const huddleChannelMembers = computed(() => channelStore.getChannelMembersById(channelId));
+const huddleIsDirectMessage = computed(() => huddleChannel.value?.type === "dm");
+const huddleDirectMessagePartner = computed(() => {
+  if (!huddleIsDirectMessage.value) return null;
+  return (
+    huddleChannelMembers.value.find(
+      (member) => member.userId && member.userId !== authStore.user?.id
+    ) || null
+  );
+});
+
+const huddleChannelName = computed(() => {
+  if (huddleIsDirectMessage.value) {
+    return (
+      huddleDirectMessagePartner.value?.name ||
+      huddleDirectMessagePartner.value?.email ||
+      "Direct message"
+    );
+  }
+  return huddleChannel.value?.name || "Huddle Call";
+});
+
+const huddleCallTitle = computed(() => {
+  return huddleIsDirectMessage.value
+    ? `${huddleChannelName.value} - Call`
+    : `#${huddleChannelName.value} - Huddle`;
 });
 
 const huddleUserName = computed(() => authStore.user?.name || authStore.user?.email || "Unknown");
@@ -54,6 +80,8 @@ onMounted(async () => {
     if (preloadRequests.length) {
       await Promise.all(preloadRequests);
     }
+
+    await channelStore.fetchChannelMembers(workspaceId, channelId).catch(() => {});
     
     const status = await huddleService.getStatus(channelId);
     if (status.active) {
@@ -136,10 +164,11 @@ async function handleCallLeave() {
       v-if="showCallOverlay && huddleCallData"
       :livekit-url="huddleCallData.livekitUrl"
       :livekit-token="huddleCallData.livekitToken"
-      :call-title="`#${huddleChannelName} — Huddle`"
+      :call-title="huddleCallTitle"
       :workspace-id="workspaceId"
       :channel-id="channelId"
       :channel-name="huddleChannelName"
+      :channel-type="huddleChannel?.type || 'public'"
       :call-id="huddleCallData.callId || huddleCallData.livekitRoomName || 'N/A'"
       :current-user-name="huddleUserName"
       :initial-mic-enabled="joinConfig.micEnabled"

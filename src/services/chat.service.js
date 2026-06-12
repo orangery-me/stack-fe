@@ -12,10 +12,45 @@ class ChatService {
     return response.data;
   }
 
-  async sendMessage (workspaceId, channelId, content, messageType = 'text') {
+  async sendMessage (workspaceId, channelId, content, messageType = 'text', metadata) {
     const response = await apiHelper.post(
       API_ENDPOINTS.CHAT.SEND_MESSAGE(workspaceId, channelId),
-      { content, messageType }
+      { content, messageType, metadata }
+    );
+    return response.data;
+  }
+
+  async uploadAttachment (workspaceId, channelId, file, kind = 'file') {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CHAT.UPLOAD_ATTACHMENT(workspaceId, channelId),
+      formData,
+      {
+        params: { kind },
+        headers: { 'Content-Type': false },
+      }
+    );
+    return response.data.data;
+  }
+
+  async pinMessage (workspaceId, channelId, messageId) {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CHAT.PIN_MESSAGE(workspaceId, channelId, messageId)
+    );
+    return response.data;
+  }
+
+  async unpinMessage (workspaceId, channelId, messageId) {
+    const response = await apiHelper.delete(
+      API_ENDPOINTS.CHAT.PIN_MESSAGE(workspaceId, channelId, messageId)
+    );
+    return response.data;
+  }
+
+  async deleteMessage (workspaceId, channelId, messageId) {
+    const response = await apiHelper.delete(
+      API_ENDPOINTS.CHAT.DELETE_MESSAGE(workspaceId, channelId, messageId)
     );
     return response.data;
   }
