@@ -12,7 +12,7 @@ import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import { PhoneCall } from 'lucide-vue-next';
-
+import CustomSelect from "@/components/calm/CustomSelect.vue";
 
 
 const route = useRoute();
@@ -60,6 +60,11 @@ const channelActions = ref([
 const activeDetailTab = ref("about");
 const activeMainTab = ref("messages");
 const showAddTabMenu = ref(false);
+
+const permissionOptions = [
+  { value: "manager_only", label: "Managers only" },
+  { value: "all_members", label: "All members" }
+];
 
 const channelMembers = computed(() => {
   const channelId = selectedChannel.value?.id;
@@ -173,6 +178,7 @@ const permissionDraft = ref({
   invitePolicy: "manager_only",
   postPolicy: "all_members",
   pinMessagePolicy: "manager_only",
+  threadPolicy: "all_members",
   deleteMessagePolicy: "all_members",
   taskListCreatePolicy: "all_members",
   taskItemEditPolicy: "all_members",
@@ -188,6 +194,7 @@ const initPermissionDraft = () => {
     invitePolicy: p.invitePolicy || "manager_only",
     postPolicy: p.postPolicy || "all_members",
     pinMessagePolicy: p.pinMessagePolicy || "manager_only",
+    threadPolicy: p.threadPolicy || "all_members",
     deleteMessagePolicy: p.deleteMessagePolicy || "all_members",
     taskListCreatePolicy: p.taskListCreatePolicy || "all_members",
     taskItemEditPolicy: p.taskItemEditPolicy || "all_members",
@@ -201,6 +208,7 @@ const hasPermissionChanges = computed(() => {
     permissionDraft.value.invitePolicy !== p.invitePolicy ||
     permissionDraft.value.postPolicy !== p.postPolicy ||
     permissionDraft.value.pinMessagePolicy !== p.pinMessagePolicy ||
+    permissionDraft.value.threadPolicy !== p.threadPolicy ||
     permissionDraft.value.deleteMessagePolicy !== (p.deleteMessagePolicy || "all_members") ||
     permissionDraft.value.taskListCreatePolicy !== p.taskListCreatePolicy ||
     permissionDraft.value.taskItemEditPolicy !== p.taskItemEditPolicy
@@ -238,6 +246,7 @@ const saveChannelPermissions = async () => {
       invitePolicy: permissionDraft.value.invitePolicy,
       postPolicy: permissionDraft.value.postPolicy,
       pinMessagePolicy: permissionDraft.value.pinMessagePolicy,
+      threadPolicy: permissionDraft.value.threadPolicy,
       deleteMessagePolicy: permissionDraft.value.deleteMessagePolicy,
       taskListCreatePolicy: permissionDraft.value.taskListCreatePolicy,
       taskItemEditPolicy: permissionDraft.value.taskItemEditPolicy,
@@ -558,7 +567,7 @@ onBeforeUnmount(() => {
             class="pi pi-comments"
             style="font-size: 12px"
           />
-          Messages
+          <span class="channel-tab-label">Messages</span>
         </button>
 
         <!-- Dynamic task tabs -->
@@ -853,18 +862,13 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.invitePolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -876,18 +880,13 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.postPolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -899,18 +898,14 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.pinMessagePolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        open-up
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -980,6 +975,25 @@ onBeforeUnmount(() => {
                           All members
                         </option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can create threads?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can open new threads.
+                      </span>
+                    </div>
+                    <div>
+                      <CustomSelect
+                        v-model="permissionDraft.threadPolicy"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        open-up
+                        :disabled="isSubmittingPermissions"
+                      />
                     </div>
                   </div>
                 </div>

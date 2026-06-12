@@ -2,19 +2,20 @@
 // Keep this file small and stable; components/pages should only consume tokens.
 
 :root {
-  /* Primary */
-  --primary-500: #2563EB;
-  --primary-600: #1D4ED8;
-  --primary-100: #DBEAFE;
+  /* Primary / Brand Orange */
+  --primary-500: #E95C47;
+  --primary-600: #D94B35;
+  --primary-100: #F6DDD5;
+  --primary-200: #F2C8BC;
 
-  /* Neutral / Gray scale */
-  --gray-900: #111827;
-  --gray-700: #374151;
-  --gray-500: #6B7280;
-  --gray-300: #D1D5DB;
-  --gray-200: #E5E7EB;
-  --gray-100: #F3F4F6;
-  --gray-50: #F9FAFB;
+  /* Neutral / Warm Slate scale */
+  --gray-900: #1F1A17; /* Text Primary */
+  --gray-700: #5F5A56; /* Text Secondary */
+  --gray-500: #8E8883;
+  --gray-300: #D0C9C2;
+  --gray-200: #E7E1DB; /* Border/Subtle */
+  --gray-100: #F1ECE6;
+  --gray-50: #F8F6F3;  /* Main Background */
 
   /* Semantic */
   --success: #16A34A;
@@ -22,14 +23,18 @@
   --error: #DC2626;
   --info: var(--primary-500);
 
+  /* Accents */
+  --accent-green: #DDE6D3;
+  --accent-yellow: #F3B736;
+
   /* Aliases (preferred in components) */
-  --ui-bg-page: #ffffff;
-  --ui-bg-section: #ffffff;
-  --ui-bg-surface: #ffffff;
+  --ui-bg-page: #F8F6F3;
+  --ui-bg-section: #FFFDFB;
+  --ui-bg-surface: #FFFDFB;
   --ui-text: var(--gray-900);
   --ui-text-muted: var(--gray-700);
   --ui-text-hint: var(--gray-500);
-  --ui-border: var(--gray-300);
+  --ui-border: var(--gray-200);
   --ui-divider: var(--gray-200);
 
   /* Radii */
@@ -39,8 +44,8 @@
   --ui-radius-modal: 12px;
 
   /* Shadows */
-  --ui-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --ui-shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --ui-shadow-card: 0 1px 2px rgba(31, 26, 23, 0.04);
+  --ui-shadow-modal: 0 8px 24px rgba(31, 26, 23, 0.06);
 
   /* Spacing scale */
   --space-4: 4px;
@@ -59,6 +64,15 @@
   --ui-ease: ease-out;
 
   /* Focus ring */
-  --ui-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  --ui-focus-ring: 0 0 0 3px rgba(233, 92, 71, 0.18);
+
+  /* Notebook Background Tokens */
+  --notebook-paper-light: #F8F6F3;
+  --notebook-paper-dark: #0f131a;
+  --notebook-grid-light: rgba(233, 92, 71, 0.06);
+  --notebook-grid-dark: rgba(148, 163, 184, 0.05);
+  --notebook-margin-light: rgba(233, 92, 71, 0.22);
+  --notebook-margin-dark: rgba(239, 68, 68, 0.15);
 }
+
 

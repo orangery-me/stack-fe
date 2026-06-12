@@ -56,7 +56,7 @@
   height: 36px;
   border-radius: var(--ui-radius-input);
   border: 1px solid var(--ui-border);
-  background: #ffffff;
+  background: var(--ui-bg-surface);
   padding: 0 var(--space-12);
   transition: border-color var(--ui-duration) var(--ui-ease),
     box-shadow var(--ui-duration) var(--ui-ease);
@@ -83,7 +83,7 @@
   right: 0;
   border: 1px solid var(--ui-divider);
   border-radius: var(--ui-radius-card);
-  background: #ffffff;
+  background: var(--ui-bg-surface);
   box-shadow: var(--ui-shadow-modal);
   overflow: hidden;
   z-index: 10;
@@ -150,7 +150,7 @@
   padding: var(--space-12);
   border-radius: var(--ui-radius-card);
   border: 1px solid var(--ui-divider);
-  background: #ffffff;
+  background: var(--ui-bg-surface);
 }
 
 .invites__user {
@@ -199,7 +199,7 @@
   height: 36px;
   border-radius: 10px;
   border: 1px solid var(--ui-divider);
-  background: #ffffff;
+  background: var(--ui-bg-surface);
   color: var(--ui-text-muted);
   cursor: pointer;
   display: inline-flex;

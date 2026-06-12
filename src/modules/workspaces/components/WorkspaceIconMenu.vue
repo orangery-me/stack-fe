@@ -164,8 +164,8 @@ const isActive = (name) => props.activeRouteName === name;
 
 <style scoped lang="scss">
 .icon-menu-bar {
-  background: #1e3a8a;
-  border-right: 1px solid rgba(191, 219, 254, 0.28);
+  background: var(--gray-100);
+  border-right: 1px solid var(--ui-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -180,7 +180,7 @@ const isActive = (name) => props.activeRouteName === name;
     height: 36px;
     border-radius: 10px;
     background: var(--primary-100);
-    border: 1px solid rgba(37, 99, 235, 0.18);
+    border: 1px solid rgba(233, 92, 71, 0.18);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -192,8 +192,8 @@ const isActive = (name) => props.activeRouteName === name;
       border-color var(--ui-duration) var(--ui-ease);
 
     &:hover {
-      background: rgba(37, 99, 235, 0.12);
-      border-color: rgba(37, 99, 235, 0.28);
+      background: rgba(233, 92, 71, 0.12);
+      border-color: rgba(233, 92, 71, 0.28);
     }
   }
 }
@@ -215,7 +215,7 @@ const isActive = (name) => props.activeRouteName === name;
   gap: 3px;
   background: transparent;
   border: 1px solid transparent;
-  color: rgba(219, 234, 254, 0.9);
+  color: var(--gray-700);
   cursor: pointer;
   border-radius: 10px;
   position: relative;
@@ -245,10 +245,10 @@ const isActive = (name) => props.activeRouteName === name;
   &:hover:not(.active) {
     background: transparent;
     border-color: transparent; /* no outline around label */
-    color: rgba(219, 234, 254, 0.9);
+    color: var(--gray-900);
 
     .icon-wrap {
-      background: rgba(219, 234, 254, 0.12);
+      background: rgba(31, 26, 23, 0.06);
     }
   }
 
@@ -256,18 +256,18 @@ const isActive = (name) => props.activeRouteName === name;
     /* Active không đổi màu text/label, chỉ đổi background icon */
     background: transparent;
     border-color: transparent;
-    color: rgba(219, 234, 254, 0.9);
+    color: var(--gray-900);
     box-shadow: none;
 
     .icon-wrap {
-      background: rgba(239, 246, 255, 0.95);
+      background: var(--ui-bg-surface);
       box-shadow:
-        0 0 0 1px rgba(15, 23, 42, 0.08),
-        0 8px 18px rgba(15, 23, 42, 0.12);
+        0 0 0 1px rgba(31, 26, 23, 0.08),
+        0 8px 18px rgba(31, 26, 23, 0.12);
     }
 
     .icon-menu-svg {
-      color: #1e3a8a;
+      color: var(--primary-500);
     }
   }
 
@@ -284,8 +284,8 @@ const isActive = (name) => props.activeRouteName === name;
     justify-content: center;
     font-size: 10px;
     font-weight: 600;
-    color: #ffffff;
-    border: 2px solid #ffffff;
+    color: #FFFDFB;
+    border: 2px solid var(--gray-100);
   }
 }
 
@@ -302,13 +302,13 @@ const isActive = (name) => props.activeRouteName === name;
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: rgba(219, 234, 254, 0.16);
-    border: 1px solid rgba(191, 219, 254, 0.35);
+    background: var(--primary-100);
+    border: 1px solid rgba(233, 92, 71, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    color: #dbeafe;
+    color: var(--primary-600);
     font-size: 12px;
     cursor: pointer;
     transition: background var(--ui-duration) var(--ui-ease),
@@ -316,9 +316,9 @@ const isActive = (name) => props.activeRouteName === name;
       color var(--ui-duration) var(--ui-ease);
 
     &:hover {
-      background: rgba(219, 234, 254, 0.24);
-      border-color: rgba(219, 234, 254, 0.5);
-      color: #ffffff;
+      background: var(--primary-200);
+      border-color: rgba(233, 92, 71, 0.3);
+      color: var(--primary-600);
     }
   }
 }

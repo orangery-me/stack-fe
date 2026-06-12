@@ -8,6 +8,8 @@
 }
 
 .main-content-header {
+  position: relative;
+  z-index: 100;
   border-bottom: 1px solid var(--ui-divider);
   background: #ffffff;
 
@@ -78,20 +80,24 @@
   .channel-tabs {
     display: flex;
     align-items: flex-end;
-    padding: 0 var(--space-24);
-    gap: var(--space-8);
-    background: var(--ui-bg-page);
+    padding: 4px var(--space-24) 0 var(--space-24);
+    gap: var(--space-6);
+    background: linear-gradient(180deg, rgba(248, 246, 243, 0.4) 0%, rgba(248, 246, 243, 0.85) 100%);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(233, 92, 71, 0.08);
+    position: relative;
 
     .channel-tab {
-      // min-width: 140px;
-      max-width: 220px;
-      padding: 6px 14px;
+      max-width: 140px;
+      min-width: 0;     /* critical for ellipsis in flex items */
+      padding: 7px 14px;
       border-radius: 8px 8px 0 0;
       border: 1px solid transparent;
+      border-top: 3px solid transparent; /* reserve top border space for active state */
       border-bottom: none;
-      background: transparent;
-      color: var(--ui-text-muted);
-      font-size: 12px;
+      background: rgba(255, 253, 251, 0.45);
+      color: var(--gray-700);
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
@@ -121,9 +127,23 @@
       }
 
       &.active {
-        background: #e0f2fe;
-        border-color: #bae6fd;
-        color: var(--ui-text);
+        max-width: 400px; /* smoothly expand active tab content to full width */
+        background: rgba(255, 253, 251, 0.95);
+        border: 1px solid rgba(233, 92, 71, 0.18);
+        border-top: 3px solid var(--primary-500);
+        border-bottom: 1.5px solid var(--ui-bg-surface);
+        color: var(--primary-500);
+        margin-bottom: -1px; /* preserve baseline */
+        z-index: 2;
+        box-shadow: 
+          0 -4px 12px rgba(233, 92, 71, 0.04), 
+          inset 0 1px 0 rgba(255, 255, 255, 0.9); /* internal glass highlight reflection */
+        backdrop-filter: blur(12px);
+
+        .channel-tab-label {
+          overflow: visible;
+          text-overflow: clip; /* clip/reveal full title on active */
+        }
       }
     }
 
@@ -131,38 +151,45 @@
       position: relative;
       display: flex;
       align-items: center;
+      margin-bottom: -1px;
+      z-index: 1000 !important;
 
       .channel-tab-add-btn {
-        width: 32px;
-        height: 32px;
-        border: 1px solid transparent;
-        border-bottom: none;
+        padding: 7px 12px;
         border-radius: 8px 8px 0 0;
-        background: transparent;
-        color: var(--ui-text-muted);
+        border: 1px solid transparent;
+        border-top: 3px solid transparent; /* reserve top space */
+        border-bottom: none;
+        background: rgba(255, 253, 251, 0.35);
+        color: var(--gray-500);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        backdrop-filter: blur(4px);
         transition: all var(--ui-duration) var(--ui-ease);
 
         &:hover {
-          background: rgba(15, 23, 42, 0.04);
-          color: var(--ui-text);
+          background: rgba(233, 92, 71, 0.07);
+          border-color: rgba(233, 92, 71, 0.12) rgba(233, 92, 71, 0.12) transparent rgba(233, 92, 71, 0.12);
+          color: var(--primary-500);
         }
       }
 
       .channel-tab-dropdown {
         position: absolute;
-        top: calc(100% + 4px);
+        top: calc(100% + 6px);
         left: 0;
-        background: #fff;
-        border: 1px solid var(--ui-border);
+        background: rgba(255, 253, 251, 0.95);
+        border: 1px solid rgba(233, 92, 71, 0.15);
         border-radius: 8px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        box-shadow: 
+          0 10px 30px rgba(31, 26, 23, 0.06), 
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(12px);
         padding: 4px;
         min-width: 140px;
-        z-index: 50;
+        z-index: 9999 !important;
 
         .channel-tab-dropdown-item {
           width: 100%;
@@ -171,20 +198,26 @@
           gap: 8px;
           padding: 8px 12px;
           font-size: 13px;
-          color: var(--ui-text);
+          color: var(--gray-900);
           background: transparent;
           border: none;
           border-radius: 6px;
           cursor: pointer;
-          transition: background 0.15s;
+          transition: background var(--ui-duration-fast) var(--ui-ease);
 
           &:hover {
-            background: var(--gray-50);
+            background: rgba(233, 92, 71, 0.06);
+            color: var(--primary-500);
+
+            i {
+              color: var(--primary-500);
+            }
           }
 
           i {
             font-size: 14px;
-            color: var(--ui-text-muted);
+            color: var(--gray-500);
+            transition: color var(--ui-duration-fast) var(--ui-ease);
           }
         }
       }
@@ -203,7 +236,7 @@
   width: 220px;
   border: 1px solid var(--ui-divider);
   border-radius: 10px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  box-shadow: var(--ui-shadow-modal);
   overflow: hidden;
 }
 
@@ -234,7 +267,7 @@
 }
 
 .channel-actions-listbox :deep(.p-listbox-option:not(.p-listbox-option-selected):not(.p-disabled):hover) {
-  background: var(--gray-50);
+  background: rgba(233, 92, 71, 0.05);
 }
 
 .channel-detail-overlay {
@@ -297,7 +330,7 @@
 
 .channel-detail-tab--active {
   color: var(--ui-text);
-  border-bottom-color: #d946ef;
+  border-bottom-color: var(--primary-500);
 }
 
 .channel-detail-modal__close {
@@ -399,18 +432,6 @@
 .channel-permissions-select {
   width: 200px;
   height: 34px;
-  border: 1px solid var(--ui-divider);
-  border-radius: 10px;
-  background: #ffffff;
-  color: var(--ui-text);
-  font-size: 13px;
-  padding: 0 10px;
-  outline: none;
-}
-
-.channel-permissions-select:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .channel-permissions-autocomplete {

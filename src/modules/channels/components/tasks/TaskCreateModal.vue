@@ -10,6 +10,8 @@ import taskService from '@/services/task.service.js';
 import { queryClient } from '@/config/queryClient.js';
 import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
 import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
@@ -71,6 +73,29 @@ const parentTaskChoices = computed(() => {
       title: task.title || 'Untitled task',
     }));
 });
+
+const parentTaskOptionsFormatted = computed(() => {
+  return [
+    { value: '', label: 'No parent task' },
+    ...parentTaskChoices.value.map(task => ({
+      value: task.id,
+      label: task.title
+    }))
+  ];
+});
+
+const statusOptions = [
+  { value: 'todo', label: 'Todo' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' }
+];
+
+const priorityOptions = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'urgent', label: 'Urgent' }
+];
 
 const filteredAssignees = ref([]);
 const filteredReporters = ref([]);
@@ -344,21 +369,11 @@ const handleSubmit = async () => {
           </div>
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Parent task</label>
-            <select
+            <CustomSelect
               v-model="selectedParentTaskId"
-              class="task-form-select"
-            >
-              <option value="">
-                No parent task
-              </option>
-              <option
-                v-for="task in parentTaskChoices"
-                :key="task.id"
-                :value="task.id"
-              >
-                {{ task.title }}
-              </option>
-            </select>
+              :options="parentTaskOptionsFormatted"
+              width="100%"
+            />
           </div>
         </div>
 
@@ -366,52 +381,28 @@ const handleSubmit = async () => {
         <div class="task-form-row">
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Status</label>
-            <select
+            <CustomSelect
               v-model="status"
-              class="task-form-select"
-            >
-              <option value="todo">
-                Todo
-              </option>
-              <option value="in_progress">
-                In Progress
-              </option>
-              <option value="done">
-                Done
-              </option>
-            </select>
+              :options="statusOptions"
+              width="100%"
+            />
           </div>
           <div class="task-form-group task-form-group--half">
             <label class="task-form-label">Priority</label>
-            <select
+            <CustomSelect
               v-model="priority"
-              class="task-form-select"
-            >
-              <option value="low">
-                Low
-              </option>
-              <option value="medium">
-                Medium
-              </option>
-              <option value="high">
-                High
-              </option>
-              <option value="urgent">
-                Urgent
-              </option>
-            </select>
+              :options="priorityOptions"
+              width="100%"
+            />
           </div>
         </div>
 
         <!-- Due date -->
-        <div class="task-form-group">
-          <label class="task-form-label">Due date</label>
-          <input
-            v-model="dueDate"
-            type="datetime-local"
-            class="task-form-input"
-          >
-        </div>
+        <CustomDatePicker
+          v-model="dueDate"
+          label="Due date"
+          showTime
+        />
 
         <!-- Assignees -->
         <div class="task-form-group">
@@ -638,10 +629,6 @@ const handleSubmit = async () => {
 .task-form-textarea {
   resize: vertical;
   min-height: 60px;
-}
-
-.task-form-select {
-  cursor: pointer;
 }
 
 .task-attach-row {

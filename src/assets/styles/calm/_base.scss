@@ -100,3 +100,261 @@ textarea {
   background: var(--primary-100);
 }
 
+/* ==========================================================================
+   PrimeVue DatePicker (Calendar Panel) Ant Design Inspired Custom Overrides
+   ========================================================================== */
+body .p-datepicker-panel,
+body .calm-datepicker-panel-custom,
+body .p-datepicker-panel.calm-datepicker-panel-custom {
+  background: #ffffff !important;
+  border: 1px solid #f0f0f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.08),
+              0 9px 28px 0 rgba(0, 0, 0, 0.05),
+              0 12px 48px 16px rgba(0, 0, 0, 0.03) !important;
+  padding: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  color: var(--ui-text, #1F1A17) !important;
+
+  .p-datepicker-header {
+    background: transparent !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    padding: 8px 4px 10px 4px !important;
+    margin-bottom: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    
+    .p-datepicker-title {
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      color: var(--ui-text, #1F1A17) !important;
+      order: 2 !important; // center the month/year title
+      display: flex !important;
+      gap: 6px !important;
+      
+      .p-datepicker-select-month,
+      .p-datepicker-select-year {
+        font-weight: 600 !important;
+        color: var(--ui-text, #1F1A17) !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+        transition: all 0.15s ease !important;
+        cursor: pointer !important;
+        
+        &:hover {
+          background: rgba(233, 92, 71, 0.06) !important;
+          color: var(--primary-600, #D94B35) !important;
+        }
+      }
+    }
+
+    .p-datepicker-prev-button,
+    .p-datepicker-next-button {
+      width: 24px !important;
+      height: 24px !important;
+      border-radius: 4px !important;
+      color: rgba(31, 26, 23, 0.45) !important;
+      border: none !important;
+      background: transparent !important;
+      transition: all 0.15s ease !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      
+      &:hover {
+        background: rgba(233, 92, 71, 0.06) !important;
+        color: var(--primary-500, #E95C47) !important;
+      }
+    }
+  }
+
+  .p-datepicker-calendar-container {
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      
+      th {
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        color: rgba(31, 26, 23, 0.45) !important; // muted weekdays like AntD
+        padding: 8px 0 !important;
+        text-align: center !important;
+        width: 36px !important;
+      }
+
+      td {
+        padding: 3px 0 !important;
+        text-align: center !important;
+      }
+    }
+    
+    .p-datepicker-day {
+      width: 30px !important;
+      height: 30px !important;
+      border-radius: 50% !important;
+      font-size: 13px !important;
+      font-weight: 400 !important;
+      color: var(--ui-text, #1F1A17) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: all 0.2s ease !important;
+      cursor: pointer !important;
+      border: 1px solid transparent !important;
+      background: transparent !important;
+
+      &:hover:not(.p-datepicker-day-selected):not(.p-datepicker-today):not(.p-disabled):not(.p-datepicker-other-month) {
+        background: rgba(233, 92, 71, 0.06) !important;
+        color: var(--primary-600, #D94B35) !important;
+      }
+
+      /* In-Active Out-Of-Month Days (Faded like AntD) */
+      &.p-datepicker-other-month,
+      &.p-datepicker-day-other-month,
+      &[data-p-other-month="true"] {
+        color: rgba(31, 26, 23, 0.25) !important;
+        cursor: default !important;
+        
+        &:hover {
+          background: transparent !important;
+          color: rgba(31, 26, 23, 0.25) !important;
+        }
+      }
+    }
+
+    /* Selected / Active day: Clean solid orange badge */
+    .p-datepicker-day-selected,
+    .p-datepicker-day-active,
+    .p-datepicker-day.p-datepicker-day-selected,
+    .p-datepicker-day.p-datepicker-day-active,
+    .p-datepicker-day.p-active,
+    .p-datepicker-day.p-selected,
+    .p-datepicker-day[data-p-selected="true"],
+    .p-datepicker-day[data-p-active="true"] {
+      background: var(--primary-500, #E95C47) !important;
+      color: #FFFDFB !important;
+      font-weight: 700 !important;
+      border-radius: 50% !important;
+      box-shadow: 0 2px 6px rgba(233, 92, 71, 0.2) !important;
+      
+      &:hover {
+        background: var(--primary-600, #D94B35) !important;
+        color: #FFFDFB !important;
+      }
+    }
+
+    /* Today's day: Elegant border of the primary color with transparent background */
+    .p-datepicker-today,
+    .p-datepicker-day-today,
+    .p-datepicker-day.p-datepicker-today,
+    .p-datepicker-day.p-datepicker-day-today,
+    .p-datepicker-day[data-p-today="true"] {
+      border: 1px solid var(--primary-500, #E95C47) !important;
+      color: var(--primary-500, #E95C47) !important;
+      background: transparent !important;
+      border-radius: 50% !important;
+      
+      &.p-datepicker-day-selected,
+      &.p-active,
+      &.p-selected,
+      &[data-p-selected="true"] {
+        background: var(--primary-500, #E95C47) !important;
+        color: #FFFDFB !important;
+        border-color: var(--primary-500, #E95C47) !important;
+      }
+    }
+  }
+
+  /* PrimeVue DatePicker TimePicker custom horizontal digital stepper like AntD */
+  .p-datepicker-time-picker {
+    border-top: 1px solid #f0f0f0 !important;
+    padding: 12px 0 4px 0 !important;
+    margin-top: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    font-size: 13px !important;
+
+    .p-datepicker-hour-picker,
+    .p-datepicker-minute-picker,
+    .p-datepicker-second-picker {
+      display: inline-flex !important;
+      flex-direction: row !important; // horizontal stepper
+      align-items: center !important;
+      border: 1px solid #d9d9d9 !important;
+      background: #ffffff !important;
+      border-radius: 6px !important;
+      padding: 2px 4px !important;
+      
+      span {
+        font-family: -apple-system, BlinkMacSystemFont, monospace !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        padding: 0 8px !important;
+        color: var(--ui-text, #1F1A17) !important;
+        order: 2 !important; // value in the middle
+      }
+      
+      button {
+        border: none !important;
+        background: transparent !important;
+        width: 20px !important;
+        height: 20px !important;
+        padding: 0 !important;
+        min-width: 0 !important;
+        box-shadow: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        color: rgba(0, 0, 0, 0.45) !important;
+        transition: color 0.15s ease !important;
+        outline: none !important;
+
+        i,
+        svg {
+          display: none !important; // hide clunky prime chevron icons
+        }
+        
+        &::before {
+          font-size: 14px !important;
+          font-weight: 600 !important;
+        }
+
+        &.p-datepicker-increment-button,
+        &:first-child {
+          order: 3 !important; // plus on the right
+          
+          &::before {
+            content: "+" !important;
+          }
+        }
+
+        &.p-datepicker-decrement-button,
+        &:last-child {
+          order: 1 !important; // minus on the left
+          
+          &::before {
+            content: "−" !important;
+          }
+        }
+        
+        &:hover {
+          color: var(--primary-500, #E95C47) !important;
+          background: rgba(233, 92, 71, 0.06) !important;
+          border-radius: 4px !important;
+        }
+      }
+    }
+
+    .p-datepicker-separator {
+      color: rgba(31, 26, 23, 0.45) !important;
+      font-weight: 700 !important;
+      font-size: 14px !important;
+    }
+  }
+}
+

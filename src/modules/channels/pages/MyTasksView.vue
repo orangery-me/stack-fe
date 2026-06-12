@@ -7,6 +7,8 @@ import TaskListView from '@/modules/channels/components/tasks/TaskListView.vue';
 import TaskDetailPanel from '@/modules/channels/components/tasks/TaskDetailPanel.vue';
 import TaskCreateModal from '@/modules/channels/components/tasks/TaskCreateModal.vue';
 import { useToast } from '@/composables/useToast.js';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -24,6 +26,13 @@ const filters = ref({
   dueTo: '',
 });
 const selectedTask = ref(null);
+
+const statusOptions = [
+  { value: '', label: 'All status' },
+  { value: 'todo', label: 'Todo' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' }
+];
 
 const queryFilters = computed(() => {
   return Object.fromEntries(
@@ -88,33 +97,29 @@ const openTaskDetailPage = (task) => {
     </div>
 
     <div class="my-tasks-page__filters">
-      <select v-model="filters.status">
-        <option value="">
-          All status
-        </option>
-        <option value="todo">
-          Todo
-        </option>
-        <option value="in_progress">
-          In Progress
-        </option>
-        <option value="done">
-          Done
-        </option>
-      </select>
+      <CustomSelect
+        v-model="filters.status"
+        :options="statusOptions"
+        size="sm"
+        width="130px"
+      />
       <input
         v-model="filters.channelId"
         type="text"
         placeholder="Channel ID"
       >
-      <input
+      <CustomDatePicker
         v-model="filters.dueFrom"
-        type="date"
-      >
-      <input
+        size="sm"
+        placeholder="Due from"
+        style="width: 120px;"
+      />
+      <CustomDatePicker
         v-model="filters.dueTo"
-        type="date"
-      >
+        size="sm"
+        placeholder="Due to"
+        style="width: 120px;"
+      />
       <button
         type="button"
         @click="refetch"

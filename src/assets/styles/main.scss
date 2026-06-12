@@ -1,10 +1,10 @@
-@forward "vendor/tailwind.css";
-@forward "vendor/daisyui.css";
+@use "vendor/tailwind.css";
+@use "vendor/daisyui.css";
 
-@forward "calm/tokens";
-@forward "calm/base";
-@forward "calm/layout";
-@forward "calm/utilities";
+@use "calm/tokens";
+@use "calm/base";
+@use "calm/layout";
+@use "calm/utilities";
 
 
 // Scrollbar styling (subtle)
