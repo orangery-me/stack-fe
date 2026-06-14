@@ -154,6 +154,7 @@
         :workspace-id="workspaceId"
         :channel-id="channelId"
         :channel-name="channelName"
+        :channel-type="channelType"
         @close="isChatOpen = false"
       />
     </div>
@@ -230,6 +231,7 @@ const props = defineProps<{
   workspaceId: string;
   channelId: string;
   channelName: string;
+  channelType: string;
   callId: string;
   currentUserName: string;
   initialMicEnabled: boolean;

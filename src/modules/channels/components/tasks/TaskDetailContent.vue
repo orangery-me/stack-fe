@@ -6,12 +6,15 @@ import { getMessageFromApiError } from '@/helpers/api.helper.js';
 import taskService from '@/services/task.service.js';
 import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
 import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const props = defineProps({
   task: { type: Object, required: true },
   workspaceId: { type: String, required: true },
   /** 'drawer' = single column; 'page' = main + sidebar like Jira */
   variant: { type: String, default: 'drawer' },
+  readonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close', 'add-subtask']);
@@ -91,6 +94,7 @@ const formatDate = (date) => {
 };
 
 const startEditing = (field) => {
+  if (props.readonly) return;
   editingField.value = field;
   if (field === 'description') editDescription.value = props.task.description || '';
   if (field === 'status') editStatus.value = props.task.status;
@@ -110,6 +114,7 @@ const cancelEditing = () => {
 };
 
 const saveField = async (field) => {
+  if (props.readonly) return;
   isSaving.value = true;
   try {
     const data = {};
@@ -130,6 +135,7 @@ const saveField = async (field) => {
 };
 
 const persistAttachments = async (next) => {
+  if (props.readonly) return;
   isAttachBusy.value = true;
   try {
     await taskStore.updateTask(props.workspaceId, props.task.id, {
@@ -146,6 +152,7 @@ const persistAttachments = async (next) => {
 };
 
 const addFilesFromFileList = async (fileList) => {
+  if (props.readonly) return;
   const files = Array.from(fileList || []);
   if (!files.length) return;
   const currentCount = attachmentsList.value.length;
@@ -177,10 +184,12 @@ const onFileInputChange = (e) => {
 };
 
 const openFilePicker = () => {
+  if (props.readonly) return;
   fileInputRef.value?.click?.();
 };
 
 const openCanvasPicker = () => {
+  if (props.readonly) return;
   if (attachmentsList.value.length >= 50) {
     toastError('Maximum 50 attachments per task.');
     return;
@@ -214,11 +223,13 @@ const onCanvasAttachedFromPicker = async (picked) => {
 const onDrop = (e) => {
   e.preventDefault();
   dragActive.value = false;
+  if (props.readonly) return;
   addFilesFromFileList(e.dataTransfer?.files);
 };
 
 const onDragOver = (e) => {
   e.preventDefault();
+  if (props.readonly) return;
   dragActive.value = true;
 };
 
@@ -227,6 +238,7 @@ const onDragLeave = () => {
 };
 
 const removeAttachmentByKey = async (item, index) => {
+  if (props.readonly) return;
   const current = Array.isArray(props.task.attachments) ? props.task.attachments : [];
   const next = current.filter((a, i) => {
     if (item?.id != null) return a.id !== item.id;
@@ -236,6 +248,7 @@ const removeAttachmentByKey = async (item, index) => {
 };
 
 const handleDelete = async () => {
+  if (props.readonly) return;
   const listId = props.task.taskListId;
   if (!listId) {
     alert('Missing task list id — cannot invalidate list cache cleanly.');
@@ -252,6 +265,7 @@ const handleDelete = async () => {
 };
 
 const openAddSubtask = () => {
+  if (props.readonly) return;
   emit('add-subtask', props.task);
 };
 
@@ -313,7 +327,7 @@ watch(
         <div class="task-detail-field__header">
           <label class="task-detail-label">Description</label>
           <button
-            v-if="editingField !== 'description'"
+            v-if="editingField !== 'description' && !readonly"
             type="button"
             class="task-detail-edit-btn"
             @click="startEditing('description')"
@@ -364,6 +378,7 @@ watch(
           </label>
         </div>
         <div
+          v-if="!readonly"
           class="task-attach-dropzone"
           :class="{ 'task-attach-dropzone--active': dragActive, 'task-attach-dropzone--busy': isAttachBusy }"
           role="button"
@@ -397,7 +412,7 @@ watch(
         <TaskAttachmentPreviewList
           v-if="attachmentsList.length"
           :items="attachmentsList"
-          :disabled="isAttachBusy"
+          :disabled="isAttachBusy || readonly"
           @remove="removeAttachmentByKey"
         />
       </div>
@@ -406,25 +421,19 @@ watch(
       <div class="task-detail-field task-detail-field--inline">
         <label class="task-detail-label">Status</label>
         <template v-if="editingField === 'status'">
-          <select
+          <CustomSelect
             v-model="editStatus"
-            class="task-detail-select"
+            :options="statusOptions"
+            size="sm"
             @change="saveField('status')"
-          >
-            <option
-              v-for="opt in statusOptions"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
+          />
         </template>
         <button
           v-else
           type="button"
           class="task-status-badge-btn"
           :class="`task-status-badge-btn--${task.status}`"
+          :disabled="readonly"
           @click="startEditing('status')"
         >
           {{ statusLabel }}
@@ -435,13 +444,12 @@ watch(
       <div class="task-detail-field task-detail-field--inline">
         <label class="task-detail-label">Due date</label>
         <template v-if="editingField === 'dueDate'">
-          <input
+          <CustomDatePicker
             v-model="editDueDate"
-            type="datetime-local"
-            class="task-detail-input task-detail-input--sm"
-            @change="saveField('dueDate')"
-            @keydown.escape="cancelEditing"
-          >
+            size="sm"
+            showTime
+            @hide="saveField('dueDate')"
+          />
         </template>
         <span
           v-else
@@ -458,6 +466,7 @@ watch(
         <div class="task-detail-field__header">
           <label class="task-detail-label">Subtasks</label>
           <button
+            v-if="!readonly"
             type="button"
             class="task-detail-edit-btn"
             @click="openAddSubtask"
@@ -490,19 +499,12 @@ watch(
       <div class="task-detail-field task-detail-field--inline">
         <label class="task-detail-label">Priority</label>
         <template v-if="editingField === 'priority'">
-          <select
+          <CustomSelect
             v-model="editPriority"
-            class="task-detail-select"
+            :options="priorityOptions"
+            size="sm"
             @change="saveField('priority')"
-          >
-            <option
-              v-for="opt in priorityOptions"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
+          />
         </template>
         <span
           v-else
@@ -519,8 +521,8 @@ watch(
           <div class="task-detail-field">
             <div class="task-detail-field__header">
               <label class="task-detail-label">Description</label>
-              <button
-                v-if="editingField !== 'description'"
+          <button
+                v-if="editingField !== 'description' && !readonly"
                 type="button"
                 class="task-detail-edit-btn"
                 @click="startEditing('description')"
@@ -572,6 +574,7 @@ watch(
               </label>
             </div>
             <div
+              v-if="!readonly"
               class="task-attach-dropzone task-attach-dropzone--lg"
               :class="{ 'task-attach-dropzone--active': dragActive, 'task-attach-dropzone--busy': isAttachBusy }"
               role="button"
@@ -605,7 +608,7 @@ watch(
             <TaskAttachmentPreviewList
               v-if="attachmentsList.length"
               :items="attachmentsList"
-              :disabled="isAttachBusy"
+              :disabled="isAttachBusy || readonly"
               @remove="removeAttachmentByKey"
             />
           </div>
@@ -643,25 +646,19 @@ watch(
           <div class="task-detail-field task-detail-field--inline task-detail-field--aside">
             <label class="task-detail-label">Status</label>
             <template v-if="editingField === 'status'">
-              <select
+              <CustomSelect
                 v-model="editStatus"
-                class="task-detail-select"
+                :options="statusOptions"
+                size="sm"
                 @change="saveField('status')"
-              >
-                <option
-                  v-for="opt in statusOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </option>
-              </select>
+              />
             </template>
             <button
               v-else
               type="button"
               class="task-status-badge-btn"
               :class="`task-status-badge-btn--${task.status}`"
+              :disabled="readonly"
               @click="startEditing('status')"
             >
               {{ statusLabel }}
@@ -671,13 +668,12 @@ watch(
           <div class="task-detail-field task-detail-field--inline task-detail-field--aside">
             <label class="task-detail-label">Due date</label>
             <template v-if="editingField === 'dueDate'">
-              <input
+              <CustomDatePicker
                 v-model="editDueDate"
-                type="datetime-local"
-                class="task-detail-input task-detail-input--sm"
-                @change="saveField('dueDate')"
-                @keydown.escape="cancelEditing"
-              >
+                size="sm"
+                showTime
+                @hide="saveField('dueDate')"
+              />
             </template>
             <span
               v-else
@@ -693,6 +689,7 @@ watch(
             <div class="task-detail-field__header">
               <label class="task-detail-label">Subtasks</label>
               <button
+                v-if="!readonly"
                 type="button"
                 class="task-detail-edit-btn"
                 @click="openAddSubtask"
@@ -724,19 +721,12 @@ watch(
           <div class="task-detail-field task-detail-field--inline task-detail-field--aside">
             <label class="task-detail-label">Priority</label>
             <template v-if="editingField === 'priority'">
-              <select
+              <CustomSelect
                 v-model="editPriority"
-                class="task-detail-select"
+                :options="priorityOptions"
+                size="sm"
                 @change="saveField('priority')"
-              >
-                <option
-                  v-for="opt in priorityOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </option>
-              </select>
+              />
             </template>
             <span
               v-else
@@ -754,6 +744,7 @@ watch(
 
     <div class="task-detail-danger">
       <button
+        v-if="!readonly"
         type="button"
         class="task-btn-danger"
         @click="handleDelete"

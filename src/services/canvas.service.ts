@@ -31,6 +31,13 @@ export interface CanvasAccess {
   readOnly: boolean;
 }
 
+export interface CanvasCollabToken {
+  token: string;
+  expiresIn: string;
+  role: CanvasShareRole;
+  readOnly: boolean;
+}
+
 /**
  * Canvas API Service – khớp với backend @Controller('/canvases')
  */
@@ -70,6 +77,13 @@ class CanvasService {
     return response.data.data as CanvasAccess;
   }
 
+  async getCanvasCollabToken(canvasId: string): Promise<CanvasCollabToken> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.GET_COLLAB_TOKEN(canvasId)
+    );
+    return response.data.data as CanvasCollabToken;
+  }
+
   async getCanvasPermissions(canvasId: string): Promise<CanvasPermissionList> {
     const response = await apiHelper.get(
       API_ENDPOINTS.CANVAS.GET_PERMISSIONS(canvasId)
@@ -90,7 +104,7 @@ class CanvasService {
 
   async shareCanvasWithChannel(
     canvasId: string,
-    payload: { channelId: string; role: CanvasShareRole }
+    payload: { channelId: string; role: CanvasShareRole; suppressSystemMessage?: boolean }
   ): Promise<CanvasPermissionList> {
     const response = await apiHelper.post(
       API_ENDPOINTS.CANVAS.SHARE_CHANNEL(canvasId),

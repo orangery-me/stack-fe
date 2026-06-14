@@ -131,12 +131,23 @@ export async function askAgentStream({
 
 // ---- Session management ----
 
+function _scopeQuery(scope = {}) {
+  const scopeType = scope.scopeType === "canvas" ? "canvas" : "general";
+  const params = new URLSearchParams({ scopeType });
+  if (scopeType === "canvas" && scope.scopeId) {
+    params.set("scopeId", scope.scopeId);
+  }
+  return params.toString();
+}
+
 /**
  * Get or create the active AI chat session for the current user.
  * @returns {Promise<Session>}
  */
-export async function getActiveSession() {
-  const response = await apiHelper.get(API_ENDPOINTS.AGENT.SESSIONS_ACTIVE);
+export async function getActiveSession(scope) {
+  const response = await apiHelper.get(
+    `${API_ENDPOINTS.AGENT.SESSIONS_ACTIVE}?${_scopeQuery(scope)}`,
+  );
   return response.data?.data ?? response.data;
 }
 
@@ -144,8 +155,10 @@ export async function getActiveSession() {
  * List all sessions for the current user.
  * @returns {Promise<Session[]>}
  */
-export async function listSessions() {
-  const response = await apiHelper.get(API_ENDPOINTS.AGENT.SESSIONS);
+export async function listSessions(scope) {
+  const response = await apiHelper.get(
+    `${API_ENDPOINTS.AGENT.SESSIONS}?${_scopeQuery(scope)}`,
+  );
   return response.data?.data ?? response.data;
 }
 
@@ -154,9 +167,13 @@ export async function listSessions() {
  * @param {string} [title]
  * @returns {Promise<Session>}
  */
-export async function createSession(title) {
+export async function createSession(title, scope) {
   const response = await apiHelper.post(API_ENDPOINTS.AGENT.SESSIONS, {
     title,
+    scopeType: scope?.scopeType === "canvas" ? "canvas" : "general",
+    ...(scope?.scopeType === "canvas" && scope?.scopeId
+      ? { scopeId: scope.scopeId }
+      : {}),
   });
   return response.data?.data ?? response.data;
 }
@@ -169,10 +186,10 @@ export async function createSession(title) {
  */
 export async function getSessionMessages(
   sessionId,
-  { page = 1, size = 50 } = {},
+  { page = 1, size = 50, scope } = {},
 ) {
   const response = await apiHelper.get(
-    `${API_ENDPOINTS.AGENT.SESSION_MESSAGES(sessionId)}?page=${page}&size=${size}`,
+    `${API_ENDPOINTS.AGENT.SESSION_MESSAGES(sessionId)}?page=${page}&size=${size}&${_scopeQuery(scope)}`,
   );
   return response.data?.data ?? response.data;
 }

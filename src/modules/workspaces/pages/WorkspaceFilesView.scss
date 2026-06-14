@@ -61,7 +61,7 @@
 
   &.primary {
     background: var(--primary-600);
-    color: #ffffff;
+    color: var(--ui-bg-surface);
   }
 
   &.is-muted {
@@ -70,6 +70,17 @@
 
   &:hover:not(.active):not(.primary) {
     background: var(--gray-100);
+  }
+}
+
+.files-nav-item--with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  i {
+    color: var(--primary-600);
+    font-size: 13px;
   }
 }
 
@@ -111,7 +122,7 @@
   padding: 6px 14px;
   font-size: 14px;
   border: 1px solid var(--ui-divider);
-  background: #ffffff;
+  background: var(--ui-bg-surface);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -128,7 +139,7 @@
 .files-btn-primary {
   background: var(--primary-600);
   border-color: var(--primary-600);
-  color: #ffffff;
+  color: var(--ui-bg-surface);
 
   &:hover {
     background: var(--primary-500);
@@ -168,7 +179,7 @@
   margin-top: 8px;
   border-radius: 8px;
   border: 1px solid var(--ui-divider);
-  background: #ffffff;
+  background: var(--ui-bg-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -292,7 +303,7 @@
 .notification-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.24);
+  background: rgba(31, 26, 23, 0.24);
   display: flex;
   justify-content: flex-end;
   z-index: 1200;
@@ -300,7 +311,7 @@
 
 .notification-panel {
   width: min(420px, 100%);
-  background: #fff;
+  background: var(--ui-bg-surface);
   height: 100%;
   border-left: 1px solid var(--ui-divider);
   display: flex;
@@ -363,4 +374,3 @@
   font-size: 13px;
   color: var(--ui-text-muted);
 }
-

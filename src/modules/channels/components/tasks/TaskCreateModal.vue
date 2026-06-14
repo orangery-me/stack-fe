@@ -10,6 +10,8 @@ import taskService from '@/services/task.service.js';
 import { queryClient } from '@/config/queryClient.js';
 import TaskAttachmentPreviewList from './TaskAttachmentPreviewList.vue';
 import TaskCanvasAttachmentPicker from './TaskCanvasAttachmentPicker.vue';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
+import CustomDatePicker from '@/components/calm/CustomDatePicker.vue';
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
@@ -71,6 +73,29 @@ const parentTaskChoices = computed(() => {
       title: task.title || 'Untitled task',
     }));
 });
+
+const parentTaskOptionsFormatted = computed(() => {
+  return [
+    { value: '', label: 'No parent task' },
+    ...parentTaskChoices.value.map(task => ({
+      value: task.id,
+      label: task.title
+    }))
+  ];
+});
+
+const statusOptions = [
+  { value: 'todo', label: 'Todo' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' }
+];
+
+const priorityOptions = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'urgent', label: 'Urgent' }
+];
 
 const filteredAssignees = ref([]);
 const filteredReporters = ref([]);
@@ -242,10 +267,11 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div
-    class="task-create-overlay"
-    @click.self="emit('close')"
-  >
+  <Teleport to="body">
+    <div
+      class="task-create-overlay"
+      @click.self="emit('close')"
+    >
     <div class="task-create-modal">
       <input
         ref="fileInputRef"
@@ -255,7 +281,12 @@ const handleSubmit = async () => {
         @change="onFileInputChange"
       >
       <div class="task-create-header">
-        <h3>{{ modalTitle }}</h3>
+        <div class="task-create-header-left">
+          <h3>{{ modalTitle }}</h3>
+          <span class="task-create-header-meta">
+            in <span class="meta-workspace">{{ workspaceName }}</span> &gt; <span class="meta-channel">#{{ channelName }}</span>
+          </span>
+        </div>
         <button
           type="button"
           class="task-create-close"
@@ -269,215 +300,167 @@ const handleSubmit = async () => {
         class="task-create-body"
         @submit.prevent="handleSubmit"
       >
-        <!-- Workspace + Channel -->
-        <div class="task-form-row">
-          <div class="task-form-group task-form-group--half">
-            <label class="task-form-label">Workspace</label>
-            <input
-              :value="workspaceName"
-              type="text"
-              class="task-form-input task-form-input--readonly"
-              readonly
-            >
-          </div>
-          <div class="task-form-group task-form-group--half">
-            <label class="task-form-label">Channel</label>
-            <input
-              :value="channelName"
-              type="text"
-              class="task-form-input task-form-input--readonly"
-              readonly
-            >
-          </div>
-        </div>
-
-        <!-- Title -->
-        <div class="task-form-group">
-          <label class="task-form-label">Title *</label>
-          <input
-            v-model="title"
-            type="text"
-            class="task-form-input"
-            placeholder="What needs to be done?"
-            maxlength="500"
-            autofocus
-          >
-        </div>
-
-        <!-- Description -->
-        <div class="task-form-group">
-          <label class="task-form-label">Description</label>
-          <textarea
-            v-model="description"
-            class="task-form-textarea"
-            placeholder="Add details..."
-            rows="3"
-          />
-        </div>
-
-        <!-- Reporter + Parent task row -->
-        <div class="task-form-row">
-          <div class="task-form-group task-form-group--half">
-            <label class="task-form-label">Reporter</label>
-            <div class="task-assignee-autocomplete">
-              <AutoComplete
-                v-model="selectedReporter"
-                :suggestions="filteredReporters"
-                option-label="display"
-                dropdown
-                force-selection
-                fluid
-                @complete="searchReporters"
+        <div class="task-create-main-layout">
+          <!-- Left Column: Content -->
+          <div class="task-create-content-col">
+            <!-- Title -->
+            <div class="task-form-group">
+              <label class="task-form-label">Title *</label>
+              <input
+                v-model="title"
+                type="text"
+                class="task-form-input"
+                placeholder="What needs to be done?"
+                maxlength="500"
+                autofocus
               >
-                <template #option="{ option }">
-                  <div class="task-assignee-option">
-                    <span class="task-assignee-option__avatar">
-                      {{ (option.name || option.email || '?')[0].toUpperCase() }}
-                    </span>
-                    <span class="task-assignee-option__name">
-                      {{ option.name || option.email }}
-                    </span>
-                  </div>
-                </template>
-              </AutoComplete>
+            </div>
+
+            <!-- Description -->
+            <div class="task-form-group">
+              <label class="task-form-label">Description</label>
+              <textarea
+                v-model="description"
+                class="task-form-textarea"
+                placeholder="Add details..."
+                rows="3"
+              />
+            </div>
+
+            <!-- Attachments -->
+            <div class="task-form-group">
+              <label class="task-form-label">Attachments</label>
+              <div class="task-attach-row">
+                <button
+                  type="button"
+                  class="task-attach-dropzone"
+                  @click="openFilePicker"
+                >
+                  <i class="pi pi-cloud-upload" />
+                  <span>Choose files to upload</span>
+                </button>
+                <button
+                  type="button"
+                  class="task-attach-canvas-btn"
+                  :disabled="isSubmitting || totalPendingAttachments >= 50"
+                  @click="canvasPickerOpen = true"
+                >
+                  <img
+                    src="/icons/canvas/docs.svg"
+                    alt=""
+                    width="22"
+                    height="22"
+                  >
+                  Attach canvas
+                </button>
+              </div>
+              <p
+                v-if="totalPendingAttachments >= 50"
+                class="task-form-hint"
+              >
+                Maximum 50 attachments per task.
+              </p>
+              <TaskAttachmentPreviewList
+                v-if="previewAttachments.length"
+                :items="previewAttachments"
+                :disabled="isSubmitting"
+                @remove="removeSelectedFile"
+              />
             </div>
           </div>
-          <div class="task-form-group task-form-group--half">
-            <label class="task-form-label">Parent task</label>
-            <select
-              v-model="selectedParentTaskId"
-              class="task-form-select"
-            >
-              <option value="">
-                No parent task
-              </option>
-              <option
-                v-for="task in parentTaskChoices"
-                :key="task.id"
-                :value="task.id"
-              >
-                {{ task.title }}
-              </option>
-            </select>
-          </div>
-        </div>
 
-        <!-- Status + Priority row -->
-        <div class="task-form-row">
-          <div class="task-form-group task-form-group--half">
-            <label class="task-form-label">Status</label>
-            <select
-              v-model="status"
-              class="task-form-select"
-            >
-              <option value="todo">
-                Todo
-              </option>
-              <option value="in_progress">
-                In Progress
-              </option>
-              <option value="done">
-                Done
-              </option>
-            </select>
-          </div>
-          <div class="task-form-group task-form-group--half">
-            <label class="task-form-label">Priority</label>
-            <select
-              v-model="priority"
-              class="task-form-select"
-            >
-              <option value="low">
-                Low
-              </option>
-              <option value="medium">
-                Medium
-              </option>
-              <option value="high">
-                High
-              </option>
-              <option value="urgent">
-                Urgent
-              </option>
-            </select>
-          </div>
-        </div>
+          <!-- Right Column: Sidebar Fields -->
+          <div class="task-create-sidebar-col">
+            <!-- Parent Task -->
+            <div class="task-form-group">
+              <label class="task-form-label">Parent task</label>
+              <CustomSelect
+                v-model="selectedParentTaskId"
+                :options="parentTaskOptionsFormatted"
+                width="100%"
+              />
+            </div>
 
-        <!-- Due date -->
-        <div class="task-form-group">
-          <label class="task-form-label">Due date</label>
-          <input
-            v-model="dueDate"
-            type="datetime-local"
-            class="task-form-input"
-          >
-        </div>
+            <!-- Status -->
+            <div class="task-form-group">
+              <label class="task-form-label">Status</label>
+              <CustomSelect
+                v-model="status"
+                :options="statusOptions"
+                width="100%"
+              />
+            </div>
 
-        <!-- Assignees -->
-        <div class="task-form-group">
-          <label class="task-form-label">Assignees</label>
-          <div class="task-assignee-autocomplete">
-            <AutoComplete
-              v-model="selectedAssignees"
-              :suggestions="filteredAssignees"
-              option-label="display"
-              multiple
-              fluid
-              @complete="searchAssignees"
-            >
-              <template #option="{ option }">
-                <div class="task-assignee-option">
-                  <span class="task-assignee-option__avatar">
-                    {{ (option.name || option.email || '?')[0].toUpperCase() }}
-                  </span>
-                  <span class="task-assignee-option__name">
-                    {{ option.name || option.email }}
-                  </span>
-                </div>
-              </template>
-            </AutoComplete>
-          </div>
-        </div>
+            <!-- Priority -->
+            <div class="task-form-group">
+              <label class="task-form-label">Priority</label>
+              <CustomSelect
+                v-model="priority"
+                :options="priorityOptions"
+                width="100%"
+              />
+            </div>
 
-        <!-- Attachments -->
-        <div class="task-form-group">
-          <label class="task-form-label">Attachments</label>
-          <div class="task-attach-row">
-            <button
-              type="button"
-              class="task-attach-dropzone"
-              @click="openFilePicker"
-            >
-              <i class="pi pi-cloud-upload" />
-              <span>Choose files to upload after creating this task</span>
-            </button>
-            <button
-              type="button"
-              class="task-attach-canvas-btn"
-              :disabled="isSubmitting || totalPendingAttachments >= 50"
-              @click="canvasPickerOpen = true"
-            >
-              <img
-                src="/icons/canvas/docs.svg"
-                alt=""
-                width="22"
-                height="22"
-              >
-              Attach canvas
-            </button>
+            <!-- Due Date -->
+            <CustomDatePicker
+              v-model="dueDate"
+              label="Due date"
+              showTime
+            />
+
+            <!-- Assignees -->
+            <div class="task-form-group">
+              <label class="task-form-label">Assignees</label>
+              <div class="task-assignee-autocomplete">
+                <AutoComplete
+                  v-model="selectedAssignees"
+                  :suggestions="filteredAssignees"
+                  option-label="display"
+                  multiple
+                  fluid
+                  @complete="searchAssignees"
+                >
+                  <template #option="{ option }">
+                    <div class="task-assignee-option">
+                      <span class="task-assignee-option__avatar">
+                        {{ (option.name || option.email || '?')[0].toUpperCase() }}
+                      </span>
+                      <span class="task-assignee-option__name">
+                        {{ option.name || option.email }}
+                      </span>
+                    </div>
+                  </template>
+                </AutoComplete>
+              </div>
+            </div>
+
+            <!-- Reporter -->
+            <div class="task-form-group">
+              <label class="task-form-label">Reporter</label>
+              <div class="task-assignee-autocomplete">
+                <AutoComplete
+                  v-model="selectedReporter"
+                  :suggestions="filteredReporters"
+                  option-label="display"
+                  dropdown
+                  force-selection
+                  fluid
+                  @complete="searchReporters"
+                >
+                  <template #option="{ option }">
+                    <div class="task-assignee-option">
+                      <span class="task-assignee-option__avatar">
+                        {{ (option.name || option.email || '?')[0].toUpperCase() }}
+                      </span>
+                      <span class="task-assignee-option__name">
+                        {{ option.name || option.email }}
+                      </span>
+                    </div>
+                  </template>
+                </AutoComplete>
+              </div>
+            </div>
           </div>
-          <p
-            v-if="totalPendingAttachments >= 50"
-            class="task-form-hint"
-          >
-            Maximum 50 attachments per task.
-          </p>
-          <TaskAttachmentPreviewList
-            v-if="previewAttachments.length"
-            :items="previewAttachments"
-            :disabled="isSubmitting"
-            @remove="removeSelectedFile"
-          />
         </div>
 
         <!-- Actions -->
@@ -511,6 +494,7 @@ const handleSubmit = async () => {
       @attach="onCanvasAttachedFromPicker"
     />
   </div>
+  </Teleport>
 </template>
 
 <style scoped lang="scss">
@@ -559,6 +543,27 @@ const handleSubmit = async () => {
   }
 }
 
+.task-create-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-create-header-meta {
+  font-size: 12px;
+  color: var(--ui-text-muted);
+  font-weight: 500;
+
+  .meta-workspace {
+    font-weight: 600;
+  }
+
+  .meta-channel {
+    font-weight: 600;
+    color: var(--primary-600);
+  }
+}
+
 .task-create-close {
   width: 32px;
   height: 32px;
@@ -583,6 +588,31 @@ const handleSubmit = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.task-create-main-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  min-height: 0;
+}
+
+.task-create-content-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.task-create-sidebar-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--gray-50);
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-divider);
+  min-width: 0;
 }
 
 .task-form-group {
@@ -638,10 +668,6 @@ const handleSubmit = async () => {
 .task-form-textarea {
   resize: vertical;
   min-height: 60px;
-}
-
-.task-form-select {
-  cursor: pointer;
 }
 
 .task-attach-row {
@@ -744,7 +770,7 @@ const handleSubmit = async () => {
     }
   }
 
-  :deep(input.p-autocomplete-input) {
+  :deep(.p-autocomplete-multiple-container input.p-autocomplete-input) {
     font-size: 14px !important;
     font-family: inherit !important;
     color: var(--ui-text);
@@ -758,6 +784,84 @@ const handleSubmit = async () => {
     &::placeholder {
       color: var(--ui-text-muted) !important;
       font-size: 13px !important;
+    }
+  }
+
+  :deep(.p-autocomplete:not(.p-autocomplete-multiple)) {
+    display: inline-flex;
+    width: 100%;
+
+    input.p-autocomplete-input {
+      flex: 1;
+      min-width: 0;
+      height: 38px;
+      font-size: 14px !important;
+      font-family: inherit !important;
+      color: var(--ui-text);
+      padding: 8px 12px !important;
+      border: 1px solid var(--ui-border, #E7E1DB) !important;
+      border-right: none !important;
+      border-top-left-radius: var(--ui-radius-input, 8px) !important;
+      border-bottom-left-radius: var(--ui-radius-input, 8px) !important;
+      border-top-right-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+      background: #fff !important;
+      outline: none;
+      box-shadow: none !important;
+      text-overflow: ellipsis;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+      &:focus {
+        border-color: var(--primary-500, #E95C47) !important;
+      }
+
+      &::placeholder {
+        color: var(--ui-text-muted) !important;
+        font-size: 13px !important;
+      }
+    }
+
+    .p-autocomplete-dropdown {
+      border: 1px solid var(--ui-border, #E7E1DB) !important;
+      border-left: none !important;
+      border-top-right-radius: var(--ui-radius-input, 8px) !important;
+      border-bottom-right-radius: var(--ui-radius-input, 8px) !important;
+      border-top-left-radius: 0 !important;
+      border-bottom-left-radius: 0 !important;
+      background: var(--ui-bg-surface, #FFFDFB) !important;
+      color: var(--ui-text-muted, #8E8883) !important;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+
+      &:hover {
+        background-color: var(--gray-50, #F8F6F3) !important;
+        border-color: var(--gray-300, #C2B6AD) !important;
+      }
+    }
+
+    &:hover {
+      input.p-autocomplete-input {
+        border-color: var(--gray-300, #C2B6AD) !important;
+      }
+      .p-autocomplete-dropdown {
+        border-color: var(--gray-300, #C2B6AD) !important;
+      }
+    }
+
+    &.p-inputwrapper-focus {
+      input.p-autocomplete-input {
+        border-color: var(--primary-500, #E95C47) !important;
+      }
+      .p-autocomplete-dropdown {
+        border-color: var(--primary-500, #E95C47) !important;
+      }
     }
   }
 
@@ -777,6 +881,7 @@ const handleSubmit = async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 
   &__avatar {
     width: 24px;
@@ -789,11 +894,17 @@ const handleSubmit = async () => {
     justify-content: center;
     font-size: 11px;
     font-weight: 600;
+    flex-shrink: 0;
   }
 
   &__name {
     font-size: 13px;
     color: var(--ui-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
   }
 }
 
@@ -844,8 +955,33 @@ const handleSubmit = async () => {
 }
 
 @media (max-width: 640px) {
+  .task-create-main-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
   .task-form-row {
     flex-direction: column;
   }
+}
+
+:global(.p-autocomplete-list-container) {
+  scrollbar-width: none !important;
+}
+:global(.p-autocomplete-list-container::-webkit-scrollbar) {
+  display: none !important;
+}
+
+:global(.p-autocomplete-overlay) {
+  scrollbar-width: none !important;
+}
+:global(.p-autocomplete-overlay::-webkit-scrollbar) {
+  display: none !important;
+}
+
+:global(.p-virtualscroller) {
+  scrollbar-width: none !important;
+}
+:global(.p-virtualscroller::-webkit-scrollbar) {
+  display: none !important;
 }
 </style>

@@ -33,6 +33,10 @@ import { useRoute } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useLoading } from "@/composables/useLoading.js";
 import { useUiStore } from "@/stores/ui.store.js";
+import {
+  attachCanvasCollabAuthHandlers,
+  createCanvasCollabTokenProvider,
+} from "@/modules/channels/composables/useCanvasCollabToken";
 
 const uiStore = useUiStore();
 const canvasCollabUrl = import.meta.env.VITE_CANVAS_COLLAB_URL;
@@ -196,13 +200,19 @@ const onlineUsers = ref<
 
 const saveStatus = ref<"saved" | "saving">("saved");
 const hadChangesSinceLastSaved = ref(false);
+const collabAccessDenied = ref(false);
 
 const displaySaveStatus = computed<"saved" | "saving">(() =>
   saveStatus.value === "saving" || hadChangesSinceLastSaved.value
     ? "saving"
     : "saved",
 );
-const editorReadOnly = computed(() => !isEditorReady.value || selectedCanvas.value?.canEdit !== true);
+const editorReadOnly = computed(
+  () =>
+    collabAccessDenied.value ||
+    !isEditorReady.value ||
+    selectedCanvas.value?.canEdit !== true,
+);
 
 const jwtToken = computed(() => authStore.accessToken);
 
@@ -257,6 +267,7 @@ function destroyCollabResources() {
   onlineUsers.value = [];
   saveStatus.value = "saved";
   hadChangesSinceLastSaved.value = false;
+  collabAccessDenied.value = false;
 }
 
 // ======== AI Writer =========
@@ -318,13 +329,14 @@ function generateColorFromName(name: string) {
     .padStart(6, "0")}`;
 }
 
-function setupForCanvas(id: string) {
+async function setupForCanvas(id: string) {
+  const tokenProvider = createCanvasCollabTokenProvider(id);
   const doc = new Y.Doc();
   const p = new HocuspocusProvider({
     url: canvasCollabUrl,
     name: id,
     document: doc,
-    token: jwtToken.value,
+    token: tokenProvider.getToken,
   });
 
   ydoc.value = doc;
@@ -368,6 +380,7 @@ function setupForCanvas(id: string) {
 
   isEditorReady.value = false;
   syncStatus.value = "connecting";
+  collabAccessDenied.value = false;
 
   function setEditorReady() {
     if (syncReadyTimeoutId) {
@@ -379,6 +392,20 @@ function setupForCanvas(id: string) {
     saveStatus.value = "saved";
     hadChangesSinceLastSaved.value = false;
   }
+
+  attachCanvasCollabAuthHandlers(p, tokenProvider, {
+    onTokenRefreshed: () => {
+      syncStatus.value = "connecting";
+      collabAccessDenied.value = false;
+    },
+    onAuthenticationFailed: (reason) => {
+      console.warn("[CanvasEditView] Authentication failed:", reason);
+      syncStatus.value = "offline";
+      collabAccessDenied.value = true;
+      setEditorReady();
+      editor.value?.setEditable(false);
+    },
+  });
 
   p.on("synced", () => {
     syncStatus.value = "synced";
@@ -450,7 +477,7 @@ watch(
     } catch {
       // Toast is shown by the global axios interceptor
     }
-    setupForCanvas(id);
+    await setupForCanvas(id);
     setupCanvasId = id;
   },
   { immediate: true },

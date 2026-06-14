@@ -17,6 +17,10 @@ import AppLoading from "@/components/loading/AppLoading.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
 import { requestCanvas } from "@/modules/channels/queries/canvas.queries";
 import { useQueryClient } from "@tanstack/vue-query";
+import {
+  attachCanvasCollabAuthHandlers,
+  createCanvasCollabTokenProvider,
+} from "@/modules/channels/composables/useCanvasCollabToken";
 
 const SYNC_READY_TIMEOUT_MS = 10_000;
 const canvasCollabUrl = import.meta.env.VITE_CANVAS_COLLAB_URL;
@@ -152,13 +156,14 @@ function destroyCollabResources() {
   onlineUsers.value = [];
 }
 
-function setupForCanvas(id: string) {
+async function setupForCanvas(id: string) {
+  const tokenProvider = createCanvasCollabTokenProvider(id);
   const doc = new Y.Doc();
   const p = new HocuspocusProvider({
     url: canvasCollabUrl,
     name: id,
     document: doc,
-    token: jwtToken.value,
+    token: tokenProvider.getToken,
   });
 
   ydoc.value = doc;
@@ -189,6 +194,17 @@ function setupForCanvas(id: string) {
     }
     isEditorReady.value = true;
   }
+
+  attachCanvasCollabAuthHandlers(p, tokenProvider, {
+    onTokenRefreshed: () => {
+      syncStatus.value = "connecting";
+    },
+    onAuthenticationFailed: (reason) => {
+      console.warn("[CanvasTabView] Authentication failed:", reason);
+      syncStatus.value = "offline";
+      setEditorReady();
+    },
+  });
 
   p.on("synced", () => {
     syncStatus.value = "synced";
@@ -238,7 +254,7 @@ watch(
       // Toast is shown by the global axios interceptor
     }
 
-    setupForCanvas(id);
+    await setupForCanvas(id);
   },
   { immediate: true }
 );

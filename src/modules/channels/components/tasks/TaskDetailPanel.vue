@@ -8,6 +8,7 @@ import TaskDetailContent from './TaskDetailContent.vue';
 const props = defineProps({
   task: { type: Object, required: true },
   workspaceId: { type: String, required: true },
+  readonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close', 'add-subtask']);
@@ -55,6 +56,10 @@ watch(
 );
 
 const commitTitle = async () => {
+  if (props.readonly) {
+    headerTitle.value = task.value.title || '';
+    return;
+  }
   const next = headerTitle.value.trim();
   if (!next || next === task.value.title) return;
   isTitleSaving.value = true;
@@ -82,7 +87,7 @@ const commitTitle = async () => {
         v-model="headerTitle"
         type="text"
         class="task-drawer-title-input"
-        :disabled="isTitleSaving"
+        :disabled="isTitleSaving || readonly"
         maxlength="500"
         aria-label="Task title"
         placeholder="Task title"
@@ -96,6 +101,7 @@ const commitTitle = async () => {
         variant="drawer"
         :task="task"
         :workspace-id="workspaceId"
+        :readonly="readonly"
         @close="emit('close')"
         @add-subtask="emit('add-subtask', $event)"
       />

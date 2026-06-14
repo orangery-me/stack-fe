@@ -63,10 +63,19 @@ const showHistoryModal = ref(false);
 
 let abortController = null;
 let msgIdCounter = 0;
+let sessionLoadSeq = 0;
 
-const DEFAULT_PROVIDER = "openai";
-const DEFAULT_MODEL = "gpt-5.3-codex";
+const DEFAULT_PROVIDER = "deepseek";
+const DEFAULT_MODEL = "deepseek-v4-pro";
 const isCanvasMode = computed(() => props.context?.kind === "canvas");
+const sessionScope = computed(() =>
+  isCanvasMode.value && props.context?.canvasId
+    ? { scopeType: "canvas", scopeId: props.context.canvasId }
+    : { scopeType: "general" },
+);
+const sessionScopeKey = computed(
+  () => `${sessionScope.value.scopeType}:${sessionScope.value.scopeId || ""}`,
+);
 const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
 const CANVAS_ACTION_NAMES = new Set([
   "insert_canvas_block",
@@ -247,13 +256,19 @@ function normalizeIncomingActions(actions) {
 // ======== Session loading ========
 
 async function loadActiveSession() {
-  if (isLoadingSession.value) return;
+  const loadSeq = ++sessionLoadSeq;
+  const scope = { ...sessionScope.value };
+  const scopeKey = sessionScopeKey.value;
   isLoadingSession.value = true;
   try {
-    const session = await getActiveSession();
+    const session = await getActiveSession(scope);
+    if (loadSeq !== sessionLoadSeq || scopeKey !== sessionScopeKey.value) return;
     activeSession.value = session;
 
-    const result = await getSessionMessages(session.id);
+    const result = await getSessionMessages(session.id, {
+      scope,
+    });
+    if (loadSeq !== sessionLoadSeq || scopeKey !== sessionScopeKey.value) return;
     const rawMessages = Array.isArray(result)
       ? result
       : (result?.messages ?? []);
@@ -275,13 +290,15 @@ async function loadActiveSession() {
   } catch {
     // Toast shown by global interceptor
   } finally {
-    isLoadingSession.value = false;
+    if (loadSeq === sessionLoadSeq) {
+      isLoadingSession.value = false;
+    }
   }
 }
 
 async function loadSessionList() {
   try {
-    const data = await listSessions();
+    const data = await listSessions(sessionScope.value);
     sessions.value = Array.isArray(data) ? data : (data?.sessions ?? []);
   } catch {
     // ignore
@@ -297,7 +314,9 @@ async function switchSession(session) {
   activeSession.value = session;
   showSessionDropdown.value = false;
   try {
-    const result = await getSessionMessages(session.id);
+    const result = await getSessionMessages(session.id, {
+      scope: sessionScope.value,
+    });
     const rawMessages = Array.isArray(result)
       ? result
       : (result?.messages ?? []);
@@ -325,7 +344,7 @@ async function handleNewChat() {
   abortStream();
   showSessionDropdown.value = false;
   try {
-    const session = await createSession();
+    const session = await createSession(undefined, sessionScope.value);
     activeSession.value = session;
     messages.value = [];
     syncInlineCanvasActions();
@@ -645,7 +664,7 @@ async function processPendingAiCommand() {
   }
   processingPendingCommandId.value = command.id;
   try {
-    await startFreshCommandSession(command);
+    await ensureCommandSession();
     uiStore.clearPendingAiCommand(command.id);
 
     if (command.kind === "canvas-summary") {
@@ -671,18 +690,13 @@ async function processPendingAiCommand() {
   }
 }
 
-async function startFreshCommandSession(command) {
+async function ensureCommandSession() {
   abortStream();
   showSessionDropdown.value = false;
   taskSetup.value = null;
-  messages.value = [];
-  syncInlineCanvasActions();
-  const canvasTitle = command.context?.canvasTitle || "Canvas";
-  const prefix =
-    command.kind === "canvas-task-generation" ? "Tasks" : "Summary";
-  const title = `${prefix}: ${canvasTitle}`.slice(0, 80);
-  const session = await createSession(title);
-  activeSession.value = session;
+  if (!activeSession.value) {
+    await loadActiveSession();
+  }
   await loadSessionList();
 }
 
@@ -817,6 +831,22 @@ watch(
       abortStream();
       showSessionDropdown.value = false;
     }
+  },
+);
+
+watch(
+  sessionScopeKey,
+  async () => {
+    if (!props.open) return;
+    abortStream();
+    activeSession.value = null;
+    sessions.value = [];
+    messages.value = [];
+    taskSetup.value = null;
+    showSessionDropdown.value = false;
+    syncInlineCanvasActions();
+    await loadActiveSession();
+    await loadSessionList();
   },
 );
 

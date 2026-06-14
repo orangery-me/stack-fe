@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import CalmButton from "@/components/calm/CalmButton.vue";
+import StackLogo from "@/components/StackLogo.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -47,12 +48,7 @@ const goToRegister = () => router.push("/register");
           :to="{ name: 'home' }"
           class="app-header__brand"
         >
-          <img
-            class="app-header__logo"
-            src="/logos/stack-logo.jpg"
-            alt="Stack"
-          >
-          <span class="app-header__name">Stack</span>
+          <StackLogo :clickable="false" />
         </router-link>
 
         <!-- <div class="app-header__nav">

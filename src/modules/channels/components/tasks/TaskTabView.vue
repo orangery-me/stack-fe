@@ -7,6 +7,7 @@ import taskService from '@/services/task.service.js';
 import TaskListView from './TaskListView.vue';
 import TaskCreateModal from './TaskCreateModal.vue';
 import TaskDetailPanel from './TaskDetailPanel.vue';
+import CustomSelect from '@/components/calm/CustomSelect.vue';
 import TaskKanbanView from './TaskKanbanView.vue';
 import AppLoading from '@/components/loading/AppLoading.vue';
 
@@ -14,6 +15,7 @@ const props = defineProps({
   taskListId: { type: String, required: true },
   workspaceId: { type: String, required: true },
   listName: { type: String, default: 'Untitled list' },
+  canEditTaskItem: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update-name']);
@@ -23,6 +25,12 @@ const router = useRouter();
 
 const isCreateModalOpen = ref(false);
 const statusFilter = ref('');
+const statusOptions = [
+  { value: '', label: 'All items' },
+  { value: 'todo', label: 'Todo' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' }
+];
 const searchQuery = ref('');
 const showSearch = ref(false);
 const viewType = ref('list');
@@ -125,6 +133,7 @@ const isEditingTitle = ref(false);
 const editTitleValue = ref('');
 
 const startEditTitle = () => {
+  if (!props.canEditTaskItem) return;
   editTitleValue.value = props.listName;
   isEditingTitle.value = true;
 };
@@ -148,6 +157,7 @@ const saveTitle = async () => {
 const createModalParentTaskId = ref(null);
 
 const openCreateModal = (parentTask = null) => {
+  if (!props.canEditTaskItem) return;
   createModalParentTaskId.value = parentTask?.id ?? null;
   isCreateModalOpen.value = true;
 };
@@ -218,6 +228,7 @@ watch(() => props.taskListId, () => {
       </div>
       <div class="task-tab-header-right">
         <button
+          v-if="canEditTaskItem"
           type="button"
           class="task-icon-btn"
           title="Create task"
@@ -231,27 +242,12 @@ watch(() => props.taskListId, () => {
     <!-- Toolbar -->
     <div class="task-tab-toolbar">
       <div class="task-tab-toolbar-left">
-        <div class="task-filter-dropdown">
-          <i class="pi pi-folder" />
-          <select
-            v-model="statusFilter"
-            class="task-filter-native-select"
-          >
-            <option value="">
-              All items
-            </option>
-            <option value="todo">
-              Todo
-            </option>
-            <option value="in_progress">
-              In Progress
-            </option>
-            <option value="done">
-              Done
-            </option>
-          </select>
-          <i class="pi pi-chevron-down task-filter-chevron" />
-        </div>
+        <CustomSelect
+          v-model="statusFilter"
+          :options="statusOptions"
+          size="sm"
+          width="130px"
+        />
 
         <span class="task-toolbar-divider" />
 
@@ -403,6 +399,7 @@ watch(() => props.taskListId, () => {
           <!-- Add item → opens modal -->
           <div class="task-inline-add">
             <button
+              v-if="canEditTaskItem"
               type="button"
               class="task-add-item-btn"
               @click="openCreateModal()"
@@ -420,6 +417,7 @@ watch(() => props.taskListId, () => {
           <TaskKanbanView
             :tasks="filteredAndSortedTasks"
             :workspace-id="workspaceId"
+            :readonly="!canEditTaskItem"
             @task-click="handleTaskClick"
           />
         </div>
@@ -430,6 +428,7 @@ watch(() => props.taskListId, () => {
       v-if="selectedTask"
       :task="selectedTask"
       :workspace-id="workspaceId"
+      :readonly="!canEditTaskItem"
       @close="handleCloseDetail"
       @add-subtask="openCreateModal($event)"
     />

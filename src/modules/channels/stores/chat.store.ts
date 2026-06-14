@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import socketHelper from "../../../helpers/socket.helper";
+import chatService from "@/services/chat.service";
 import { CHAT_EVENTS, CHAT_NAMESPACE } from "../constants";
 import { useAuthStore } from "../../auth/stores/auth.store";
 import { useHuddleStore } from "../huddle/stores/huddle.store";
@@ -56,8 +57,9 @@ export const useChatStore = defineStore("chat", {
 
     // ==================== Message Sending ====================
 
-    async sendMessage({ workspaceId, channelId, content }: SendMessagePayload) {
-      if (!content?.trim()) return;
+    async sendMessage({ workspaceId, channelId, content, messageType = "text", metadata }: SendMessagePayload) {
+      const hasAttachments = Array.isArray(metadata?.attachments) && metadata.attachments.length > 0;
+      if (!content?.trim() && !hasAttachments) return;
 
       const trimmedContent = content.trim();
       const authStore = useAuthStore();
@@ -69,9 +71,11 @@ export const useChatStore = defineStore("chat", {
         senderId: user?.id ?? "",
         authorName: user?.name || DEFAULT_AUTHOR_NAME,
         content: trimmedContent,
+        messageType,
         createdAt: new Date().toISOString(),
         channelId,
         status: "pending",
+        metadata,
       };
 
       // Add optimistic message to cache (append to first page assuming latest messages are there)
@@ -96,12 +100,15 @@ export const useChatStore = defineStore("chat", {
         timeoutId,
         channelId,
         content: trimmedContent,
+        metadata,
       };
 
       await socketHelper.emit(CHAT_EVENTS.SEND_CHANNEL_MESSAGE, {
         workspaceId,
         channelId,
         content: trimmedContent,
+        messageType,
+        metadata,
       });
     },
 
@@ -128,6 +135,8 @@ export const useChatStore = defineStore("chat", {
           workspaceId,
           channelId,
           content: failedMessage.content,
+          messageType: failedMessage.messageType,
+          metadata: failedMessage.metadata,
         });
       }
     },
@@ -183,6 +192,8 @@ export const useChatStore = defineStore("chat", {
                 senderId: serverMessage.senderId,
                 createdAt: serverMessage.createdAt,
                 status: "sent",
+                messageType: serverMessage.messageType || m.messageType,
+                metadata: parseMetadata(serverMessage.metadata) || m.metadata,
               } : m
             )
           }))
@@ -216,6 +227,8 @@ export const useChatStore = defineStore("chat", {
 
       socketHelper.on(CHAT_EVENTS.NEW_MESSAGE, this.handleNewMessage.bind(this));
       socketHelper.on(CHAT_EVENTS.MESSAGE_SENT, this.handleMessageSent.bind(this));
+      socketHelper.on(CHAT_EVENTS.MESSAGE_UPDATED, this.handleMessageUpdated.bind(this));
+      socketHelper.on(CHAT_EVENTS.MESSAGE_DELETED, this.handleMessageDeleted.bind(this));
       socketHelper.on(CHAT_EVENTS.ERROR, this.handleSocketError.bind(this));
     },
 
@@ -282,6 +295,21 @@ export const useChatStore = defineStore("chat", {
       }
     },
 
+    handleMessageUpdated(message: any) {
+      if (!message?.channelId || !message?.id) return;
+      this.replaceMessageInCache(message.channelId, {
+        id: message.id,
+        isPinned: message.isPinned || false,
+        pinnedAt: message.pinnedAt || null,
+        pinnedBy: message.pinnedBy || null,
+      } as ChatMessage);
+    },
+
+    handleMessageDeleted(message: any) {
+      if (!message?.channelId || !message?.id) return;
+      this.removeMessageFromCache(message.channelId, message.id);
+    },
+
     handleSocketError(error: any) {
       console.error("[Chat] Socket error:", error);
 
@@ -324,7 +352,113 @@ export const useChatStore = defineStore("chat", {
         channelId: message.channelId,
         status: message.status || status,
         metadata: parseMetadata(message.metadata),
+        isPinned: message.isPinned || false,
+        pinnedAt: message.pinnedAt || null,
+        pinnedBy: message.pinnedBy || null,
       };
+    },
+
+    async pinMessage(workspaceId: string, channelId: string, messageId: string) {
+      return this.setPinnedStateOptimistic(workspaceId, channelId, messageId, true);
+    },
+
+    async unpinMessage(workspaceId: string, channelId: string, messageId: string) {
+      return this.setPinnedStateOptimistic(workspaceId, channelId, messageId, false);
+    },
+
+    async setPinnedStateOptimistic(workspaceId: string, channelId: string, messageId: string, isPinned: boolean) {
+      const previous = this.getMessagesFromCache(channelId).find((message) => message.id === messageId);
+      const optimistic = {
+        id: messageId,
+        isPinned,
+        pinnedAt: isPinned ? new Date().toISOString() : null,
+        pinnedBy: isPinned ? useAuthStore().user?.id || null : null,
+      } as ChatMessage;
+
+      this.replaceMessageInCache(channelId, optimistic);
+
+      try {
+        const response = isPinned
+          ? await chatService.pinMessage(workspaceId, channelId, messageId)
+          : await chatService.unpinMessage(workspaceId, channelId, messageId);
+        const payload = response?.data || response;
+        const updated = {
+          id: payload.id || messageId,
+          isPinned: payload.isPinned || false,
+          pinnedAt: payload.pinnedAt || null,
+          pinnedBy: payload.pinnedBy || null,
+        } as ChatMessage;
+        this.replaceMessageInCache(channelId, updated);
+        return updated;
+      } catch (error) {
+        if (previous) {
+          this.replaceMessageInCache(channelId, previous);
+        }
+        throw error;
+      }
+    },
+
+    async deleteMessage(workspaceId: string, channelId: string, messageId: string) {
+      const previous = this.getMessagesFromCache(channelId).find((message) => message.id === messageId);
+      this.removeMessageFromCache(channelId, messageId);
+
+      try {
+        const response = await chatService.deleteMessage(workspaceId, channelId, messageId);
+        return response?.data || response;
+      } catch (error) {
+        if (previous) {
+          this.restoreMessageInCache(channelId, previous);
+        }
+        throw error;
+      }
+    },
+
+    replaceMessageInCache(channelId: string, updated: ChatMessage) {
+      this.updateQueryCache(channelId, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            messages: (page.messages || []).map((message: any) =>
+              message.id === updated.id ? { ...message, ...updated } : message
+            ),
+          })),
+        };
+      });
+    },
+
+    removeMessageFromCache(channelId: string, messageId: string) {
+      this.updateQueryCache(channelId, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            messages: (page.messages || []).filter((message: any) => message.id !== messageId),
+          })),
+        };
+      });
+    },
+
+    restoreMessageInCache(channelId: string, message: ChatMessage) {
+      this.updateQueryCache(channelId, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        const exists = oldData.pages.some((page: any) =>
+          (page.messages || []).some((item: any) => item.id === message.id)
+        );
+        if (exists) return oldData;
+
+        const newPages = [...oldData.pages];
+        if (!newPages[0]) newPages[0] = { messages: [] };
+        newPages[0] = {
+          ...newPages[0],
+          messages: [...(newPages[0].messages || []), message].sort(
+            (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          ),
+        };
+        return { ...oldData, pages: newPages };
+      });
     },
 
     formatMessages(messages: any[], members: any[] = [], status: MessageStatus = "sent"): ChatMessage[] {

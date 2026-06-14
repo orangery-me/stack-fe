@@ -12,7 +12,7 @@ import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import { PhoneCall } from 'lucide-vue-next';
-
+import CustomSelect from "@/components/calm/CustomSelect.vue";
 
 
 const route = useRoute();
@@ -25,6 +25,22 @@ const taskStore = useTaskStore();
 const selectedChannel = computed(() => channelStore.selectedChannel);
 const workspaceMembers = computed(() => workspaceStore.members || []);
 const workspaceId = computed(() => route.params.id);
+
+const getUserIdFromAccessToken = () => {
+  const token = authStore.accessToken;
+  if (!token) return "";
+  try {
+    const base64Url = token.split(".")[1] || "";
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded));
+    return payload?.sub || "";
+  } catch {
+    return "";
+  }
+};
+
+const currentUserId = computed(() => authStore.user?.id || getUserIdFromAccessToken());
 
 const isInviteModalOpen = ref(false);
 const selectedMember = ref(null);
@@ -45,10 +61,39 @@ const activeDetailTab = ref("about");
 const activeMainTab = ref("messages");
 const showAddTabMenu = ref(false);
 
+const permissionOptions = [
+  { value: "manager_only", label: "Managers only" },
+  { value: "all_members", label: "All members" }
+];
+
 const channelMembers = computed(() => {
   const channelId = selectedChannel.value?.id;
   if (!channelId) return [];
   return channelStore.getChannelMembersById(channelId);
+});
+
+const isDirectMessage = computed(() => selectedChannel.value?.type === "dm");
+
+const directMessagePartner = computed(() => {
+  if (!isDirectMessage.value) return null;
+  const otherMember = channelMembers.value.find(
+    (member) => member.userId && member.userId !== currentUserId.value
+  );
+  if (otherMember) return otherMember;
+  return channelMembers.value.find((member) => member.userId === currentUserId.value) || null;
+});
+
+const channelDisplayName = computed(() => {
+  if (!selectedChannel.value) return "Select a channel";
+  if (isDirectMessage.value) {
+    return (
+      directMessagePartner.value?.name ||
+      directMessagePartner.value?.email ||
+      selectedChannel.value.name ||
+      "Direct message"
+    );
+  }
+  return selectedChannel.value.name || "Unknown channel";
 });
 
 const taskLists = computed(() => {
@@ -66,6 +111,7 @@ const activeTaskListId = computed(() => {
 
 const addTaskTab = async () => {
   showAddTabMenu.value = false;
+  if (!canCreateTaskList.value) return;
   if (!selectedChannel.value?.id || !workspaceId.value) return;
   try {
     const newList = await taskStore.createTaskList(
@@ -79,7 +125,7 @@ const addTaskTab = async () => {
   }
 };
 
-const handleUpdateListName = (listId, newName) => {
+const handleUpdateListName = () => {
   // Store handles API/state update, component updates reactively
 };
 
@@ -87,7 +133,10 @@ watch(
   () => selectedChannel.value?.id,
   async (newChannelId) => {
     if (newChannelId && workspaceId.value) {
-      await taskStore.fetchTaskLists(workspaceId.value, newChannelId);
+      await Promise.all([
+        taskStore.fetchTaskLists(workspaceId.value, newChannelId),
+        channelStore.fetchChannelMembers(workspaceId.value, newChannelId).catch(() => []),
+      ]);
       // Reset tab on channel change
       activeMainTab.value = "messages";
     }
@@ -104,6 +153,24 @@ const isMembersLoading = computed(() => {
 const canKickMember = computed(
   () => selectedChannel.value?.permissions?.canKick === true
 );
+const canInviteMembers = computed(
+  () => selectedChannel.value?.permissions?.canInvite === true
+);
+const canPostMessages = computed(
+  () => selectedChannel.value?.permissions?.canPost !== false
+);
+const canPinMessages = computed(
+  () => selectedChannel.value?.permissions?.canPinMessage === true
+);
+const canDeleteMessages = computed(
+  () => selectedChannel.value?.permissions?.canDeleteMessage === true
+);
+const canCreateTaskList = computed(
+  () => selectedChannel.value?.permissions?.canCreateTaskList !== false
+);
+const canEditTaskItem = computed(
+  () => selectedChannel.value?.permissions?.canEditTaskItem !== false
+);
 
 const isPermissionsTabAvailable = computed(() => canKickMember.value === true);
 
@@ -112,6 +179,9 @@ const permissionDraft = ref({
   postPolicy: "all_members",
   pinMessagePolicy: "manager_only",
   threadPolicy: "all_members",
+  deleteMessagePolicy: "all_members",
+  taskListCreatePolicy: "all_members",
+  taskItemEditPolicy: "all_members",
 });
 
 const isSubmittingPermissions = ref(false);
@@ -125,6 +195,9 @@ const initPermissionDraft = () => {
     postPolicy: p.postPolicy || "all_members",
     pinMessagePolicy: p.pinMessagePolicy || "manager_only",
     threadPolicy: p.threadPolicy || "all_members",
+    deleteMessagePolicy: p.deleteMessagePolicy || "all_members",
+    taskListCreatePolicy: p.taskListCreatePolicy || "all_members",
+    taskItemEditPolicy: p.taskItemEditPolicy || "all_members",
   };
 };
 
@@ -135,7 +208,10 @@ const hasPermissionChanges = computed(() => {
     permissionDraft.value.invitePolicy !== p.invitePolicy ||
     permissionDraft.value.postPolicy !== p.postPolicy ||
     permissionDraft.value.pinMessagePolicy !== p.pinMessagePolicy ||
-    permissionDraft.value.threadPolicy !== p.threadPolicy
+    permissionDraft.value.threadPolicy !== p.threadPolicy ||
+    permissionDraft.value.deleteMessagePolicy !== (p.deleteMessagePolicy || "all_members") ||
+    permissionDraft.value.taskListCreatePolicy !== p.taskListCreatePolicy ||
+    permissionDraft.value.taskItemEditPolicy !== p.taskItemEditPolicy
   );
 });
 
@@ -171,6 +247,9 @@ const saveChannelPermissions = async () => {
       postPolicy: permissionDraft.value.postPolicy,
       pinMessagePolicy: permissionDraft.value.pinMessagePolicy,
       threadPolicy: permissionDraft.value.threadPolicy,
+      deleteMessagePolicy: permissionDraft.value.deleteMessagePolicy,
+      taskListCreatePolicy: permissionDraft.value.taskListCreatePolicy,
+      taskItemEditPolicy: permissionDraft.value.taskItemEditPolicy,
     });
     success("Channel permissions updated successfully.");
     initPermissionDraft();
@@ -242,6 +321,7 @@ const searchMembers = (event) => {
 
 const openInviteTeammatesModal = () => {
   if (!selectedChannel.value) return;
+  if (!canInviteMembers.value) return;
   if (!availableMembers.value.length) {
     info("No available members to add.");
     return;
@@ -399,7 +479,7 @@ onBeforeUnmount(() => {
       <div class="channel-header">
         <div class="channel-header-left">
           <span class="channel-title">
-            # {{ selectedChannel?.name || "Select a channel" }}
+            {{ isDirectMessage ? channelDisplayName : `# ${channelDisplayName}` }}
           </span>
           <span
             v-if="selectedChannel"
@@ -427,7 +507,7 @@ onBeforeUnmount(() => {
             Huddle
           </button>
           <button
-            v-if="selectedChannel"
+            v-if="selectedChannel && !isDirectMessage && canInviteMembers"
             class="header-button"
             title="Invite teammates"
             type="button"
@@ -487,7 +567,7 @@ onBeforeUnmount(() => {
             class="pi pi-comments"
             style="font-size: 12px"
           />
-          Messages
+          <span class="channel-tab-label">Messages</span>
         </button>
 
         <!-- Dynamic task tabs -->
@@ -511,6 +591,7 @@ onBeforeUnmount(() => {
 
         <!-- + Button dropdown -->
         <div
+          v-if="canCreateTaskList"
           ref="channelTabAddRef"
           class="channel-tab-add"
         >
@@ -544,6 +625,10 @@ onBeforeUnmount(() => {
 
     <MessageTabView
       v-if="selectedChannel && activeMainTab === 'messages'"
+      :can-invite="canInviteMembers"
+      :can-post="canPostMessages"
+      :can-pin-message="canPinMessages"
+      :can-delete-message="canDeleteMessages"
       @add-people-to-channel="openInviteTeammatesModal"
       @join-huddle="handleHuddleClick"
     />
@@ -553,6 +638,7 @@ onBeforeUnmount(() => {
       :workspace-id="workspaceId"
       :task-list-id="activeTaskListId"
       :list-name="taskLists.find(l => l.id === activeTaskListId)?.name"
+      :can-edit-task-item="canEditTaskItem"
       @update-name="(name) => handleUpdateListName(activeTaskListId, name)"
     />
 
@@ -611,7 +697,7 @@ onBeforeUnmount(() => {
     >
       <div class="channel-detail-modal">
         <div class="channel-detail-modal__header">
-          <h3># {{ selectedChannel?.name || "Unknown channel" }}</h3>
+          <h3>{{ isDirectMessage ? channelDisplayName : `# ${channelDisplayName}` }}</h3>
           <button
             type="button"
             class="channel-detail-modal__close"
@@ -637,7 +723,9 @@ onBeforeUnmount(() => {
             <template v-if="activeDetailTab === 'about'">
               <div class="channel-detail-section">
                 <span class="channel-detail-section__label">Channel name</span>
-                <span class="channel-detail-section__value"># {{ selectedChannel?.name || "Unknown channel" }}</span>
+                <span class="channel-detail-section__value">
+                  {{ isDirectMessage ? channelDisplayName : `# ${channelDisplayName}` }}
+                </span>
               </div>
               <div class="channel-detail-group">
                 <div class="channel-detail-row">
@@ -704,6 +792,7 @@ onBeforeUnmount(() => {
                   >
                 </div>
                 <button
+                  v-if="!isDirectMessage && canInviteMembers"
                   type="button"
                   class="channel-members-add"
                   @click="openInviteTeammatesModal"
@@ -773,18 +862,13 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.invitePolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -796,8 +880,45 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.postPolicy"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        :disabled="isSubmittingPermissions"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can pin messages?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can pin messages.
+                      </span>
+                    </div>
+                    <div>
+                      <CustomSelect
+                        v-model="permissionDraft.pinMessagePolicy"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        open-up
+                        :disabled="isSubmittingPermissions"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can delete messages?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can remove messages from this channel.
+                      </span>
+                    </div>
+                    <div>
+                      <select
+                        v-model="permissionDraft.deleteMessagePolicy"
                         class="channel-permissions-select"
                         :disabled="isSubmittingPermissions"
                       >
@@ -813,14 +934,37 @@ onBeforeUnmount(() => {
 
                   <div class="channel-detail-row">
                     <div class="channel-detail-row__content">
-                      <span class="channel-detail-section__label">Who can pin messages?</span>
+                      <span class="channel-detail-section__label">Who can create new task lists?</span>
                       <span class="channel-detail-section__value">
-                        Controls who can pin messages.
+                        Controls who can add task list tabs to this channel.
                       </span>
                     </div>
                     <div>
                       <select
-                        v-model="permissionDraft.pinMessagePolicy"
+                        v-model="permissionDraft.taskListCreatePolicy"
+                        class="channel-permissions-select"
+                        :disabled="isSubmittingPermissions"
+                      >
+                        <option value="manager_only">
+                          Managers only
+                        </option>
+                        <option value="all_members">
+                          All members
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="channel-detail-row">
+                    <div class="channel-detail-row__content">
+                      <span class="channel-detail-section__label">Who can edit task items?</span>
+                      <span class="channel-detail-section__value">
+                        Controls who can create and update task items.
+                      </span>
+                    </div>
+                    <div>
+                      <select
+                        v-model="permissionDraft.taskItemEditPolicy"
                         class="channel-permissions-select"
                         :disabled="isSubmittingPermissions"
                       >
@@ -842,18 +986,14 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                     <div>
-                      <select
+                      <CustomSelect
                         v-model="permissionDraft.threadPolicy"
-                        class="channel-permissions-select"
+                        :options="permissionOptions"
+                        size="sm"
+                        width="150px"
+                        open-up
                         :disabled="isSubmittingPermissions"
-                      >
-                        <option value="manager_only">
-                          Managers only
-                        </option>
-                        <option value="all_members">
-                          All members
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
                 </div>
