@@ -106,12 +106,16 @@ async function handlePreCallJoin(config) {
     isLoading.value = true;
     joinConfig.value = config;
     if (huddleIsCreator.value) {
-      const response = await huddleService.createHuddle(channelId);
+      const response = await huddleService.createHuddle(channelId, config);
       huddleCallData.value = response;
+      console.log("HUDDLE RESPONSE", response);
+
     } else {
       const sessionId = `session_${Date.now()}`;
-      const response = await huddleService.joinHuddle(channelId, sessionId);
+      const response = await huddleService.joinHuddle(channelId, sessionId, config);
       huddleCallData.value = response;
+      console.log("HUDDLE RESPONSE", response);
+
     }
     showPreCallStaging.value = false;
     showCallOverlay.value = true;

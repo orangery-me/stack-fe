@@ -30,7 +30,7 @@ const state = ref<HuddleState>({
 
 function participantFromRemote(p: RemoteParticipant): HuddleParticipantInfo {
   return {
-    id: p.sid,
+    id: p.identity,
     userId: p.identity,
     displayName: p.name || p.identity,
     micEnabled: p.isMicrophoneEnabled,
@@ -43,12 +43,37 @@ function isSystemParticipant(p: RemoteParticipant): boolean {
   return p.identity?.startsWith('subtitle-bot:') || false;
 }
 
+function upsertParticipant(p: RemoteParticipant) {
+  if (isSystemParticipant(p)) return;
+
+  const participant = participantFromRemote(p);
+  const existingIndex = state.value.participants.findIndex(
+    (existing) => existing.userId === p.identity,
+  );
+
+  if (existingIndex === -1) {
+    state.value.participants = [...state.value.participants, participant];
+    return;
+  }
+
+  state.value.participants = state.value.participants.map((existing, index) =>
+    index === existingIndex ? { ...existing, ...participant } : existing,
+  );
+}
+
+function removeParticipant(p: RemoteParticipant) {
+  state.value.participants = state.value.participants.filter(
+    (existing) => existing.userId !== p.identity,
+  );
+}
+
 export function useHuddle() {
   async function connect(url: string, token: string): Promise<void> {
     try {
       if (state.value.room) {
         await state.value.room.disconnect();
       }
+      state.value.participants = [];
 
       const room = new Room({
         adaptiveStream: true,
@@ -61,31 +86,51 @@ export function useHuddle() {
       });
 
       room.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
-        if (isSystemParticipant(p)) return;
-        state.value.participants.push(participantFromRemote(p));
+        upsertParticipant(p);
       });
 
       room.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
-        state.value.participants = state.value.participants.filter(
-          (existing) => existing.id !== p.sid,
-        );
+        removeParticipant(p);
       });
 
-      room.on(RoomEvent.TrackSubscribed, () => {
-        state.value = { ...state.value };
+      const syncRemoteParticipantByIdentity = (identity: string) => {
+        const remoteParticipant = room.remoteParticipants.get(identity);
+        if (remoteParticipant) {
+          upsertParticipant(remoteParticipant);
+        }
+      };
+
+      room.on(RoomEvent.TrackMuted, (_publication, p) => {
+        syncRemoteParticipantByIdentity(p.identity);
       });
 
-      room.on(RoomEvent.TrackUnsubscribed, () => {
-        state.value = { ...state.value };
+      room.on(RoomEvent.TrackUnmuted, (_publication, p) => {
+        syncRemoteParticipantByIdentity(p.identity);
+      });
+
+      room.on(RoomEvent.TrackPublished, (_publication: RemoteTrackPublication, p: RemoteParticipant) => {
+        upsertParticipant(p);
+      });
+
+      room.on(RoomEvent.TrackUnpublished, (_publication: RemoteTrackPublication, p: RemoteParticipant) => {
+        upsertParticipant(p);
+      });
+
+      room.on(RoomEvent.TrackSubscribed, (_track, _publication: RemoteTrackPublication, p: RemoteParticipant) => {
+        upsertParticipant(p);
+      });
+
+      room.on(RoomEvent.TrackUnsubscribed, (_track, _publication: RemoteTrackPublication, p: RemoteParticipant) => {
+        upsertParticipant(p);
       });
 
       await room.connect(url, token);
       state.value.room = markRaw(room);
 
       // Sync existing participants
+      state.value.participants = [];
       room.remoteParticipants.forEach((p) => {
-        if (isSystemParticipant(p)) return;
-        state.value.participants.push(participantFromRemote(p));
+        upsertParticipant(p);
       });
 
       state.value.localMicEnabled = room.localParticipant.isMicrophoneEnabled;
