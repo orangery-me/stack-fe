@@ -89,7 +89,7 @@
                 class="video-placeholder"
               >
                 <video
-                  :ref="(el) => bindRemoteVideo(el, participant.id)"
+                  :ref="(el) => bindRemoteVideo(el, participant.userId)"
                   class="preview-video"
                   autoplay
                   playsinline
@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watchEffect } from 'vue';
+import { nextTick, ref, onMounted, onUnmounted, watch, watchEffect } from 'vue';
 import { Track } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Info, MessageCircle } from 'lucide-vue-next';
 import { useHuddle } from '../composables/useHuddle';
@@ -262,6 +262,7 @@ const errorMessage = ref('');
 const localMicEnabled = ref(props.initialMicEnabled);
 const localCameraEnabled = ref(props.initialCameraEnabled);
 const localVideoEl = ref<HTMLVideoElement | null>(null);
+const remoteVideoEls = new Map<string, HTMLVideoElement>();
 const isChatOpen = ref(false);
 const hasOpenedChat = ref(false);
 const currentTime = ref('');
@@ -287,18 +288,41 @@ watchEffect(() => {
   }
 });
 
-function bindRemoteVideo(el: any, participantId: string) {
-  if (!el) return;
+watch(
+  () => huddleState.participants,
+  async () => {
+    await nextTick();
+    attachRemoteVideos();
+  },
+  { deep: true },
+);
+
+function bindRemoteVideo(el: any, participantUserId: string) {
+  if (!el) {
+    remoteVideoEls.delete(participantUserId);
+    return;
+  }
+
+  remoteVideoEls.set(participantUserId, el as HTMLVideoElement);
+  attachRemoteVideo(participantUserId);
+}
+
+function attachRemoteVideo(participantUserId: string) {
   const room = getRoom();
-  if (room) {
-    const remoteP = room.remoteParticipants.get(participantId);
-    if (remoteP) {
-      const trackPub = remoteP.getTrackPublication(Track.Source.Camera);
-      if (trackPub && trackPub.videoTrack) {
-        trackPub.videoTrack.attach(el);
-      }
+  const el = remoteVideoEls.get(participantUserId);
+  if (!room || !el) return;
+
+  const remoteP = room.remoteParticipants.get(participantUserId);
+  if (remoteP) {
+    const trackPub = remoteP.getTrackPublication(Track.Source.Camera);
+    if (trackPub && trackPub.videoTrack) {
+      trackPub.videoTrack.attach(el);
     }
   }
+}
+
+function attachRemoteVideos() {
+  remoteVideoEls.forEach((_el, participantUserId) => attachRemoteVideo(participantUserId));
 }
 
 async function connectToRoom() {
@@ -326,6 +350,8 @@ async function connectToRoom() {
     }
 
     isConnected.value = true;
+    await nextTick();
+    attachRemoteVideos();
   } catch (err: any) {
     errorMessage.value = err.message || 'Connection failed';
     emit('error', err);
@@ -353,15 +379,35 @@ onUnmounted(() => {
 async function toggleMic() {
   const room = getRoom();
   if (!room) return;
-  localMicEnabled.value = !localMicEnabled.value;
-  await room.localParticipant.setMicrophoneEnabled(localMicEnabled.value);
+  const previousState = localMicEnabled.value;
+  const nextState = !previousState;
+
+  try {
+    await room.localParticipant.setMicrophoneEnabled(nextState);
+    localMicEnabled.value = room.localParticipant.isMicrophoneEnabled;
+    await huddleService.updateState(props.channelId, { micEnabled: localMicEnabled.value });
+  } catch (err) {
+    localMicEnabled.value = previousState;
+    console.error('Failed to toggle mic:', err);
+  }
 }
 
 async function toggleCamera() {
   const room = getRoom();
   if (!room) return;
-  localCameraEnabled.value = !localCameraEnabled.value;
-  await room.localParticipant.setCameraEnabled(localCameraEnabled.value);
+  const previousState = localCameraEnabled.value;
+  const nextState = !previousState;
+
+  try {
+    await room.localParticipant.setCameraEnabled(nextState);
+    localCameraEnabled.value = room.localParticipant.isCameraEnabled;
+    await huddleService.updateState(props.channelId, { cameraEnabled: localCameraEnabled.value });
+    await nextTick();
+    attachRemoteVideos();
+  } catch (err) {
+    localCameraEnabled.value = previousState;
+    console.error('Failed to toggle camera:', err);
+  }
 }
 
 function toggleChat() {

@@ -52,6 +52,13 @@ export function useHuddleSignaling(socket: any | null) {
     store.updateParticipantCount(data.participant_count);
   }
 
+  function onParticipantStateChanged(data: any) {
+    if (typeof data?.participant_count === 'number') {
+      store.updateParticipantCount(data.participant_count);
+    }
+    emit('participant_state_changed', data);
+  }
+
   function onHuddleEnded(data: any) {
     store.markEnded();
   }
@@ -70,6 +77,7 @@ export function useHuddleSignaling(socket: any | null) {
     socket.on('huddle:started', onHuddleStarted);
     socket.on('huddle:participant_joined', onParticipantJoined);
     socket.on('huddle:participant_left', onParticipantLeft);
+    socket.on('huddle:participant_state_changed', onParticipantStateChanged);
     socket.on('huddle:ended', onHuddleEnded);
     socket.on('huddle:device_conflict', onDeviceConflict);
     socket.on('huddle:device_disconnected', onDeviceDisconnected);
@@ -81,6 +89,7 @@ export function useHuddleSignaling(socket: any | null) {
     socket.off('huddle:started', onHuddleStarted);
     socket.off('huddle:participant_joined', onParticipantJoined);
     socket.off('huddle:participant_left', onParticipantLeft);
+    socket.off('huddle:participant_state_changed', onParticipantStateChanged);
     socket.off('huddle:ended', onHuddleEnded);
     socket.off('huddle:device_conflict', onDeviceConflict);
     socket.off('huddle:device_disconnected', onDeviceDisconnected);

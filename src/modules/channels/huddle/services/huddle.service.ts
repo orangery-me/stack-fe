@@ -16,13 +16,13 @@ class HuddleService {
     return response.data;
   }
 
-  async createHuddle(channelId: string): Promise<HuddleJoinResponse> {
-    const response = await apiHelper.post(this.buildUrl(channelId));
+  async createHuddle(channelId: string, state: HuddleStateUpdate = {}): Promise<HuddleJoinResponse> {
+    const response = await apiHelper.post(this.buildUrl(channelId), state);
     return response.data;
   }
 
-  async joinHuddle(channelId: string, sessionId: string): Promise<HuddleJoinResponse> {
-    const response = await apiHelper.post(this.buildUrl(channelId, '/join'), { sessionId });
+  async joinHuddle(channelId: string, sessionId: string, state: HuddleStateUpdate = {}): Promise<HuddleJoinResponse> {
+    const response = await apiHelper.post(this.buildUrl(channelId, '/join'), { sessionId, ...state });
     return response.data;
   }
 
