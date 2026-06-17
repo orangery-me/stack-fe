@@ -28,7 +28,13 @@ const props = defineProps({
 
 const emit = defineEmits(["home", "dms", "files", "activity", "ai"]);
 
+const ADMIN_APP_URL = "https://stack-admin-bay.vercel.app/";
+
 const isActive = (name) => props.activeRouteName === name;
+
+const openAdminApp = () => {
+  window.open(ADMIN_APP_URL, "_blank", "noopener,noreferrer");
+};
 </script>
 
 <template>
@@ -143,6 +149,7 @@ const isActive = (name) => props.activeRouteName === name;
         class="icon-menu-item"
         title="Admin"
         type="button"
+        @click="openAdminApp"
       >
         <span class="icon-wrap">
           <i
