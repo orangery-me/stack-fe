@@ -197,7 +197,13 @@ export function useCanvasAiWriter(editorRef: ShallowRef<Editor | null>) {
 
   function handleSelectionIconClick() {
     if (!_selSnapshot) return;
-    uiStore.openAiWithDraft(_selSnapshot.selectedText);
+    const fullText = _selSnapshot.selectedText.trim();
+    uiStore.openAiWithSelectedContext({
+      source: "canvas-selection",
+      label: "Selected text",
+      fullText,
+      preview: fullText.replace(/\s+/g, " ").slice(0, 220),
+    });
     _hideSelectionUi();
   }
 

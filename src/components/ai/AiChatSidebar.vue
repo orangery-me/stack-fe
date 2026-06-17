@@ -76,6 +76,7 @@ const sessionScope = computed(() =>
 const sessionScopeKey = computed(
   () => `${sessionScope.value.scopeType}:${sessionScope.value.scopeId || ""}`,
 );
+const selectedContext = computed(() => uiStore.aiSelectedContext);
 const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
 const CANVAS_ACTION_NAMES = new Set([
   "insert_canvas_block",
@@ -359,6 +360,7 @@ async function handleNewChat() {
 function close() {
   abortStream();
   showSessionDropdown.value = false;
+  uiStore.clearAiSelectedContext();
   emit("update:open", false);
 }
 
@@ -416,12 +418,16 @@ async function sendMessage(options = {}) {
   scrollToBottom();
 
   abortController = new AbortController();
+  let clearSelectedContextOnDone = false;
   const onDoneCommon = async () => {
     const msg = messages.value.find((m) => m.id === assistantId);
     if (msg) msg.streaming = false;
     isStreaming.value = false;
     uiStore.setAiBusy(false);
     abortController = null;
+    if (clearSelectedContextOnDone) {
+      uiStore.clearAiSelectedContext();
+    }
     window.setTimeout(() => persistTerminalActionStatuses(assistantId), 600);
 
     if (activeSession.value?.title === "New chat") {
@@ -450,6 +456,10 @@ async function sendMessage(options = {}) {
   };
 
   const ctx = options.context || props.context || {};
+  const selectedContextText =
+    isCanvasMode.value && selectedContext.value?.fullText
+      ? selectedContext.value.fullText.trim()
+      : "";
   const useTaskFlow =
     options.kind === "canvas-task-generation" || shouldUseTaskFlow(text);
   if (useTaskFlow) {
@@ -495,10 +505,12 @@ async function sendMessage(options = {}) {
       onError: onErrorCommon,
     });
   } else if (isCanvasMode.value) {
+    clearSelectedContextOnDone = Boolean(selectedContextText);
     await sendCanvasSessionMessageStream(activeSession.value.id, {
       canvasId: ctx.canvasId,
       canvasContent: ctx.canvasPlainText ?? "",
       message: text,
+      selectedContext: selectedContextText,
       mode: options.mode,
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
@@ -844,6 +856,7 @@ watch(
     messages.value = [];
     taskSetup.value = null;
     showSessionDropdown.value = false;
+    uiStore.clearAiSelectedContext();
     syncInlineCanvasActions();
     await loadActiveSession();
     await loadSessionList();
@@ -899,6 +912,7 @@ function stopResize() {
 onBeforeUnmount(() => {
   abortStream();
   stopResize();
+  uiStore.clearAiSelectedContext();
   emit("canvas-actions-updated", []);
 });
 
@@ -1275,26 +1289,49 @@ function handleHistorySelect(session) {
 
       <!-- Input area -->
       <div class="ai-chat-input-area">
-        <textarea
-          ref="textareaEl"
-          v-model="inputValue"
-          class="ai-chat-textarea"
-          placeholder="Ask a question... (Enter to send)"
-          rows="3"
-          :disabled="isStreaming || isLoadingSession || Boolean(taskSetup)"
-          @keydown="handleKeydown"
-        />
-        <button
-          type="button"
-          class="ai-chat-send-btn"
-          :disabled="
-            isStreaming || isLoadingSession || Boolean(taskSetup) || !inputValue.trim()
-          "
-          title="Send (Enter)"
-          @click="sendMessage"
+        <div
+          v-if="selectedContext"
+          class="ai-selected-context"
         >
-          <Send :size="16" />
-        </button>
+          <div class="ai-selected-context-main">
+            <span class="ai-selected-context-label">
+              {{ selectedContext.label || "Selected text" }}
+            </span>
+            <span class="ai-selected-context-preview">
+              {{ selectedContext.preview }}
+            </span>
+          </div>
+          <button
+            type="button"
+            class="ai-selected-context-remove"
+            title="Remove selected text"
+            @click="uiStore.clearAiSelectedContext()"
+          >
+            <X :size="14" />
+          </button>
+        </div>
+        <div class="ai-chat-input-row">
+          <textarea
+            ref="textareaEl"
+            v-model="inputValue"
+            class="ai-chat-textarea"
+            placeholder="Ask a question... (Enter to send)"
+            rows="3"
+            :disabled="isStreaming || isLoadingSession || Boolean(taskSetup)"
+            @keydown="handleKeydown"
+          />
+          <button
+            type="button"
+            class="ai-chat-send-btn"
+            :disabled="
+              isStreaming || isLoadingSession || Boolean(taskSetup) || !inputValue.trim()
+            "
+            title="Send (Enter)"
+            @click="sendMessage"
+          >
+            <Send :size="16" />
+          </button>
+        </div>
       </div>
     </div>
   </Transition>
@@ -1870,11 +1907,71 @@ function handleHistorySelect(session) {
 .ai-chat-input-area {
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 12px 12px 14px;
   border-top: 1px solid var(--ui-divider, #e5e7eb);
   background: #ffffff;
+}
+
+.ai-chat-input-row {
+  display: flex;
+  gap: 8px;
   align-items: flex-end;
+}
+
+.ai-selected-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 9px;
+  border: 1px solid var(--primary-100, #dbeafe);
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.ai-selected-context-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-selected-context-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-700, #1d4ed8);
+}
+
+.ai-selected-context-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ui-text-muted, #475569);
+  overflow-wrap: anywhere;
+}
+
+.ai-selected-context-remove {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text-muted, #64748b);
+  background: transparent;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ui-text, #0f172a);
+    background: rgba(37, 99, 235, 0.1);
+  }
 }
 
 .ai-chat-textarea {

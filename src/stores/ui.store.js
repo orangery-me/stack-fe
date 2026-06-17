@@ -5,6 +5,7 @@ export const useUiStore = defineStore("ui", () => {
   const isAiOpen = ref(false);
   const aiSidebarWidth = ref(380);
   const aiDraft = ref("");
+  const aiSelectedContext = ref(null);
   const pendingAiCommand = ref(null);
   const isAiBusy = ref(false);
 
@@ -13,6 +14,7 @@ export const useUiStore = defineStore("ui", () => {
   }
 
   function setAiDraft(text = "") {
+    aiSelectedContext.value = null;
     aiDraft.value = text;
   }
 
@@ -20,7 +22,35 @@ export const useUiStore = defineStore("ui", () => {
     aiDraft.value = "";
   }
 
+  function setAiSelectedContext(context = null) {
+    if (!context?.fullText?.trim()) {
+      aiSelectedContext.value = null;
+      return;
+    }
+
+    const fullText = context.fullText.trim();
+    aiSelectedContext.value = {
+      source: context.source || "canvas-selection",
+      label: context.label || "Selected text",
+      fullText,
+      preview:
+        context.preview ||
+        fullText.replace(/\s+/g, " ").slice(0, 220),
+    };
+  }
+
+  function clearAiSelectedContext() {
+    aiSelectedContext.value = null;
+  }
+
+  function openAiWithSelectedContext(context = null) {
+    setAiSelectedContext(context);
+    aiDraft.value = "";
+    isAiOpen.value = true;
+  }
+
   function openAiWithDraft(text = "") {
+    aiSelectedContext.value = null;
     aiDraft.value = text;
     isAiOpen.value = true;
   }
@@ -48,11 +78,15 @@ export const useUiStore = defineStore("ui", () => {
     isAiOpen,
     aiSidebarWidth,
     aiDraft,
+    aiSelectedContext,
     pendingAiCommand,
     isAiBusy,
     toggleAi,
     setAiDraft,
     clearAiDraft,
+    setAiSelectedContext,
+    clearAiSelectedContext,
+    openAiWithSelectedContext,
     openAiWithDraft,
     setPendingAiCommand,
     clearPendingAiCommand,
