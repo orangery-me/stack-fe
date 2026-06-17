@@ -26,6 +26,9 @@ const form = ref({
 
 const loading = computed(() => workspaceStore.inviteMemberLoading);
 const loadingData = computed(() => workspaceStore.membersLoading);
+const canInviteMembers = computed(
+  () => workspaceStore.workspaceDetail?.permissions?.canInviteMembers === true
+);
 const errors = ref({});
 const roleOptions = computed(() =>
   roles.value.map((r) => ({
@@ -37,6 +40,13 @@ const roleOptions = computed(() =>
 
 const fetchWorkspaceData = async () => {
   try {
+    const workspace = await workspaceStore.fetchWorkspaceById(workspaceId);
+    if (workspace?.permissions?.canInviteMembers !== true) {
+      toast.warning("You do not have permission to invite members.");
+      router.back();
+      return;
+    }
+
     const membersData = await workspaceStore.fetchMembers(workspaceId);
     // For now, use member roles to get available roles
     const uniqueRoles = [
@@ -72,6 +82,7 @@ const validateForm = () => {
 };
 
 const handleSubmit = async () => {
+  if (!canInviteMembers.value) return;
   if (!validateForm()) return;
 
   try {
@@ -177,7 +188,7 @@ onMounted(() => {
                 variant="primary"
                 type="submit"
                 :loading="loading"
-                :disabled="loading"
+                :disabled="loading || !canInviteMembers"
               >
                 Send invitation
               </CalmButton>

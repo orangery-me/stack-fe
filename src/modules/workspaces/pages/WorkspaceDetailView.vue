@@ -47,6 +47,13 @@ const currentUserId = computed(() => currentUser.value?.id || getUserIdFromAcces
 
 // Computed values from store
 const workspace = computed(() => workspaceStore.workspaceDetail);
+const workspacePermissions = computed(() => workspace.value?.permissions || {});
+const canInviteWorkspaceMembers = computed(
+  () => workspacePermissions.value.canInviteMembers === true
+);
+const canCreateWorkspaceChannel = computed(
+  () => workspacePermissions.value.canCreateChannel === true
+);
 const members = computed(() => workspaceStore.members || []);
 const allChannels = computed(() => channelStore.channels);
 const channels = computed(() =>
@@ -285,6 +292,7 @@ const selectDirectMessage = async (channel) => {
 };
 
 const openInvitePeople = () => {
+  if (!canInviteWorkspaceMembers.value) return;
   router.push({
     name: "inviteMember",
     params: { id: workspaceId },
@@ -318,6 +326,7 @@ const closeDmInbox = () => {
 };
 
 const openCreateChannelModal = () => {
+  if (!canCreateWorkspaceChannel.value) return;
   isCreateChannelModalOpen.value = true;
 };
 
@@ -386,12 +395,15 @@ onMounted(async () => {
   menuBarWidth.value = clampMenuBarWidth(menuBarWidth.value);
 
   try {
-    await Promise.all([
-      workspaceStore.fetchWorkspaceById(workspaceId),
-      workspaceStore.fetchMembers(workspaceId),
+    await workspaceStore.fetchWorkspaceById(workspaceId);
+    const initialRequests = [
       channelStore.fetchUserChannels(workspaceId),
       notificationStore.fetchUnreadCount(workspaceId),
-    ]);
+    ];
+
+    initialRequests.push(workspaceStore.fetchMembers(workspaceId));
+
+    await Promise.all(initialRequests);
     await notificationStore.connectRealtime(workspaceId);
 
     await ensureDirectMessageMembers();
@@ -625,6 +637,7 @@ onMounted(async () => {
                 <span>No channels yet</span>
               </div>
               <button
+                v-if="canCreateWorkspaceChannel"
                 class="sidebar-add-item"
                 @click="openCreateChannelModal"
               >
@@ -676,6 +689,7 @@ onMounted(async () => {
               </button>
 
               <button
+                v-if="canInviteWorkspaceMembers"
                 class="sidebar-add-item"
                 type="button"
                 @click="openInvitePeople"
@@ -774,6 +788,7 @@ onMounted(async () => {
     </div>
 
     <CreateChannelModal
+      v-if="canCreateWorkspaceChannel"
       v-model:open="isCreateChannelModalOpen"
       :workspace-id="workspaceId"
       @created="handleChannelCreated"

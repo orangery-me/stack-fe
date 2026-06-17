@@ -209,6 +209,12 @@
         <span>Rời</span>
       </button>
     </div>
+
+    <div
+      ref="remoteAudioContainerEl"
+      class="remote-audio-container"
+      aria-hidden="true"
+    />
   </div>
 </template>
 
@@ -262,7 +268,9 @@ const errorMessage = ref('');
 const localMicEnabled = ref(props.initialMicEnabled);
 const localCameraEnabled = ref(props.initialCameraEnabled);
 const localVideoEl = ref<HTMLVideoElement | null>(null);
+const remoteAudioContainerEl = ref<HTMLDivElement | null>(null);
 const remoteVideoEls = new Map<string, HTMLVideoElement>();
+const remoteAudioEls = new Map<string, HTMLAudioElement>();
 const isChatOpen = ref(false);
 const hasOpenedChat = ref(false);
 const currentTime = ref('');
@@ -293,6 +301,7 @@ watch(
   async () => {
     await nextTick();
     attachRemoteVideos();
+    attachRemoteAudios();
   },
   { deep: true },
 );
@@ -325,6 +334,75 @@ function attachRemoteVideos() {
   remoteVideoEls.forEach((_el, participantUserId) => attachRemoteVideo(participantUserId));
 }
 
+function attachRemoteAudio(participantUserId: string) {
+  const room = getRoom();
+  const container = remoteAudioContainerEl.value;
+  if (!room || !container) return;
+
+  const remoteP = room.remoteParticipants.get(participantUserId);
+  const trackPub = remoteP?.getTrackPublication(Track.Source.Microphone);
+  const audioTrack = trackPub?.audioTrack;
+
+  if (!audioTrack) {
+    removeRemoteAudio(participantUserId);
+    return;
+  }
+
+  let el = remoteAudioEls.get(participantUserId);
+  if (!el) {
+    el = document.createElement('audio');
+    el.autoplay = true;
+    el.dataset.participantId = participantUserId;
+    container.appendChild(el);
+    remoteAudioEls.set(participantUserId, el);
+  }
+
+  audioTrack.attach(el);
+  void el.play().catch(() => {
+    // Browser autoplay policy can still block until room.startAudio() is allowed.
+  });
+}
+
+function attachRemoteAudios() {
+  const room = getRoom();
+  if (!room) return;
+
+  room.remoteParticipants.forEach((participant) => {
+    attachRemoteAudio(participant.identity);
+  });
+
+  remoteAudioEls.forEach((_el, participantUserId) => {
+    if (!room.remoteParticipants.has(participantUserId)) {
+      removeRemoteAudio(participantUserId);
+    }
+  });
+}
+
+function removeRemoteAudio(participantUserId: string) {
+  const el = remoteAudioEls.get(participantUserId);
+  if (!el) return;
+
+  el.pause();
+  el.srcObject = null;
+  el.remove();
+  remoteAudioEls.delete(participantUserId);
+}
+
+function cleanupRemoteAudio() {
+  remoteAudioEls.forEach((_el, participantUserId) => removeRemoteAudio(participantUserId));
+}
+
+async function startRoomAudio() {
+  const room = getRoom();
+  if (!room) return;
+
+  try {
+    await room.startAudio();
+  } catch (err) {
+    console.warn('Audio playback is blocked until the next user gesture', err);
+  }
+}
+
 async function connectToRoom() {
   try {
     errorMessage.value = '';
@@ -352,6 +430,8 @@ async function connectToRoom() {
     isConnected.value = true;
     await nextTick();
     attachRemoteVideos();
+    attachRemoteAudios();
+    await startRoomAudio();
   } catch (err: any) {
     errorMessage.value = err.message || 'Connection failed';
     emit('error', err);
@@ -373,6 +453,7 @@ onUnmounted(() => {
   if (timeIntervalId) {
     window.clearInterval(timeIntervalId);
   }
+  cleanupRemoteAudio();
   disconnect();
 });
 
@@ -383,6 +464,7 @@ async function toggleMic() {
   const nextState = !previousState;
 
   try {
+    await startRoomAudio();
     await room.localParticipant.setMicrophoneEnabled(nextState);
     localMicEnabled.value = room.localParticipant.isMicrophoneEnabled;
     await huddleService.updateState(props.channelId, { micEnabled: localMicEnabled.value });
@@ -446,6 +528,7 @@ async function handleStartTranscriptRecording() {
 }
 
 function handleLeave() {
+  cleanupRemoteAudio();
   disconnect();
   emit('leave');
 }
@@ -460,6 +543,14 @@ function handleLeave() {
   color: var(--ui-text, #111827);
   font-family: inherit;
   overflow: hidden;
+}
+.remote-audio-container {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 .call-header {
   display: flex;
