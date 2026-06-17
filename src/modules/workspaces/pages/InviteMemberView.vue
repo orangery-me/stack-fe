@@ -29,9 +29,6 @@ const loadingData = computed(() => workspaceStore.membersLoading);
 const canInviteMembers = computed(
   () => workspaceStore.workspaceDetail?.permissions?.canInviteMembers === true
 );
-const canViewMembers = computed(
-  () => workspaceStore.workspaceDetail?.permissions?.canViewMembers === true
-);
 const errors = ref({});
 const roleOptions = computed(() =>
   roles.value.map((r) => ({
@@ -46,11 +43,6 @@ const fetchWorkspaceData = async () => {
     const workspace = await workspaceStore.fetchWorkspaceById(workspaceId);
     if (workspace?.permissions?.canInviteMembers !== true) {
       toast.warning("You do not have permission to invite members.");
-      router.back();
-      return;
-    }
-    if (workspace?.permissions?.canViewMembers !== true) {
-      toast.warning("You do not have permission to view workspace members.");
       router.back();
       return;
     }
@@ -196,7 +188,7 @@ onMounted(() => {
                 variant="primary"
                 type="submit"
                 :loading="loading"
-                :disabled="loading || !canInviteMembers || !canViewMembers"
+                :disabled="loading || !canInviteMembers"
               >
                 Send invitation
               </CalmButton>

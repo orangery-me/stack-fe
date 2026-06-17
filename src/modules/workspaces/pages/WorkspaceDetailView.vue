@@ -395,17 +395,13 @@ onMounted(async () => {
   menuBarWidth.value = clampMenuBarWidth(menuBarWidth.value);
 
   try {
-    const workspaceDetail = await workspaceStore.fetchWorkspaceById(workspaceId);
+    await workspaceStore.fetchWorkspaceById(workspaceId);
     const initialRequests = [
       channelStore.fetchUserChannels(workspaceId),
       notificationStore.fetchUnreadCount(workspaceId),
     ];
 
-    if (workspaceDetail?.permissions?.canViewMembers === true) {
-      initialRequests.push(workspaceStore.fetchMembers(workspaceId));
-    } else {
-      workspaceStore.members = [];
-    }
+    initialRequests.push(workspaceStore.fetchMembers(workspaceId));
 
     await Promise.all(initialRequests);
     await notificationStore.connectRealtime(workspaceId);
