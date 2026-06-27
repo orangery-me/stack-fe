@@ -40,7 +40,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:open", "canvas-actions-updated"]);
+const emit = defineEmits(["update:open", "canvas-suggestions-updated"]);
 
 // ======== State ========
 
@@ -78,12 +78,7 @@ const sessionScopeKey = computed(
 );
 const selectedContext = computed(() => uiStore.aiSelectedContext);
 const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
-const CANVAS_ACTION_NAMES = new Set([
-  "insert_canvas_block",
-  "update_canvas_block",
-  "delete_canvas_block",
-  "reorder_canvas_blocks",
-]);
+const CANVAS_ACTION_NAMES = new Set(["edit_canvas_blocks"]);
 
 function isCanvasAction(action) {
   return CANVAS_ACTION_NAMES.has(action?.name);
@@ -93,27 +88,17 @@ function isActionVisibleInSidebar(action) {
   return !(isCanvasMode.value && isCanvasAction(action));
 }
 
-function numberArg(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
-}
-
 function canvasActionAnchorKey(action) {
   const args = action?.arguments || {};
-  if (action?.name === "insert_canvas_block") {
-    return String(numberArg(args.after_index) ?? -1);
-  }
-  if (action?.name === "update_canvas_block" || action?.name === "delete_canvas_block") {
-    const index = numberArg(args.index);
-    return index === null ? null : String(index);
-  }
-  if (action?.name === "reorder_canvas_blocks") {
-    const index = numberArg(args.from_index);
-    return index === null ? null : String(index);
+  if (action?.name === "edit_canvas_blocks") {
+    const mutations = Array.isArray(args.mutations) ? args.mutations : [];
+    const ids = mutations
+      .map((mutation) => {
+        if (!mutation || typeof mutation !== "object") return null;
+        return mutation.block_id || mutation.target_block_id || null;
+      })
+      .filter(Boolean);
+    return ids.length ? ids.join("|") : "canvas";
   }
   return null;
 }
@@ -211,7 +196,11 @@ function getInlineCanvasActions() {
 }
 
 function syncInlineCanvasActions() {
-  emit("canvas-actions-updated", getInlineCanvasActions());
+  const suggestions = getInlineCanvasActions().flatMap((action) => {
+    const items = action?.arguments?.suggestions;
+    return Array.isArray(items) ? items : [];
+  });
+  emit("canvas-suggestions-updated", suggestions);
 }
 
 function persistedActionId(action, index = 0) {
@@ -913,7 +902,7 @@ onBeforeUnmount(() => {
   abortStream();
   stopResize();
   uiStore.clearAiSelectedContext();
-  emit("canvas-actions-updated", []);
+  emit("canvas-suggestions-updated", []);
 });
 
 defineExpose({

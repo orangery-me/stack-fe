@@ -38,6 +38,38 @@ export interface CanvasCollabToken {
   readOnly: boolean;
 }
 
+export type CanvasSuggestionAction =
+  | "replace_text"
+  | "replace_block"
+  | "insert_after"
+  | "insert_before"
+  | "delete_block";
+
+export type CanvasSuggestionStatus =
+  | "pending"
+  | "applying"
+  | "accepted"
+  | "rejected"
+  | "failed";
+
+export interface CanvasSuggestion {
+  id: string;
+  canvasId: string;
+  messageId: string;
+  actionId?: string | null;
+  blockId?: string | null;
+  targetBlockId?: string | null;
+  action: CanvasSuggestionAction;
+  payload: Record<string, any>;
+  status: CanvasSuggestionStatus;
+  error?: string | null;
+  createdBy: "ai" | "agent";
+  acceptedBy?: string | null;
+  rejectedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /**
  * Canvas API Service – khớp với backend @Controller('/canvases')
  */
@@ -82,6 +114,51 @@ class CanvasService {
       API_ENDPOINTS.CANVAS.GET_COLLAB_TOKEN(canvasId)
     );
     return response.data.data as CanvasCollabToken;
+  }
+
+  async getCanvasSuggestions(
+    canvasId: string,
+    status?: CanvasSuggestionStatus
+  ): Promise<CanvasSuggestion[]> {
+    const suffix = status ? `?status=${status}` : "";
+    const response = await apiHelper.get(
+      `${API_ENDPOINTS.CANVAS.SUGGESTIONS(canvasId)}${suffix}`
+    );
+    return response.data.data?.suggestions ?? [];
+  }
+
+  async acceptCanvasSuggestion(
+    canvasId: string,
+    suggestionId: string
+  ): Promise<CanvasSuggestion> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.ACCEPT_SUGGESTION(canvasId, suggestionId)
+    );
+    return response.data.data as CanvasSuggestion;
+  }
+
+  async rejectCanvasSuggestion(
+    canvasId: string,
+    suggestionId: string
+  ): Promise<CanvasSuggestion> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.REJECT_SUGGESTION(canvasId, suggestionId)
+    );
+    return response.data.data as CanvasSuggestion;
+  }
+
+  async acceptAllCanvasSuggestions(canvasId: string): Promise<CanvasSuggestion[]> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.ACCEPT_ALL_SUGGESTIONS(canvasId)
+    );
+    return response.data.data?.suggestions ?? [];
+  }
+
+  async rejectAllCanvasSuggestions(canvasId: string): Promise<CanvasSuggestion[]> {
+    const response = await apiHelper.post(
+      API_ENDPOINTS.CANVAS.REJECT_ALL_SUGGESTIONS(canvasId)
+    );
+    return response.data.data?.suggestions ?? [];
   }
 
   async getCanvasPermissions(canvasId: string): Promise<CanvasPermissionList> {

@@ -10,7 +10,7 @@ import {
 import SlashCommandMenu from "@/components/editor/SlashCommandMenu.vue";
 import AiWriterBar from "@/components/editor/AiWriterBar.vue";
 import AiSelectionIcon from "@/components/editor/AiSelectionIcon.vue";
-import type { CanvasAiInlineAction } from "@/components/editor/ai-canvas-actions.extension";
+import type { CanvasSuggestion } from "@/services/canvas.service";
 import type {
   SlashMenuState,
   AiWriterBarState,
@@ -47,7 +47,7 @@ const props = withDefaults(
     // Selection AI trigger
     selectionAiIcon?: SelectionAiIconState | null;
     canvasPlainText?: string;
-    aiCanvasActions?: CanvasAiInlineAction[];
+    canvasSuggestions?: CanvasSuggestion[];
     aiActionsDisabled?: boolean;
   }>(),
   {
@@ -60,7 +60,7 @@ const props = withDefaults(
     aiWriterBar: null,
     selectionAiIcon: null,
     canvasPlainText: "",
-    aiCanvasActions: () => [],
+    canvasSuggestions: () => [],
     aiActionsDisabled: false,
   },
 );
@@ -80,10 +80,10 @@ const emit = defineEmits<{
   "ai-close": [];
   // Selection AI trigger
   "selection-icon-click": [];
-  "accept-canvas-ai-action": [inlineId: string];
-  "reject-canvas-ai-action": [inlineId: string];
-  "accept-all-canvas-ai-actions": [];
-  "reject-all-canvas-ai-actions": [];
+  "accept-canvas-suggestion": [suggestionId: string];
+  "reject-canvas-suggestion": [suggestionId: string];
+  "accept-all-canvas-suggestions": [];
+  "reject-all-canvas-suggestions": [];
   "ai-summary": [];
   "ai-task-generation": [];
   share: [];
@@ -109,20 +109,20 @@ watch(
 );
 
 watch(
-  () => [props.editor, props.aiCanvasActions] as const,
-  ([inst, actions]) => {
+  () => [props.editor, props.canvasSuggestions] as const,
+  ([inst, suggestions]) => {
     const commands = inst?.commands as
       | {
-          setCanvasAiActions?: (items: CanvasAiInlineAction[]) => boolean;
-          clearCanvasAiActions?: () => boolean;
+          setCanvasAiSuggestions?: (items: CanvasSuggestion[]) => boolean;
+          clearCanvasAiSuggestions?: () => boolean;
         }
       | undefined;
     if (!commands) return;
 
-    if (actions?.length) {
-      commands.setCanvasAiActions?.(actions);
+    if (suggestions?.length) {
+      commands.setCanvasAiSuggestions?.(suggestions);
     } else {
-      commands.clearCanvasAiActions?.();
+      commands.clearCanvasAiSuggestions?.();
     }
   },
   { immediate: true, deep: true },
@@ -130,20 +130,20 @@ watch(
 
 function handleEditorContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement | null;
-  const button = target?.closest<HTMLButtonElement>("[data-ai-canvas-action]");
+  const button = target?.closest<HTMLButtonElement>("[data-ai-canvas-suggestion-action]");
   if (!button) return;
 
-  const inlineId = button.dataset.aiCanvasActionId;
-  const intent = button.dataset.aiCanvasAction;
-  if (!inlineId || !intent) return;
+  const suggestionId = button.dataset.aiCanvasSuggestionId;
+  const intent = button.dataset.aiCanvasSuggestionAction;
+  if (!suggestionId || !intent) return;
 
   event.preventDefault();
   event.stopPropagation();
 
   if (intent === "accept") {
-    emit("accept-canvas-ai-action", inlineId);
+    emit("accept-canvas-suggestion", suggestionId);
   } else if (intent === "reject") {
-    emit("reject-canvas-ai-action", inlineId);
+    emit("reject-canvas-suggestion", suggestionId);
   }
 }
 
@@ -222,8 +222,8 @@ const aiToolbarActionsDisabled = computed(() => {
 });
 
 const pendingCanvasAiActionCount = computed(() => {
-  return (props.aiCanvasActions || []).filter((action) =>
-    ["pending", "applying", "failed"].includes(action.status || "pending"),
+  return (props.canvasSuggestions || []).filter((suggestion) =>
+    ["pending", "applying", "failed"].includes(suggestion.status || "pending"),
   ).length;
 });
 
@@ -968,14 +968,14 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="rte-ai-canvas-banner__btn rte-ai-canvas-banner__btn--accept"
-        @click="emit('accept-all-canvas-ai-actions')"
+        @click="emit('accept-all-canvas-suggestions')"
       >
         Accept all
       </button>
       <button
         type="button"
         class="rte-ai-canvas-banner__btn rte-ai-canvas-banner__btn--reject"
-        @click="emit('reject-all-canvas-ai-actions')"
+        @click="emit('reject-all-canvas-suggestions')"
       >
         Reject all
       </button>
@@ -1322,99 +1322,140 @@ onBeforeUnmount(() => {
   background: #fecaca;
 }
 
-.content :deep(.ai-canvas-action-stack) {
-  display: grid;
-  gap: 8px;
-  margin: 8px 0 14px;
-}
-
-.content :deep(.ai-canvas-action-card) {
-  border: 1px solid #bfdbfe;
-  border-left: 3px solid #2563eb;
-  border-radius: 8px;
-  background: #eff6ff;
-  padding: 10px 12px;
-  color: #0f172a;
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.08);
-}
-
-.content :deep(.ai-canvas-action-card.is-failed) {
-  border-color: #fecaca;
-  border-left-color: #dc2626;
+.content :deep(.ai-canvas-target-block--replace) {
   background: #fef2f2;
+  box-shadow: inset 3px 0 0 #ef4444;
+  text-decoration: line-through;
+  text-decoration-color: #dc2626;
+  text-decoration-thickness: 2px;
 }
 
-.content :deep(.ai-canvas-action-card__header) {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
+.content :deep(.ai-canvas-target-block--delete) {
+  background: #fee2e2;
+  box-shadow: inset 3px 0 0 #dc2626;
 }
 
-.content :deep(.ai-canvas-action-card__title) {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1e3a8a;
-}
-
-.content :deep(.ai-canvas-action-card__status) {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #475569;
-}
-
-.content :deep(.ai-canvas-action-card__body) {
+.content :deep(.ai-canvas-suggestion-widget),
+.content :deep(.ai-canvas-suggestion-missing) {
+  position: relative;
+  margin: 4px 0 14px;
+  border-radius: 8px;
   font-size: 15px;
   line-height: 1.65;
+}
+
+.content :deep(.ai-canvas-suggestion-widget--replace) {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  margin-top: -2px;
+}
+
+.content :deep(.ai-canvas-suggestion-widget--insert) {
+  border: 1px solid #86efac;
+  border-left: 3px solid #16a34a;
+  background: #f0fdf4;
+  padding: 28px 12px 10px;
+}
+
+.content :deep(.ai-canvas-suggestion-widget--delete) {
+  min-height: 34px;
+}
+
+.content :deep(.ai-canvas-diff-line) {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.content :deep(.ai-canvas-action-card__error) {
-  margin-top: 8px;
-  color: #b91c1c;
-  font-size: 13px;
-}
-
-.content :deep(.ai-canvas-action-card__actions) {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.content :deep(.ai-canvas-action-btn) {
-  border: 0;
   border-radius: 7px;
-  padding: 7px 12px;
-  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.content :deep(.ai-canvas-diff-line--new) {
+  width: 100%;
+  border: 1px solid #bbf7d0;
+  border-left: 3px solid #16a34a;
+  background: #f0fdf4;
+  color: #052e16;
+}
+
+.content :deep(.ai-canvas-suggestion-toolbar) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 2px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  background: #ffffff;
+  padding: 4px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.content :deep(.ai-canvas-suggestion-toolbar.is-failed) {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.content :deep(.ai-canvas-suggestion-toolbar__label) {
+  padding: 0 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.content :deep(.ai-canvas-suggestion-toolbar__error) {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.content :deep(.ai-canvas-suggestion-btn) {
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.content :deep(.ai-canvas-action-btn:disabled) {
+.content :deep(.ai-canvas-suggestion-btn:disabled) {
   opacity: 0.55;
   cursor: wait;
 }
 
-.content :deep(.ai-canvas-action-btn--accept) {
+.content :deep(.ai-canvas-suggestion-btn--accept) {
   background: #dcfce7;
   color: #166534;
 }
 
-.content :deep(.ai-canvas-action-btn--accept:hover:not(:disabled)) {
+.content :deep(.ai-canvas-suggestion-btn--accept:hover:not(:disabled)) {
   background: #bbf7d0;
 }
 
-.content :deep(.ai-canvas-action-btn--reject) {
+.content :deep(.ai-canvas-suggestion-btn--reject) {
   background: #fee2e2;
   color: #991b1b;
 }
 
-.content :deep(.ai-canvas-action-btn--reject:hover:not(:disabled)) {
+.content :deep(.ai-canvas-suggestion-btn--reject:hover:not(:disabled)) {
   background: #fecaca;
+}
+
+.content :deep(.ai-canvas-suggestion-missing) {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #ca8a04;
+  background: #fffbeb;
+  padding: 10px;
+}
+
+.content :deep(.ai-canvas-suggestion-missing__row) {
+  display: grid;
+  gap: 6px;
 }
 .content :deep(h1) {
   font-size: 34px;

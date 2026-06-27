@@ -15,6 +15,7 @@ import { useCanvasStore } from "@/modules/channels/stores/canvas.store.js";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import RichEditor from "@/components/editor/RichEditor.vue";
+import { CanvasBlockIdExtension } from "@/components/editor/canvas-block-id.extension";
 import { requestCanvas } from "@/modules/channels/queries/canvas.queries";
 import { useQueryClient } from "@tanstack/vue-query";
 import {
@@ -221,6 +222,7 @@ async function setupForCanvas(id: string) {
   const e = new Editor({
     extensions: [
       StarterKit,
+      CanvasBlockIdExtension,
       Collaboration.configure({ document: doc }),
       Placeholder.configure({
         placeholder: ({ node }) => {
