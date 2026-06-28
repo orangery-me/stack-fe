@@ -239,16 +239,22 @@ export async function updateMessageActionStatus(
 /**
  * Send a message in a session with SSE streaming.
  * @param {string} sessionId
- * @param {{ message: string, provider?: string, model?: string, signal?: AbortSignal, onChunk: Function, onDone?: Function, onError?: Function }} params
+ * @param {{ message: string, provider?: string, model?: string, workspaceId?: string, channelId?: string, signal?: AbortSignal, onChunk: Function, onEvent?: Function, onDone?: Function, onError?: Function }} params
  */
 export async function sendMessageStream(
   sessionId,
-  { message, provider, model, signal, onChunk, onDone, onError },
+  { message, provider, model, workspaceId, channelId, signal, onChunk, onEvent, onDone, onError },
 ) {
   await _fetchSSEStream(
     API_ENDPOINTS.AGENT.SESSION_SEND_STREAM(sessionId),
-    { message, ...(provider && { provider }), ...(model && { model }) },
-    { signal, onChunk, onDone, onError },
+    {
+      message,
+      ...(provider && { provider }),
+      ...(model && { model }),
+      ...(workspaceId && { workspaceId }),
+      ...(channelId && { channelId }),
+    },
+    { signal, onChunk, onEvent, onDone, onError },
   );
 }
 
@@ -396,4 +402,50 @@ export async function applyTaskAction({
     },
   );
   return response.data?.data ?? response.data;
+}
+
+/**
+ * Apply one approved task action and continue the backend-orchestrated agent loop.
+ */
+export async function applyTaskActionStream({
+  sessionId,
+  workspaceId,
+  channelId,
+  taskListId,
+  canvasId,
+  canvasContent,
+  canvasTitle,
+  sourceCanvasUrl,
+  overallDueDate,
+  timezone,
+  actionName,
+  actionArgs,
+  provider,
+  model,
+  signal,
+  onChunk,
+  onEvent,
+  onDone,
+  onError,
+}) {
+  await _fetchSSEStream(
+    API_ENDPOINTS.AGENT.TASK_APPLY_ACTION_STREAM,
+    {
+      sessionId,
+      workspaceId,
+      channelId,
+      taskListId,
+      canvasId,
+      canvasContent: canvasContent ?? "",
+      canvasTitle,
+      sourceCanvasUrl,
+      overallDueDate,
+      timezone,
+      actionName,
+      actionArgsJson: JSON.stringify(actionArgs ?? {}),
+      ...(provider && { provider }),
+      ...(model && { model }),
+    },
+    { signal, onChunk, onEvent, onDone, onError },
+  );
 }

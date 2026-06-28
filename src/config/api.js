@@ -134,5 +134,6 @@ export const API_ENDPOINTS = {
     CANVAS_WRITE_STREAM: '/agent/canvas/write/stream',
     CANVAS_APPLY_ACTION: '/agent/canvas/actions/apply',
     TASK_APPLY_ACTION: '/agent/tasks/actions/apply',
+    TASK_APPLY_ACTION_STREAM: '/agent/tasks/actions/apply/stream',
   },
 };
