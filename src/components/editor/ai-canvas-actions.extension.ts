@@ -1,155 +1,161 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
+import type { CanvasSuggestion } from "@/services/canvas.service";
 
-export interface CanvasAiInlineAction {
-  inlineId: string;
-  id?: string;
-  name: string;
-  arguments?: Record<string, unknown>;
-  status?: string;
-  error?: string;
-}
-
-interface CanvasAiActionsState {
-  actions: CanvasAiInlineAction[];
+interface CanvasSuggestionsState {
+  suggestions: CanvasSuggestion[];
 }
 
 export const canvasAiActionsPluginKey =
-  new PluginKey<CanvasAiActionsState>("canvasAiActions");
+  new PluginKey<CanvasSuggestionsState>("canvasAiActions");
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     canvasAiActions: {
-      setCanvasAiActions: (actions: CanvasAiInlineAction[]) => ReturnType;
-      clearCanvasAiActions: () => ReturnType;
+      setCanvasAiSuggestions: (suggestions: CanvasSuggestion[]) => ReturnType;
+      clearCanvasAiSuggestions: () => ReturnType;
     };
   }
 }
 
-function numberArg(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
+function visibleSuggestion(suggestion: CanvasSuggestion): boolean {
+  return ["pending", "applying", "failed"].includes(suggestion.status || "pending");
 }
 
-function anchorIndexForAction(action: CanvasAiInlineAction): number | null {
-  const args = action.arguments || {};
-  if (action.name === "insert_canvas_block") {
-    return numberArg(args.after_index) ?? -1;
+function anchorIdForSuggestion(suggestion: CanvasSuggestion): string | null {
+  if (suggestion.action === "insert_before" || suggestion.action === "insert_after") {
+    return suggestion.targetBlockId || null;
   }
-  if (action.name === "update_canvas_block" || action.name === "delete_canvas_block") {
-    return numberArg(args.index);
-  }
-  if (action.name === "reorder_canvas_blocks") {
-    return numberArg(args.from_index);
-  }
-  return null;
+  return suggestion.blockId || null;
 }
 
-function labelForAction(action: CanvasAiInlineAction): string {
-  switch (action.name) {
-    case "insert_canvas_block":
-      return "AI proposed insert";
-    case "update_canvas_block":
-      return "AI proposed update";
-    case "delete_canvas_block":
-      return "AI proposed delete";
-    case "reorder_canvas_blocks":
-      return "AI proposed move";
+function actionLabel(action: string): string {
+  switch (action) {
+    case "replace_text":
+      return "REPLACE TEXT";
+    case "replace_block":
+      return "REPLACE BLOCK";
+    case "insert_before":
+      return "INSERT BEFORE";
+    case "insert_after":
+      return "INSERT AFTER";
+    case "delete_block":
+      return "DELETE BLOCK";
     default:
-      return "AI proposed change";
+      return "EDIT";
   }
 }
 
-function bodyForAction(action: CanvasAiInlineAction): string {
-  const args = action.arguments || {};
-  if (action.name === "delete_canvas_block") {
-    return "AI suggests deleting this block.";
+function proposedText(suggestion: CanvasSuggestion): string {
+  const payload = suggestion.payload || {};
+  if (suggestion.action === "replace_text") return String(payload.new_text || "");
+  if (
+    suggestion.action === "replace_block" ||
+    suggestion.action === "insert_before" ||
+    suggestion.action === "insert_after"
+  ) {
+    const block = payload.new_block;
+    if (block && typeof block === "object") {
+      return String(block.content || block.text || "");
+    }
   }
-  if (action.name === "reorder_canvas_blocks") {
-    const toIndex = numberArg(args.to_index);
-    return toIndex === null
-      ? "AI suggests moving this block."
-      : `AI suggests moving this block to position ${toIndex + 1}.`;
-  }
-  return String(args.content || "");
+  return "";
 }
 
 function createButton(
-  inlineId: string,
+  suggestionId: string,
   intent: "accept" | "reject",
   disabled: boolean,
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `ai-canvas-action-btn ai-canvas-action-btn--${intent}`;
+  button.className = `ai-canvas-suggestion-btn ai-canvas-suggestion-btn--${intent}`;
   button.textContent = intent === "accept" ? "Accept" : "Reject";
-  button.dataset.aiCanvasAction = intent;
-  button.dataset.aiCanvasActionId = inlineId;
+  button.dataset.aiCanvasSuggestionAction = intent;
+  button.dataset.aiCanvasSuggestionId = suggestionId;
   button.disabled = disabled;
   button.addEventListener("mousedown", (event) => event.preventDefault());
   return button;
 }
 
-function createActionCard(action: CanvasAiInlineAction): HTMLElement {
-  const status = action.status || "pending";
-  const card = document.createElement("div");
-  card.className = `ai-canvas-action-card is-${status}`;
-  card.dataset.aiCanvasActionCard = action.inlineId;
+function createToolbar(suggestion: CanvasSuggestion): HTMLElement {
+  const toolbar = document.createElement("div");
+  toolbar.className = `ai-canvas-suggestion-toolbar is-${suggestion.status || "pending"}`;
 
-  const header = document.createElement("div");
-  header.className = "ai-canvas-action-card__header";
+  const label = document.createElement("span");
+  label.className = "ai-canvas-suggestion-toolbar__label";
+  label.textContent = actionLabel(suggestion.action);
 
-  const title = document.createElement("span");
-  title.className = "ai-canvas-action-card__title";
-  title.textContent = labelForAction(action);
+  toolbar.appendChild(label);
 
-  const badge = document.createElement("span");
-  badge.className = "ai-canvas-action-card__status";
-  badge.textContent = status;
-
-  header.append(title, badge);
-
-  const body = document.createElement("div");
-  body.className = "ai-canvas-action-card__body";
-  body.textContent = bodyForAction(action);
-
-  card.append(header, body);
-
-  if (action.error) {
-    const error = document.createElement("div");
-    error.className = "ai-canvas-action-card__error";
-    error.textContent = action.error;
-    card.appendChild(error);
+  if (suggestion.error) {
+    const error = document.createElement("span");
+    error.className = "ai-canvas-suggestion-toolbar__error";
+    error.textContent = suggestion.error;
+    toolbar.appendChild(error);
   }
 
-  if (status === "pending" || status === "failed" || status === "applying") {
-    const actions = document.createElement("div");
-    actions.className = "ai-canvas-action-card__actions";
-    const disabled = status === "applying";
-    actions.append(
-      createButton(action.inlineId, "accept", disabled),
-      createButton(action.inlineId, "reject", disabled),
-    );
-    card.appendChild(actions);
-  }
+  const disabled = suggestion.status === "applying";
+  toolbar.append(
+    createButton(suggestion.id, "accept", disabled),
+    createButton(suggestion.id, "reject", disabled),
+  );
 
-  return card;
+  return toolbar;
 }
 
-function createActionStack(actions: CanvasAiInlineAction[]): HTMLElement {
-  const stack = document.createElement("div");
-  stack.className = "ai-canvas-action-stack";
-  stack.setAttribute("contenteditable", "false");
-  stack.draggable = false;
-  for (const action of actions) {
-    stack.appendChild(createActionCard(action));
+function createReplaceWidget(suggestion: CanvasSuggestion): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "ai-canvas-suggestion-widget ai-canvas-suggestion-widget--replace";
+  wrapper.setAttribute("contenteditable", "false");
+  wrapper.draggable = false;
+
+  const newBlock = document.createElement("div");
+  newBlock.className = "ai-canvas-diff-line ai-canvas-diff-line--new";
+  newBlock.textContent = proposedText(suggestion);
+
+  wrapper.append(createToolbar(suggestion), newBlock);
+  return wrapper;
+}
+
+function createInsertWidget(suggestion: CanvasSuggestion): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "ai-canvas-suggestion-widget ai-canvas-suggestion-widget--insert";
+  wrapper.setAttribute("contenteditable", "false");
+  wrapper.draggable = false;
+
+  const text = document.createElement("div");
+  text.className = "ai-canvas-diff-line ai-canvas-diff-line--new";
+  text.textContent = proposedText(suggestion);
+
+  wrapper.append(createToolbar(suggestion), text);
+  return wrapper;
+}
+
+function createDeleteWidget(suggestion: CanvasSuggestion): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "ai-canvas-suggestion-widget ai-canvas-suggestion-widget--delete";
+  wrapper.setAttribute("contenteditable", "false");
+  wrapper.draggable = false;
+  wrapper.append(createToolbar(suggestion));
+  return wrapper;
+}
+
+function createMissingWidget(suggestions: CanvasSuggestion[]): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "ai-canvas-suggestion-missing";
+  wrapper.setAttribute("contenteditable", "false");
+  wrapper.draggable = false;
+  for (const suggestion of suggestions) {
+    const row = document.createElement("div");
+    row.className = "ai-canvas-suggestion-missing__row";
+    const text = document.createElement("span");
+    text.textContent = `${actionLabel(suggestion.action)} target block was not found.`;
+    row.append(text, createToolbar(suggestion));
+    wrapper.appendChild(row);
   }
-  return stack;
+  return wrapper;
 }
 
 export const AiCanvasActionsExtension = Extension.create({
@@ -157,16 +163,16 @@ export const AiCanvasActionsExtension = Extension.create({
 
   addCommands() {
     return {
-      setCanvasAiActions:
-        (actions: CanvasAiInlineAction[]) =>
+      setCanvasAiSuggestions:
+        (suggestions: CanvasSuggestion[]) =>
         ({ dispatch, tr }) => {
           if (dispatch) {
-            dispatch(tr.setMeta(canvasAiActionsPluginKey, { type: "set", actions }));
+            dispatch(tr.setMeta(canvasAiActionsPluginKey, { type: "set", suggestions }));
           }
           return true;
         },
 
-      clearCanvasAiActions:
+      clearCanvasAiSuggestions:
         () =>
         ({ dispatch, tr }) => {
           if (dispatch) {
@@ -183,14 +189,14 @@ export const AiCanvasActionsExtension = Extension.create({
         key: canvasAiActionsPluginKey,
 
         state: {
-          init: (): CanvasAiActionsState => ({ actions: [] }),
-          apply(tr, value: CanvasAiActionsState): CanvasAiActionsState {
+          init: (): CanvasSuggestionsState => ({ suggestions: [] }),
+          apply(tr, value: CanvasSuggestionsState): CanvasSuggestionsState {
             const meta = tr.getMeta(canvasAiActionsPluginKey);
             if (!meta) return value;
-            if (meta.type === "clear") return { actions: [] };
+            if (meta.type === "clear") return { suggestions: [] };
             if (meta.type === "set") {
               return {
-                actions: Array.isArray(meta.actions) ? meta.actions : [],
+                suggestions: Array.isArray(meta.suggestions) ? meta.suggestions : [],
               };
             }
             return value;
@@ -202,39 +208,81 @@ export const AiCanvasActionsExtension = Extension.create({
           // @ts-ignore - pnpm prosemirror-transform version mismatch; runtime is correct after Vite dedupe.
           decorations(state) {
             const pluginState = canvasAiActionsPluginKey.getState(state);
-            const actions = pluginState?.actions || [];
-            if (!actions.length) return DecorationSet.empty;
+            const suggestions = (pluginState?.suggestions || []).filter(visibleSuggestion);
+            if (!suggestions.length) return DecorationSet.empty;
 
-            const grouped = new Map<number, CanvasAiInlineAction[]>();
-            for (const action of actions) {
-              const anchorIndex = anchorIndexForAction(action);
-              if (anchorIndex === null) continue;
-              const current = grouped.get(anchorIndex) || [];
-              current.push(action);
-              grouped.set(anchorIndex, current);
+            const byAnchor = new Map<string, CanvasSuggestion[]>();
+            const topFallback: CanvasSuggestion[] = [];
+
+            for (const suggestion of suggestions) {
+              const anchorId = anchorIdForSuggestion(suggestion);
+              if (!anchorId) {
+                topFallback.push(suggestion);
+                continue;
+              }
+              const current = byAnchor.get(anchorId) || [];
+              current.push(suggestion);
+              byAnchor.set(anchorId, current);
             }
 
             const decorations: Decoration[] = [];
 
-            if (grouped.has(-1)) {
-              decorations.push(
-                Decoration.widget(0, () => createActionStack(grouped.get(-1) || []), {
-                  side: -1,
-                }),
-              );
+            state.doc.forEach((node, offset) => {
+              const nodeId = typeof node.attrs?.id === "string" ? node.attrs.id : null;
+              if (!nodeId) return;
+
+              const suggestionsForNode = byAnchor.get(nodeId);
+              if (!suggestionsForNode?.length) return;
+
+              for (const suggestion of suggestionsForNode) {
+                const from = offset;
+                const to = offset + node.nodeSize;
+                if (suggestion.action === "replace_text" || suggestion.action === "replace_block") {
+                  decorations.push(
+                    Decoration.node(from, to, {
+                      class: "ai-canvas-target-block ai-canvas-target-block--replace",
+                    }),
+                    Decoration.widget(to, () => createReplaceWidget(suggestion), { side: 1 }),
+                  );
+                  continue;
+                }
+
+                if (suggestion.action === "delete_block") {
+                  decorations.push(
+                    Decoration.node(from, to, {
+                      class: "ai-canvas-target-block ai-canvas-target-block--delete",
+                    }),
+                    Decoration.widget(from, () => createDeleteWidget(suggestion), { side: -1 }),
+                  );
+                  continue;
+                }
+
+                if (suggestion.action === "insert_before") {
+                  decorations.push(
+                    Decoration.widget(from, () => createInsertWidget(suggestion), { side: -1 }),
+                  );
+                  continue;
+                }
+
+                if (suggestion.action === "insert_after") {
+                  decorations.push(
+                    Decoration.widget(to, () => createInsertWidget(suggestion), { side: 1 }),
+                  );
+                }
+              }
+
+              byAnchor.delete(nodeId);
+            });
+
+            for (const missing of byAnchor.values()) {
+              topFallback.push(...missing);
             }
 
-            state.doc.forEach((node, offset, index) => {
-              const actionsForBlock = grouped.get(index);
-              if (!actionsForBlock?.length) return;
-              decorations.push(
-                Decoration.widget(
-                  offset + node.nodeSize,
-                  () => createActionStack(actionsForBlock),
-                  { side: 1 },
-                ),
+            if (topFallback.length) {
+              decorations.unshift(
+                Decoration.widget(0, () => createMissingWidget(topFallback), { side: -1 }),
               );
-            });
+            }
 
             return DecorationSet.create(state.doc, decorations);
           },

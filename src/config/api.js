@@ -102,6 +102,15 @@ export const API_ENDPOINTS = {
     CREATE_VERSION: (canvasId) => `/canvases/${canvasId}/versions`,
     REVERT_VERSION: (canvasId, version) =>
       `/canvases/${canvasId}/versions/${version}/revert`,
+    SUGGESTIONS: (canvasId) => `/canvas/${canvasId}/suggestions`,
+    ACCEPT_SUGGESTION: (canvasId, suggestionId) =>
+      `/canvas/${canvasId}/suggestions/${suggestionId}/accept`,
+    REJECT_SUGGESTION: (canvasId, suggestionId) =>
+      `/canvas/${canvasId}/suggestions/${suggestionId}/reject`,
+    ACCEPT_ALL_SUGGESTIONS: (canvasId) =>
+      `/canvas/${canvasId}/suggestions/accept-all`,
+    REJECT_ALL_SUGGESTIONS: (canvasId) =>
+      `/canvas/${canvasId}/suggestions/reject-all`,
   },
   CANVAS_WORKSPACE: {
     CREATE: (workspaceId) => `/workspaces/${workspaceId}/canvases`,
@@ -125,5 +134,6 @@ export const API_ENDPOINTS = {
     CANVAS_WRITE_STREAM: '/agent/canvas/write/stream',
     CANVAS_APPLY_ACTION: '/agent/canvas/actions/apply',
     TASK_APPLY_ACTION: '/agent/tasks/actions/apply',
+    TASK_APPLY_ACTION_STREAM: '/agent/tasks/actions/apply/stream',
   },
 };

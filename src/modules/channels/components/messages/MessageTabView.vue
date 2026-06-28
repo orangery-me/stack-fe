@@ -10,6 +10,8 @@ import { useChatStore } from "@/modules/channels/stores/chat.store";
 import { useHuddleStore } from "@/modules/channels/huddle/stores/huddle.store";
 import { useAuthStore } from "@/modules/auth/stores/auth.store.js";
 import { useInfiniteQuery } from "@tanstack/vue-query";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import chatService from "@/services/chat.service";
 import AppLoading from "@/components/loading/AppLoading.vue";
 import HuddleSystemMessage from "@/modules/channels/huddle/components/HuddleSystemMessage.vue";
@@ -270,6 +272,11 @@ const clearComposer = () => {
 };
 
 const mentionLabel = (mention) => mention.name || mention.email || mention.userId;
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 const filterMentionsForContent = () => {
   const content = newMessage.value;
@@ -556,28 +563,54 @@ const openAttachment = (attachment) => {
   if (attachment?.url) window.open(attachment.url, "_blank", "noopener,noreferrer");
 };
 
-const getMentionParts = (message) => {
-  const text = String(message?.content || "");
-  const mentions = message?.metadata?.mentions || [];
-  if (!mentions.length) return [{ text, mention: false }];
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  const labels = mentions.map((mention) => `@${mentionLabel(mention)}`).filter(Boolean);
-  const parts = [];
-  let remaining = text;
-  while (remaining) {
-    const next = labels
-      .map((label) => ({ label, index: remaining.indexOf(label) }))
-      .filter((item) => item.index >= 0)
-      .sort((a, b) => a.index - b.index)[0];
-    if (!next) {
-      parts.push({ text: remaining, mention: false });
-      break;
-    }
-    if (next.index > 0) parts.push({ text: remaining.slice(0, next.index), mention: false });
-    parts.push({ text: next.label, mention: true });
-    remaining = remaining.slice(next.index + next.label.length);
+const escapeHtml = (value) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const renderMessageMarkdown = (message) => {
+  const raw = String(message?.content || "");
+  const parsed = marked.parse(raw, { async: false, breaks: true, gfm: true });
+  let html = DOMPurify.sanitize(parsed, {
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "em",
+      "del",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "code",
+      "pre",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "th",
+      "td",
+      "a",
+      "span",
+    ],
+    ALLOWED_ATTR: ["href", "title", "target", "rel", "class"],
+  });
+
+  const mentions = Array.isArray(message?.metadata?.mentions) ? message.metadata.mentions : [];
+  for (const mention of mentions) {
+    const label = mentionLabel(mention);
+    if (!label) continue;
+    const token = `@${label}`;
+    const escapedToken = escapeHtml(token);
+    const safeMention = `<span class="message-mention-token">${escapedToken}</span>`;
+    html = html.replace(new RegExp(escapeRegExp(escapedToken), "g"), safeMention);
   }
-  return parts;
+  return html;
 };
 
 const getChannelCreator = (channel) => {
@@ -996,13 +1029,11 @@ onBeforeUnmount(() => {
                         </div>
                       </div>
                     </div>
-                    <template v-else>
-                      <span
-                        v-for="(part, partIndex) in getMentionParts(message)"
-                        :key="`${message.id}-part-${partIndex}`"
-                        :class="{ 'message-mention-token': part.mention }"
-                      >{{ part.text }}</span>
-                    </template>
+                    <div
+                      v-else
+                      class="message-markdown"
+                      v-html="renderMessageMarkdown(message)"
+                    />
                   </div>
                   <div
                     v-if="getMessageAttachments(message).length"

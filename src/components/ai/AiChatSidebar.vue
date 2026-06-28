@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import {
   Sparkles,
   X,
@@ -23,7 +25,7 @@ import {
   updateSession,
   updateMessageActionStatus,
   applyCanvasAction,
-  applyTaskAction,
+  applyTaskActionStream,
 } from "@/services/agent.service.js";
 
 const uiStore = useUiStore();
@@ -40,7 +42,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:open", "canvas-actions-updated"]);
+const emit = defineEmits(["update:open", "canvas-suggestions-updated"]);
 
 // ======== State ========
 
@@ -67,6 +69,10 @@ let sessionLoadSeq = 0;
 
 const DEFAULT_PROVIDER = "deepseek";
 const DEFAULT_MODEL = "deepseek-v4-pro";
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 const isCanvasMode = computed(() => props.context?.kind === "canvas");
 const sessionScope = computed(() =>
   isCanvasMode.value && props.context?.canvasId
@@ -78,12 +84,10 @@ const sessionScopeKey = computed(
 );
 const selectedContext = computed(() => uiStore.aiSelectedContext);
 const hasTaskContext = computed(() => Boolean(props.context?.workspaceId));
-const CANVAS_ACTION_NAMES = new Set([
-  "insert_canvas_block",
-  "update_canvas_block",
-  "delete_canvas_block",
-  "reorder_canvas_blocks",
-]);
+const CANVAS_ACTION_NAMES = new Set(["edit_canvas_blocks"]);
+const visibleMessages = computed(() =>
+  messages.value.filter((message) => !message.isHidden),
+);
 
 function isCanvasAction(action) {
   return CANVAS_ACTION_NAMES.has(action?.name);
@@ -93,27 +97,17 @@ function isActionVisibleInSidebar(action) {
   return !(isCanvasMode.value && isCanvasAction(action));
 }
 
-function numberArg(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
-}
-
 function canvasActionAnchorKey(action) {
   const args = action?.arguments || {};
-  if (action?.name === "insert_canvas_block") {
-    return String(numberArg(args.after_index) ?? -1);
-  }
-  if (action?.name === "update_canvas_block" || action?.name === "delete_canvas_block") {
-    const index = numberArg(args.index);
-    return index === null ? null : String(index);
-  }
-  if (action?.name === "reorder_canvas_blocks") {
-    const index = numberArg(args.from_index);
-    return index === null ? null : String(index);
+  if (action?.name === "edit_canvas_blocks") {
+    const mutations = Array.isArray(args.mutations) ? args.mutations : [];
+    const ids = mutations
+      .map((mutation) => {
+        if (!mutation || typeof mutation !== "object") return null;
+        return mutation.block_id || mutation.target_block_id || null;
+      })
+      .filter(Boolean);
+    return ids.length ? ids.join("|") : "canvas";
   }
   return null;
 }
@@ -211,7 +205,11 @@ function getInlineCanvasActions() {
 }
 
 function syncInlineCanvasActions() {
-  emit("canvas-actions-updated", getInlineCanvasActions());
+  const suggestions = getInlineCanvasActions().flatMap((action) => {
+    const items = action?.arguments?.suggestions;
+    return Array.isArray(items) ? items : [];
+  });
+  emit("canvas-suggestions-updated", suggestions);
 }
 
 function persistedActionId(action, index = 0) {
@@ -256,6 +254,21 @@ function normalizeIncomingActions(actions) {
 
 // ======== Session loading ========
 
+function normalizeStoredMessage(m) {
+  const parsed =
+    m.role === "assistant"
+      ? parseStoredAssistantMessage(m.content)
+      : { content: m.content, actions: [] };
+  return {
+    id: m.id,
+    role: m.role,
+    content: parsed.content,
+    actions: parsed.actions,
+    streaming: false,
+    isHidden: false,
+  };
+}
+
 async function loadActiveSession() {
   const loadSeq = ++sessionLoadSeq;
   const scope = { ...sessionScope.value };
@@ -273,19 +286,7 @@ async function loadActiveSession() {
     const rawMessages = Array.isArray(result)
       ? result
       : (result?.messages ?? []);
-    messages.value = rawMessages.map((m) => {
-      const parsed =
-        m.role === "assistant"
-          ? parseStoredAssistantMessage(m.content)
-          : { content: m.content, actions: [] };
-      return {
-        id: m.id,
-        role: m.role,
-        content: parsed.content,
-        actions: parsed.actions,
-        streaming: false,
-      };
-    });
+    messages.value = rawMessages.map(normalizeStoredMessage);
     syncInlineCanvasActions();
     await scrollToBottom();
   } catch {
@@ -321,19 +322,7 @@ async function switchSession(session) {
     const rawMessages = Array.isArray(result)
       ? result
       : (result?.messages ?? []);
-    messages.value = rawMessages.map((m) => {
-      const parsed =
-        m.role === "assistant"
-          ? parseStoredAssistantMessage(m.content)
-          : { content: m.content, actions: [] };
-      return {
-        id: m.id,
-        role: m.role,
-        content: parsed.content,
-        actions: parsed.actions,
-        streaming: false,
-      };
-    });
+    messages.value = rawMessages.map(normalizeStoredMessage);
     syncInlineCanvasActions();
     await scrollToBottom();
   } catch {
@@ -400,14 +389,24 @@ async function sendMessage(options = {}) {
   abortStream();
 
   const userMsgId = ++msgIdCounter;
-  messages.value.push({ id: userMsgId, role: "user", content: text });
+  if (options.hiddenUserMessage) {
+    messages.value.push({
+      id: userMsgId,
+      role: "tool",
+      content: text,
+      isHidden: true,
+    });
+  } else {
+    messages.value.push({ id: userMsgId, role: "user", content: text });
+  }
 
   const assistantId = ++msgIdCounter;
   messages.value.push({
     id: assistantId,
     role: "assistant",
-    content: "",
+    content: options.internalStatusText || "",
     streaming: true,
+    isInternalProcessing: Boolean(options.internalStatusText),
   });
 
   if (!options.message) {
@@ -430,7 +429,7 @@ async function sendMessage(options = {}) {
     }
     window.setTimeout(() => persistTerminalActionStatuses(assistantId), 600);
 
-    if (activeSession.value?.title === "New chat") {
+    if (!options.hiddenUserMessage && activeSession.value?.title === "New chat") {
       const newTitle = text.slice(0, 50);
       try {
         await updateSession(activeSession.value.id, newTitle);
@@ -441,6 +440,7 @@ async function sendMessage(options = {}) {
         // Non-critical
       }
     }
+
   };
 
   const onErrorCommon = (err) => {
@@ -461,7 +461,8 @@ async function sendMessage(options = {}) {
       ? selectedContext.value.fullText.trim()
       : "";
   const useTaskFlow =
-    options.kind === "canvas-task-generation" || shouldUseTaskFlow(text);
+    !options.skipTaskFlow &&
+    (options.kind === "canvas-task-generation" || shouldUseTaskFlow(text));
   if (useTaskFlow) {
     await sendTaskSessionMessageStream(activeSession.value.id, {
       workspaceId: ctx.workspaceId,
@@ -480,6 +481,10 @@ async function sendMessage(options = {}) {
       onChunk: (chunk) => {
         const msg = messages.value.find((m) => m.id === assistantId);
         if (msg) {
+          if (msg.isInternalProcessing) {
+            msg.content = "";
+            msg.isInternalProcessing = false;
+          }
           msg.content += chunk;
           scrollToBottom();
         }
@@ -494,9 +499,7 @@ async function sendMessage(options = {}) {
           msg.content += `${msg.content ? "\n" : ""}${event.content}`;
         }
         if (event.type === "actions" && Array.isArray(event.actions)) {
-          const nextActions = normalizeIncomingActions(event.actions);
-          supersedeOlderCanvasActions(nextActions, msg.id);
-          msg.actions = nextActions;
+          msg.actions = normalizeIncomingActions(event.actions);
           syncInlineCanvasActions();
         }
         scrollToBottom();
@@ -518,6 +521,10 @@ async function sendMessage(options = {}) {
       onChunk: (chunk) => {
         const msg = messages.value.find((m) => m.id === assistantId);
         if (msg) {
+          if (msg.isInternalProcessing) {
+            msg.content = "";
+            msg.isInternalProcessing = false;
+          }
           msg.content += chunk;
           scrollToBottom();
         }
@@ -547,6 +554,8 @@ async function sendMessage(options = {}) {
       message: text,
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
+      workspaceId: ctx.workspaceId,
+      channelId: ctx.channelId,
       signal: abortController.signal,
       onChunk: (chunk) => {
         const msg = messages.value.find((m) => m.id === assistantId);
@@ -554,6 +563,21 @@ async function sendMessage(options = {}) {
           msg.content += chunk;
           scrollToBottom();
         }
+      },
+      onEvent: (event) => {
+        const msg = messages.value.find((m) => m.id === assistantId);
+        if (!msg || !event?.type) return;
+        if (event.type === "status" && event.message) {
+          msg.content += `${msg.content ? "\n" : ""}[${event.message}]`;
+        }
+        if (event.type === "assistant" && event.content) {
+          msg.content += `${msg.content ? "\n" : ""}${event.content}`;
+        }
+        if (event.type === "actions" && Array.isArray(event.actions)) {
+          msg.actions = normalizeIncomingActions(event.actions);
+          syncInlineCanvasActions();
+        }
+        scrollToBottom();
       },
       onDone: onDoneCommon,
       onError: onErrorCommon,
@@ -573,27 +597,33 @@ async function handleAcceptAction(messageId, action) {
       action.name === "create_task" ||
       action.name === "create_tasks_batch" ||
       action.name === "create_task_list_with_tasks" ||
-      action.name === "list_task_lists" ||
-      action.name === "search_workspace_members";
-    const result = isTaskAction
-      ? await applyTaskAction({
-          workspaceId: props.context?.workspaceId,
-          channelId: props.context?.channelId,
-          taskListId: props.context?.taskListId,
-          actionName: action.name,
-          actionArgs: action.arguments || {},
-        })
-      : await applyCanvasAction({
+      action.name === "send_channel_message";
+    const isTaskDataMutation =
+      action.name === "create_task" ||
+      action.name === "create_tasks_batch" ||
+      action.name === "create_task_list_with_tasks";
+
+    if (isTaskAction) {
+      await runTaskActionStream(action);
+      action.status = "accepted";
+      persistActionStatus(messageId, action);
+    } else {
+      const result = await applyCanvasAction({
           canvasId: props.context?.canvasId,
           actionName: action.name,
           actionArgs: action.arguments || {},
-        });
-    action.status = result?.ok ? "accepted" : "failed";
-    if (!result?.ok) {
-      action.error = result?.error || "Apply failed";
+      });
+      action.lastResult = result;
+      action.status = result?.ok ? "accepted" : "failed";
+      if (!result?.ok) {
+        action.error = result?.error || "Apply failed";
+      }
+      persistActionStatus(messageId, action);
     }
-    persistActionStatus(messageId, action);
-    if (result?.ok && isTaskAction && props.context?.workspaceId) {
+    if (action.status === "accepted" && action.name === "send_channel_message" && props.context?.channelId) {
+      queryClient.invalidateQueries({ queryKey: ["messages", props.context.channelId] });
+    }
+    if (action.status === "accepted" && isTaskDataMutation && props.context?.workspaceId) {
       const workspaceId = props.context.workspaceId;
       queryClient.invalidateQueries({ queryKey: ["my-tasks", workspaceId] });
       if (props.context?.taskListId) {
@@ -610,6 +640,91 @@ async function handleAcceptAction(messageId, action) {
     persistActionStatus(messageId, action);
   } finally {
     syncInlineCanvasActions();
+  }
+}
+
+async function runTaskActionStream(action) {
+  if (!activeSession.value?.id || !props.context?.workspaceId) {
+    throw new Error("Missing task context");
+  }
+
+  const assistantId = ++msgIdCounter;
+  messages.value.push({
+    id: assistantId,
+    role: "assistant",
+    content: "",
+    actions: [],
+    streaming: true,
+  });
+  scrollToBottom();
+
+  abortController = new AbortController();
+  isStreaming.value = true;
+  uiStore.setAiBusy(true);
+
+  let streamError = null;
+  await applyTaskActionStream({
+    sessionId: activeSession.value.id,
+    workspaceId: props.context.workspaceId,
+    channelId: props.context?.channelId,
+    taskListId: props.context?.taskListId,
+    canvasId: props.context?.canvasId,
+    canvasContent: props.context?.canvasPlainText ?? "",
+    canvasTitle: props.context?.canvasTitle,
+    sourceCanvasUrl: props.context?.sourceCanvasUrl,
+    overallDueDate: props.context?.overallDueDate,
+    timezone: props.context?.timezone,
+    actionName: action.name,
+    actionArgs: action.arguments || {},
+    provider: DEFAULT_PROVIDER,
+    model: DEFAULT_MODEL,
+    signal: abortController.signal,
+    onChunk: (chunk) => {
+      const msg = messages.value.find((m) => m.id === assistantId);
+      if (msg) {
+        msg.content += chunk;
+        scrollToBottom();
+      }
+    },
+    onEvent: (event) => {
+      const streamMsg = messages.value.find((m) => m.id === assistantId);
+      if (!streamMsg || !event?.type) return;
+      if (event.type === "status" && event.message) {
+        streamMsg.content += `${streamMsg.content ? "\n" : ""}[${event.message}]`;
+      }
+      if (event.type === "assistant" && event.content) {
+        streamMsg.content += `${streamMsg.content ? "\n" : ""}${event.content}`;
+      }
+      if (event.type === "actions" && Array.isArray(event.actions)) {
+        streamMsg.actions = normalizeIncomingActions(event.actions);
+        syncInlineCanvasActions();
+      }
+      scrollToBottom();
+    },
+    onDone: () => {
+      const streamMsg = messages.value.find((m) => m.id === assistantId);
+      if (streamMsg) streamMsg.streaming = false;
+      window.setTimeout(() => persistTerminalActionStatuses(assistantId), 600);
+    },
+    onError: (err) => {
+      streamError = err;
+      const streamMsg = messages.value.find((m) => m.id === assistantId);
+      if (streamMsg) {
+        streamMsg.content = streamMsg.content || `(Error: ${err?.message ?? "Unknown"})`;
+        streamMsg.streaming = false;
+        streamMsg.error = true;
+      }
+    },
+  });
+
+  const streamMsg = messages.value.find((m) => m.id === assistantId);
+  if (streamMsg) streamMsg.streaming = false;
+  isStreaming.value = false;
+  uiStore.setAiBusy(false);
+  abortController = null;
+
+  if (streamError) {
+    throw streamError;
   }
 }
 
@@ -809,6 +924,20 @@ function actionCanvasTitle(action) {
   return action?.arguments?.source_canvas_title || "Source canvas";
 }
 
+function isSendChannelMessageAction(action) {
+  return action?.name === "send_channel_message";
+}
+
+function actionLabel(action) {
+  return action?.label || action?.name || "Action";
+}
+
+function actionMessagePreview(action) {
+  return typeof action?.arguments?.message === "string"
+    ? action.arguments.message
+    : "";
+}
+
 function handleKeydown(e) {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
@@ -913,7 +1042,7 @@ onBeforeUnmount(() => {
   abortStream();
   stopResize();
   uiStore.clearAiSelectedContext();
-  emit("canvas-actions-updated", []);
+  emit("canvas-suggestions-updated", []);
 });
 
 defineExpose({
@@ -925,13 +1054,121 @@ defineExpose({
 
 // ======== Text formatting ========
 
-function formatContent(text) {
+function renderMarkdown(text) {
   if (!text) return "";
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\n/g, "<br>");
+  const html = marked.parse(String(text));
+  return DOMPurify.sanitize(html);
+}
+
+function parseJsonCandidate(candidate) {
+  if (typeof candidate !== "string" || !candidate.trim()) return null;
+  try {
+    const parsed = JSON.parse(candidate.trim());
+    if (!parsed || typeof parsed !== "object" || typeof parsed.answer !== "string") {
+      return null;
+    }
+    return {
+      answer: parsed.answer,
+      suggestedActions: Array.isArray(parsed.suggested_actions)
+        ? parsed.suggested_actions
+            .filter(
+              (action) =>
+                action &&
+                typeof action === "object" &&
+                typeof action.label === "string" &&
+                typeof action.prompt_to_trigger === "string",
+            )
+            .map((action) => ({
+              label: action.label,
+              prompt_to_trigger: action.prompt_to_trigger,
+              ...(typeof action.tool_intent === "string"
+                ? { tool_intent: action.tool_intent }
+                : {}),
+            }))
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function extractJsonFromCodeFence(content) {
+  const fencePattern = /```(?:json)?\s*([\s\S]*?)```/gi;
+  let match;
+  while ((match = fencePattern.exec(content)) !== null) {
+    const parsed = parseJsonCandidate(match[1]);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function extractJsonByBalancedBraces(content) {
+  const startIndexes = [];
+  for (let index = 0; index < content.length; index += 1) {
+    if (content[index] === "{") startIndexes.push(index);
+  }
+
+  for (const start of startIndexes) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < content.length; index += 1) {
+      const char = content[index];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === "\"") {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (char === "\"") {
+        inString = true;
+      } else if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          const parsed = parseJsonCandidate(content.slice(start, index + 1));
+          if (parsed) return parsed;
+          break;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractAiJsonContent(content) {
+  if (typeof content !== "string" || !content.trim()) return null;
+  return (
+    parseJsonCandidate(content) ||
+    extractJsonFromCodeFence(content) ||
+    extractJsonByBalancedBraces(content)
+  );
+}
+
+function assistantDisplayContent(msg) {
+  if (msg?.role !== "assistant") return msg?.content || "";
+  return extractAiJsonContent(msg.content)?.answer || msg?.content || "";
+}
+
+function suggestedActionsForMessage(msg) {
+  if (msg?.role !== "assistant" || msg.streaming) return [];
+  return extractAiJsonContent(msg.content)?.suggestedActions || [];
+}
+
+function handleSuggestedAction(action) {
+  const prompt = action?.prompt_to_trigger?.trim();
+  if (!prompt || isStreaming.value) return;
+  inputValue.value = prompt;
+  sendMessage({ message: prompt });
 }
 
 function sessionLabel(session) {
@@ -1095,7 +1332,7 @@ function handleHistorySelect(session) {
         class="ai-chat-messages"
       >
         <div
-          v-if="messages.length === 0"
+          v-if="visibleMessages.length === 0"
           class="ai-chat-empty"
         >
           <Bot
@@ -1107,7 +1344,7 @@ function handleHistorySelect(session) {
 
         <template v-else>
           <div
-            v-for="msg in messages"
+            v-for="msg in visibleMessages"
             :key="msg.id"
             class="ai-chat-msg"
             :class="{
@@ -1124,14 +1361,31 @@ function handleHistorySelect(session) {
               <span v-else>U</span>
             </div>
             <div class="ai-chat-msg-bubble">
-              <span
+              <!-- eslint-disable vue/no-v-html -->
+              <div
                 class="ai-chat-msg-text"
-                v-html="formatContent(msg.content)"
+                v-html="renderMarkdown(assistantDisplayContent(msg))"
               />
+              <!-- eslint-enable vue/no-v-html -->
               <span
                 v-if="msg.streaming"
                 class="ai-chat-cursor"
               >▌</span>
+              <div
+                v-if="suggestedActionsForMessage(msg).length > 0"
+                class="ai-suggested-actions"
+              >
+                <button
+                  v-for="action in suggestedActionsForMessage(msg)"
+                  :key="`${msg.id}-${action.label}-${action.prompt_to_trigger}`"
+                  type="button"
+                  class="ai-suggested-action-chip"
+                  :title="action.prompt_to_trigger"
+                  @click="handleSuggestedAction(action)"
+                >
+                  {{ action.label }}
+                </button>
+              </div>
               <div
                 v-if="
                   msg.role === 'assistant' &&
@@ -1157,7 +1411,7 @@ function handleHistorySelect(session) {
                   class="ai-action-item"
                 >
                   <div class="ai-action-main">
-                    <span class="ai-action-name">{{ action.name }}</span>
+                    <span class="ai-action-name">{{ actionLabel(action) }}</span>
                     <span
                       class="ai-action-status"
                       :class="`is-${action.status}`"
@@ -1206,6 +1460,17 @@ function handleHistorySelect(session) {
                         </span>
                       </span>
                     </label>
+                  </div>
+                  <div
+                    v-else-if="isSendChannelMessageAction(action)"
+                    class="ai-channel-message-preview"
+                  >
+                    <div class="ai-channel-message-preview-label">
+                      Message preview
+                    </div>
+                    <div class="ai-channel-message-preview-body">
+                      {{ actionMessagePreview(action) }}
+                    </div>
                   </div>
                   <div
                     v-else
@@ -1697,6 +1962,37 @@ function handleHistorySelect(session) {
   gap: 8px;
 }
 
+.ai-suggested-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ai-suggested-action-chip {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  max-width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.ai-suggested-action-chip:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
 .ai-action-item {
   border: 1px dashed #cbd5e1;
   border-radius: 8px;
@@ -1807,6 +2103,29 @@ function handleHistorySelect(session) {
   color: #64748b;
 }
 
+.ai-channel-message-preview {
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fafc;
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.ai-channel-message-preview-label {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.ai-channel-message-preview-body {
+  color: #0f172a;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .ai-action-error {
   font-size: 11px;
   color: #b91c1c;
@@ -1883,7 +2202,117 @@ function handleHistorySelect(session) {
 }
 
 .ai-chat-msg-text {
-  display: inline;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ai-chat-msg-text :deep(*) {
+  max-width: 100%;
+}
+
+.ai-chat-msg-text :deep(h1),
+.ai-chat-msg-text :deep(h2),
+.ai-chat-msg-text :deep(h3) {
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0.65em 0 0.35em;
+}
+
+.ai-chat-msg-text :deep(h1) {
+  font-size: 18px;
+}
+
+.ai-chat-msg-text :deep(h2) {
+  font-size: 16px;
+}
+
+.ai-chat-msg-text :deep(h3) {
+  font-size: 14px;
+}
+
+.ai-chat-msg-text :deep(p) {
+  margin: 0.45em 0;
+}
+
+.ai-chat-msg-text :deep(p:first-child),
+.ai-chat-msg-text :deep(h1:first-child),
+.ai-chat-msg-text :deep(h2:first-child),
+.ai-chat-msg-text :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.ai-chat-msg-text :deep(p:last-child),
+.ai-chat-msg-text :deep(ul:last-child),
+.ai-chat-msg-text :deep(ol:last-child),
+.ai-chat-msg-text :deep(table:last-child) {
+  margin-bottom: 0;
+}
+
+.ai-chat-msg-text :deep(ul),
+.ai-chat-msg-text :deep(ol) {
+  margin: 0.45em 0;
+  padding-left: 1.35em;
+}
+
+.ai-chat-msg-text :deep(li) {
+  margin: 0.2em 0;
+}
+
+.ai-chat-msg-text :deep(code) {
+  background: #f1f5f9;
+  border-radius: 4px;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 1px 4px;
+}
+
+.ai-chat-msg-text :deep(pre) {
+  background: #0f172a;
+  border-radius: 8px;
+  color: #e2e8f0;
+  margin: 0.65em 0;
+  overflow-x: auto;
+  padding: 10px 12px;
+}
+
+.ai-chat-msg-text :deep(pre code) {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.ai-chat-msg-text :deep(hr) {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 0.8em 0;
+}
+
+.ai-chat-msg-text :deep(table) {
+  border-collapse: collapse;
+  display: block;
+  font-size: 12.5px;
+  margin: 0.65em 0;
+  max-width: none;
+  overflow-x: auto;
+  width: max-content;
+}
+
+.ai-chat-msg-text :deep(th),
+.ai-chat-msg-text :deep(td) {
+  border: 1px solid #cbd5e1;
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.ai-chat-msg-text :deep(th) {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
 }
 
 .ai-chat-cursor {

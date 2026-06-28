@@ -21,8 +21,10 @@ import RichEditor from "@/components/editor/RichEditor.vue";
 import TranscriptBanner from "@/components/editor/TranscriptBanner.vue";
 import AiChatSidebar from "@/components/ai/AiChatSidebar.vue";
 import CanvasShareDialog from "@/components/editor/CanvasShareDialog.vue";
+import { CanvasBlockIdExtension } from "@/components/editor/canvas-block-id.extension";
 import { AiCanvasActionsExtension } from "@/components/editor/ai-canvas-actions.extension";
-import type { CanvasAiInlineAction } from "@/components/editor/ai-canvas-actions.extension";
+import canvasService from "@/services/canvas.service";
+import type { CanvasSuggestion } from "@/services/canvas.service";
 import { AiPreviewExtension } from "@/components/editor/ai-preview.extension";
 import { useCanvasAiWriter } from "@/composables/useCanvasAiWriter";
 import { requestCanvas } from "../queries/canvas.queries";
@@ -68,7 +70,7 @@ const showTaskChannelPicker = ref(false);
 const showTranscriptBanner = ref(false);
 const showShareDialog = ref(false);
 const aiChatSidebarRef = ref<InstanceType<typeof AiChatSidebar> | null>(null);
-const canvasAiActions = ref<CanvasAiInlineAction[]>([]);
+const canvasSuggestions = ref<CanvasSuggestion[]>([]);
 
 // ======== Title =========
 
@@ -134,7 +136,8 @@ watch(
 watch(
   () => canvasId.value,
   () => {
-    canvasAiActions.value = [];
+    canvasSuggestions.value = [];
+    void refreshCanvasSuggestions();
   },
 );
 
@@ -425,6 +428,7 @@ async function setupForCanvas(id: string) {
   editor.value = new Editor({
     extensions: [
       StarterKit,
+      CanvasBlockIdExtension,
       Collaboration.configure({ document: doc }),
       CollaborationCaret.configure({
         provider: p,
@@ -557,24 +561,70 @@ function handleShare() {
   showShareDialog.value = true;
 }
 
-function handleCanvasAiActionsUpdated(actions: CanvasAiInlineAction[]) {
-  canvasAiActions.value = actions;
+function mergeCanvasSuggestions(nextSuggestions: CanvasSuggestion[]) {
+  const byId = new Map(canvasSuggestions.value.map((suggestion) => [suggestion.id, suggestion]));
+  for (const suggestion of nextSuggestions) {
+    byId.set(suggestion.id, suggestion);
+  }
+  canvasSuggestions.value = Array.from(byId.values()).filter((suggestion) =>
+    ["pending", "applying", "failed"].includes(suggestion.status || "pending"),
+  );
 }
 
-function handleAcceptCanvasAiAction(inlineId: string) {
-  void aiChatSidebarRef.value?.acceptCanvasActionByInlineId(inlineId);
+function handleCanvasSuggestionsUpdated(suggestions: CanvasSuggestion[]) {
+  if (!suggestions.length) {
+    canvasSuggestions.value = [];
+    return;
+  }
+  void refreshCanvasSuggestions();
 }
 
-function handleRejectCanvasAiAction(inlineId: string) {
-  aiChatSidebarRef.value?.rejectCanvasActionByInlineId(inlineId);
+async function refreshCanvasSuggestions() {
+  if (!canvasId.value) return;
+  try {
+    const suggestions = await canvasService.getCanvasSuggestions(canvasId.value);
+    canvasSuggestions.value = suggestions.filter((suggestion) =>
+      ["pending", "applying", "failed"].includes(suggestion.status || "pending"),
+    );
+  } catch {
+    // Global interceptor shows the error.
+  }
 }
 
-function handleAcceptAllCanvasAiActions() {
-  void aiChatSidebarRef.value?.acceptAllInlineCanvasActions();
+async function handleAcceptCanvasSuggestion(suggestionId: string) {
+  const current = canvasSuggestions.value.find((suggestion) => suggestion.id === suggestionId);
+  if (current) current.status = "applying";
+  try {
+    const updated = await canvasService.acceptCanvasSuggestion(canvasId.value, suggestionId);
+    mergeCanvasSuggestions([updated]);
+  } catch {
+    await refreshCanvasSuggestions();
+  }
 }
 
-function handleRejectAllCanvasAiActions() {
-  aiChatSidebarRef.value?.rejectAllInlineCanvasActions();
+async function handleRejectCanvasSuggestion(suggestionId: string) {
+  try {
+    const updated = await canvasService.rejectCanvasSuggestion(canvasId.value, suggestionId);
+    mergeCanvasSuggestions([updated]);
+  } catch {
+    await refreshCanvasSuggestions();
+  }
+}
+
+async function handleAcceptAllCanvasSuggestions() {
+  try {
+    await canvasService.acceptAllCanvasSuggestions(canvasId.value);
+  } finally {
+    await refreshCanvasSuggestions();
+  }
+}
+
+async function handleRejectAllCanvasSuggestions() {
+  try {
+    await canvasService.rejectAllCanvasSuggestions(canvasId.value);
+  } finally {
+    await refreshCanvasSuggestions();
+  }
 }
 </script>
 
@@ -612,7 +662,7 @@ function handleRejectAllCanvasAiActions() {
         :ai-writer-bar="aiWriterBar"
         :selection-ai-icon="selectionAiIcon"
         :canvas-plain-text="canvasPlainText"
-        :ai-canvas-actions="canvasAiActions"
+        :canvas-suggestions="canvasSuggestions"
         :ai-actions-disabled="aiActionsDisabled"
         @update:title="onTitleUpdate"
         @download="handleDownload"
@@ -627,10 +677,10 @@ function handleRejectAllCanvasAiActions() {
         @reject="handleReject"
         @ai-close="handleAiWriterClose"
         @selection-icon-click="handleSelectionIconClick"
-        @accept-canvas-ai-action="handleAcceptCanvasAiAction"
-        @reject-canvas-ai-action="handleRejectCanvasAiAction"
-        @accept-all-canvas-ai-actions="handleAcceptAllCanvasAiActions"
-        @reject-all-canvas-ai-actions="handleRejectAllCanvasAiActions"
+        @accept-canvas-suggestion="handleAcceptCanvasSuggestion"
+        @reject-canvas-suggestion="handleRejectCanvasSuggestion"
+        @accept-all-canvas-suggestions="handleAcceptAllCanvasSuggestions"
+        @reject-all-canvas-suggestions="handleRejectAllCanvasSuggestions"
       />
       <CanvasShareDialog
         :open="showShareDialog"
@@ -647,7 +697,7 @@ function handleRejectAllCanvasAiActions() {
       ref="aiChatSidebarRef"
       v-model:open="uiStore.isAiOpen"
       :context="aiCanvasContext"
-      @canvas-actions-updated="handleCanvasAiActionsUpdated"
+      @canvas-suggestions-updated="handleCanvasSuggestionsUpdated"
     />
     <div
       v-if="showTaskChannelPicker"
